@@ -67,6 +67,11 @@ module.exports = {
         error: "#ba1a1a",
         "on-error": "#ffffff",
         "on-error-container": "#93000a",
+
+        info: {
+        DEFAULT: "#336052",     // chữ + icon
+        bg: "rgba(183, 231, 213, 0.2)",          // nền
+      }
       },
 
       borderRadius: {

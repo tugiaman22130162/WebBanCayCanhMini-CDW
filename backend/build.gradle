@@ -10,6 +10,7 @@ version = '0.0.1-SNAPSHOT'
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(17)
+        //languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
@@ -30,6 +31,8 @@ dependencies {
     // Lombok
     compileOnly 'org.projectlombok:lombok:1.18.28'       // version cụ thể
     annotationProcessor 'org.projectlombok:lombok:1.18.28'
+    //compileOnly 'org.projectlombok:lombok:1.18.32' //jdk 21
+    //annotationProcessor 'org.projectlombok:lombok:1.18.32'//jdk 21
 
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
