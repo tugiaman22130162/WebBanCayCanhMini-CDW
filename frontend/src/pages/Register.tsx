@@ -66,7 +66,7 @@ export default function Register() {
     };
 
     return (
-        <div className="min-h-screen bg-surface-container-lowest flex items-center justify-center p-6 bg-[#FDFFDA]">
+        <div className="min-h-scree flex items-center justify-center p-6 bg-[#FDFFDA]">
 
             {/* Container: Hình ảnh và Form đăng ký */}
             <div className="flex flex-col md:flex-row w-full max-w-5xl shadow-2xl gap-[10px]">

@@ -70,4 +70,7 @@ public class Products {
 
     @OneToMany(mappedBy = "product")
     private List<CartItems> cart_items;
+
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL)
+    private List<Reviews> reviews;
 }
