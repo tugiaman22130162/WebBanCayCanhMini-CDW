@@ -130,7 +130,7 @@ export default function Products() {
                                             {product.price.toLocaleString("vi-VN")}đ
                                         </p>
 
-                                        <button className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary-container hover:text-on-primary-container transition-all">
+                                        <button className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary-container hover:scale-[1.02] active:scale-95 transition-all">
                                             Thêm vào giỏ
                                         </button>
                                     </div>

@@ -1,11 +1,14 @@
 const Footer = () => {
     return (
-        <footer className="w-full pt-16 pb-8 bg-[#0F4D2E]/90 text-white">
+        <footer className="w-full pt-16 pb-8 bg-header-footer text-white">
             <div className="mt-[-30px] grid grid-cols-1 md:grid-cols-4 gap-12 px-8 max-w-7xl mx-auto text-sm">
 
                 {/* Column 1 */}
                 <div className="flex flex-col gap-6">
-                    <div className="text-xl font-bold">MiniGarden</div>
+                    <div
+                        // className="text-xl font-bold"
+
+                        className="text-2xl font-bold bg-gradient-to-r from-green-300 to-lime-200 bg-clip-text text-transparent tracking-tighter hover:opacity-80 transition"                    >MiniGarden</div>
                     <p className="text-white/80">
                         Cửa hàng chuyên cung cấp giải pháp xanh cho không gian sống hiện đại.
                     </p>
