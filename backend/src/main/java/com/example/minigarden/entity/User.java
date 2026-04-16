@@ -31,6 +31,9 @@ public class User {
     @Column(name = "address")
     private String address;
 
+    @Column(name = "avatar")
+    private String avatar;
+
     @Enumerated(EnumType.STRING)
     private Role role; // ADMIN hoặc USER
 }

@@ -33,7 +33,7 @@ export default function ChatbotWidget() {
                     </p>
 
                     {/* Button */}
-                    <button className="mt-4 w-full bg-primary text-white py-2.5 rounded-xl font-semibold hover:scale-[1.02] transition">
+                    <button className="mt-4 w-full py-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary-container hover:scale-[1.02] active:scale-95 transition-all">
                         Bắt đầu trò chuyện
                     </button>
                 </div>

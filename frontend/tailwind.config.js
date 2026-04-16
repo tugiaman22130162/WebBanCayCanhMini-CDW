@@ -29,6 +29,8 @@ module.exports = {
         "tertiary-fixed-dim": "#ffb77d",
 
         background: "#fff8f5",
+        "header-footer": "#0F4D2E",
+
         surface: "#fff8f5",
         "surface-dim": "#e2d8d2",
         "surface-bright": "#fff8f5",
@@ -69,15 +71,15 @@ module.exports = {
         "on-error-container": "#93000a",
 
         info: {
-        DEFAULT: "#336052",     // chữ + icon
-        bg: "rgba(183, 231, 213, 0.2)",          // nền
-      }
+          DEFAULT: "#336052",     // chữ + icon
+          bg: "rgba(183, 231, 213, 0.2)",          // nền
+        }
       },
 
       borderRadius: {
-        DEFAULT: "1rem",
-        lg: "2rem",
-        xl: "3rem",
+        DEFAULT: "20px",
+        lg: "24px",
+        xl: "28px",
         full: "9999px",
       },
 
