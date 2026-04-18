@@ -18,9 +18,9 @@ export default function Header() {
 
                 {/* Icons */}
                 <div className="flex items-center space-x-6">
-                    <button className="material-symbols-outlined text-white hover:text-green-100 transition-all active:scale-95">
+                    <Link to="/favorites" className="material-symbols-outlined text-white hover:text-red-500 transition-all active:scale-95 block">
                         favorite
-                    </button>
+                    </Link>
 
                     <button className="material-symbols-outlined text-white hover:text-green-100 transition-all active:scale-95">
                         shopping_cart
