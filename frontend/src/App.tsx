@@ -7,11 +7,14 @@ import ForgotPassword from "./pages/ForgotPassword"
 import ProductFavorite from "./pages/ProductFavorite"
 import SellerProduct from "./pages/SellerProduct"
 import NewsArrivalProduct from "./pages/NewsArrivalProduct"
+import UserManagement from "./pages/admin/pages/UserManagement"
+import ProductManagement from "./pages/admin/pages/ProductManagement"
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* USER */}
         <Route path="/" element={<Home />} />
         <Route path="/products" element={<Products />} />
         <Route path="/register" element={<Register />} />
@@ -20,6 +23,10 @@ export default function App() {
         <Route path="/favorites" element={<ProductFavorite />} />
         <Route path="/best-sellers" element={<SellerProduct />} />
         <Route path="/new-arrivals" element={<NewsArrivalProduct />} />
+
+        {/* ADMIN */}
+        <Route path="/admin/users" element={<UserManagement />} />
+        <Route path="/admin/products" element={<ProductManagement />} />
       </Routes>
     </BrowserRouter>
   )
