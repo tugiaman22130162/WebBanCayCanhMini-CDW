@@ -1,14 +1,9 @@
 import React, { useMemo, useState } from "react"
 import MainLayout from "../layouts/MainLayout"
 import FilterBar from "../components/FilterBar"
-
-type Product = {
-    id: number
-    name: string
-    price: number
-    image: string
-    category: "Terrarium" | "Cây để bàn" | "Sen đá"
-}
+import ProductCard from "../components/ProductCard"
+import { Product } from "../data/products"
+import { useFavorites } from "../data/useFavorites"
 
 const mockProducts: Product[] = [
     {
@@ -44,6 +39,7 @@ const mockProducts: Product[] = [
 export default function Products() {
     const [category, setCategory] = useState<string>("all")
     const [sort, setSort] = useState<string>("popular")
+    const { isFavorited, toggleFavorite } = useFavorites();
 
     // FILTER + SORT LOGIC
     const filteredProducts = useMemo(() => {
@@ -54,13 +50,18 @@ export default function Products() {
             data = data.filter((p) => p.category === category)
         }
 
+        const getNumericPrice = (price: string | number) => {
+            if (typeof price === "number") return price;
+            return Number(price.replace(/[^0-9]/g, ""));
+        };
+
         // sort
         if (sort === "price-low") {
-            data.sort((a, b) => a.price - b.price)
+            data.sort((a, b) => getNumericPrice(a.price) - getNumericPrice(b.price))
         }
 
         if (sort === "price-high") {
-            data.sort((a, b) => b.price - a.price)
+            data.sort((a, b) => getNumericPrice(b.price) - getNumericPrice(a.price))
         }
 
         return data
@@ -72,9 +73,9 @@ export default function Products() {
             <section className="bg-white pt-10 pb-6 px-6 border-b border-gray-100">
                 <div className="max-w-7xl mx-auto">
 
-                    <h1 className="text-4xl font-black text-on-surface mb-2">
+                    <h2 className="text-4xl font-bold text-on-surface mb-2">
                         Bộ sưu tập sản phẩm
-                    </h1>
+                    </h2>
 
                     <p className="text-on-surface-variant">
                         Khám phá các loại cây cảnh và terrarium được chọn lọc kỹ lưỡng
@@ -99,43 +100,17 @@ export default function Products() {
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
 
-                            {filteredProducts.map((product) => (
-                                <div
-                                    key={product.id}
-                                    className="group bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 overflow-hidden transition-all duration-300"
-                                >
-
-                                    {/* IMAGE */}
-                                    <div className="relative overflow-hidden">
-                                        <img
-                                            src={product.image}
-                                            alt={product.name}
-                                            className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-500"
-                                        />
-
-                                        {/* badge */}
-                                        <span className="absolute top-3 left-3 bg-primary text-white text-xs px-3 py-1 rounded-full">
-                                            {product.category}
-                                        </span>
-                                    </div>
-
-                                    {/* CONTENT */}
-                                    <div className="p-5 space-y-3">
-
-                                        <h3 className="font-bold text-lg text-on-surface line-clamp-1">
-                                            {product.name}
-                                        </h3>
-
-                                        <p className="text-emerald-600 font-bold text-xl">
-                                            {product.price.toLocaleString("vi-VN")}đ
-                                        </p>
-
-                                        <button className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary-container hover:scale-[1.02] active:scale-95 transition-all">
-                                            Thêm vào giỏ
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
+                            {filteredProducts.map((product) => {
+                                const isLiked = isFavorited(product);
+                                return (
+                                    <ProductCard
+                                        key={product.id}
+                                        product={product}
+                                        isFavorited={isLiked}
+                                        onToggleFavorite={toggleFavorite}
+                                    />
+                                )
+                            })}
 
                         </div>
                     )}
