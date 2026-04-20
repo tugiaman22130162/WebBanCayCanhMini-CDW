@@ -36,6 +36,9 @@ dependencies {
 
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+    // Cloudinary (upload ảnh lên cloud)
+    implementation 'com.cloudinary:cloudinary-http44:1.39.0'
 }
 
 tasks.named('test') {

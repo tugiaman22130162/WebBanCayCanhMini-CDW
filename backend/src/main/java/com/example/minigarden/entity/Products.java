@@ -1,5 +1,6 @@
 package com.example.minigarden.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -25,7 +26,7 @@ public class Products {
     private String name;
 
     // Mô tả
-    @Column(length = 500)
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     // Giá bán
@@ -44,6 +45,10 @@ public class Products {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
     private Categories category;
+
+    @OneToOne(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private ProductDetails details;
 
     // Trạng thái (còn bán / ngừng bán)
     @Column(nullable = false)

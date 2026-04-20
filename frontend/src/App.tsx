@@ -9,6 +9,7 @@ import SellerProduct from "./pages/SellerProduct"
 import NewsArrivalProduct from "./pages/NewsArrivalProduct"
 import UserManagement from "./pages/admin/pages/UserManagement"
 import ProductManagement from "./pages/admin/pages/ProductManagement"
+import OrderManagement from "./pages/admin/pages/OrderManagement"
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
         {/* ADMIN */}
         <Route path="/admin/users" element={<UserManagement />} />
         <Route path="/admin/products" element={<ProductManagement />} />
+        <Route path="/admin/orders" element={<OrderManagement />} />
       </Routes>
     </BrowserRouter>
   )
