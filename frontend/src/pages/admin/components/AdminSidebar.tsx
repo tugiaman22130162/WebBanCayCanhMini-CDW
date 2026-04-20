@@ -9,6 +9,7 @@ const AdminSidebar: React.FC = () => {
         { name: "Tổng quan", path: "/admin/dashboard", icon: "dashboard" },
         { name: "Người dùng", path: "/admin/users", icon: "group" },
         { name: "Sản phẩm", path: "/admin/products", icon: "inventory_2" },
+        { name: "Danh mục", path: "/admin/categories", icon: "category" },
         { name: "Đơn hàng", path: "/admin/orders", icon: "receipt_long" },
         { name: "Khuyến mãi", path: "/admin/promotions", icon: "campaign" },
         { name: "Cài đặt", path: "/admin/settings", icon: "settings" },

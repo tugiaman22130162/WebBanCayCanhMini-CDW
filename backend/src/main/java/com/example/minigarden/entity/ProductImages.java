@@ -24,6 +24,9 @@ public class ProductImages {
     // URL hình ảnh
     @Column(nullable = false, length = 255)
     private String image_url;
+    
+    @Column(length = 150)
+    private String public_id;
 
     // Ảnh chính hay không
     @Column(nullable = false)

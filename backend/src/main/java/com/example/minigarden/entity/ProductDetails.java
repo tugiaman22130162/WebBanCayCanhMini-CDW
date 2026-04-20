@@ -54,6 +54,6 @@ public class ProductDetails {
     private List<CareInstructions> care_instructions;
 
     // Lưu ý
-    @Column(length = 500)
+    @Column(columnDefinition = "TEXT")
     private String note;
 }
