@@ -36,4 +36,8 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     private Role role; // ADMIN hoặc USER
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserStatus status;
 }

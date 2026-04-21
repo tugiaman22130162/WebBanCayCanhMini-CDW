@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import axios from "axios";
 import AdminHeader from "../components/AdminHeader";
 import AdminSidebar from "../components/AdminSidebar";
 
@@ -6,57 +7,20 @@ type User = {
     name: string;
     id: string;
     email: string;
-    role: string;
+    role: 'ADMIN' | 'USER';
     roleLabel: string;
-    status: string;
+    status: 'ACTIVE' | 'BANNED';
+    statusLabel: string;
     statusColor: string;
     avatar: string;
 };
 
-const users: User[] = [
-    {
-        name: "Amara Vance",
-        id: "#BG-9921",
-        email: "amara.v@botanica.io",
-        role: "User",
-        roleLabel: "User",
-        status: "Active",
-        statusColor: "text-primary",
-        avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2",
-    },
-    {
-        name: "Marcus Thorne",
-        id: "#BG-8842",
-        email: "m.thorne@design.com",
-        role: "Admin",
-        roleLabel: "Admin",
-        status: "Active",
-        statusColor: "text-primary",
-        avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e",
-    },
-    {
-        name: "Elena Rossi",
-        id: "#BG-1205",
-        email: "elena.rossi@domain.it",
-        role: "User",
-        roleLabel: "User",
-        status: "Banned",
-        statusColor: "text-red-500",
-        avatar: "https://images.unsplash.com/photo-1547425260-76bcadfb4f2c",
-    },
-    {
-        name: "Julian Klee",
-        id: "#BG-4429",
-        email: "julian@klee.studio",
-        role: "User",
-        roleLabel: "User",
-        status: "Active",
-        statusColor: "text-primary",
-        avatar: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1",
-    },
-];
 
 export default function UserManagement() {
+    const [users, setUsers] = useState<User[]>([]);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
+
     const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
     const [currentFilters, setCurrentFilters] = useState({
         role: "all",
@@ -65,6 +29,54 @@ export default function UserManagement() {
 
     // A temporary state for when the user is changing filters in the panel
     const [tempFilters, setTempFilters] = useState(currentFilters);
+
+    useEffect(() => {
+        fetchUsers();
+    }, []);
+
+    const fetchUsers = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await axios.get("http://localhost:8080/api/users");
+
+            const formattedData: User[] = response.data.map((item: any) => {
+                let statusLabel = "Không xác định";
+                let statusColor = "text-gray-500";
+                if (item.status === 'ACTIVE') {
+                    statusLabel = "Hoạt động";
+                    statusColor = "text-primary";
+                } else if (item.status === 'BANNED') {
+                    statusLabel = "Bị khóa";
+                    statusColor = "text-red-500";
+                }
+
+                let roleLabel = "Người dùng";
+                if (item.role === 'ADMIN') {
+                    roleLabel = "Quản trị viên";
+                }
+
+                return {
+                    id: `#U-${item.id}`,
+                    name: item.fullName,
+                    email: item.email,
+                    role: item.role,
+                    roleLabel: roleLabel,
+                    status: item.status,
+                    statusLabel: statusLabel,
+                    statusColor: statusColor,
+                    avatar: item.avatar || `https://i.pravatar.cc/150?u=${item.email}`,
+                };
+            });
+
+            setUsers(formattedData);
+        } catch (err) {
+            console.error("Lỗi khi lấy dữ liệu người dùng:", err);
+            setError("Không thể tải dữ liệu người dùng. Vui lòng thử lại sau.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const handleApplyFilters = () => {
         setCurrentFilters(tempFilters);
@@ -84,11 +96,11 @@ export default function UserManagement() {
             const statusMatch = currentFilters.status === 'all' || user.status === currentFilters.status;
             return roleMatch && statusMatch;
         });
-    }, [currentFilters]);
+    }, [users, currentFilters]);
 
     const totalUsers = users.length;
-    const activeUsers = users.filter((u) => u.status === "Active").length;
-    const bannedUsers = users.filter((u) => u.status === "Banned").length;
+    const activeUsers = users.filter((u) => u.status === "ACTIVE").length;
+    const bannedUsers = users.filter((u) => u.status === "BANNED").length;
 
     return (
         <div className="h-screen bg-background text-on-surface flex overflow-hidden">
@@ -137,17 +149,17 @@ export default function UserManagement() {
                                         <div>
                                             <label className="block text-xs font-bold uppercase text-on-surface-variant mb-3">Vai trò</label>
                                             <div className="space-y-2">
-                                                {(['all', 'Admin', 'Customer'] as const).map(role => (
+                                                {(['all', 'ADMIN', 'USER'] as const).map(role => (
                                                     <label key={role} className="flex items-center gap-2 cursor-pointer text-sm">
                                                         <input
                                                             type="radio"
                                                             name="role"
                                                             value={role}
                                                             checked={tempFilters.role === role}
-                                                            onChange={(e) => setTempFilters({ ...tempFilters, role: e.target.value as 'all' | 'Admin' | 'Customer' })}
+                                                            onChange={(e) => setTempFilters({ ...tempFilters, role: e.target.value as 'all' | 'ADMIN' | 'USER' })}
                                                             className="w-4 h-4 text-primary focus:ring-primary focus:ring-offset-0 cursor-pointer"
                                                         />
-                                                        <span>{role === 'all' ? 'Tất cả' : role}</span>
+                                                        <span>{role === 'all' ? 'Tất cả' : (role === 'ADMIN' ? 'Quản trị viên' : 'Người dùng')}</span>
                                                     </label>
                                                 ))}
                                             </div>
@@ -157,17 +169,17 @@ export default function UserManagement() {
                                         <div>
                                             <label className="block text-xs font-bold uppercase text-on-surface-variant mb-3">Trạng thái</label>
                                             <div className="space-y-2">
-                                                {(['all', 'Active', 'Banned'] as const).map(status => (
+                                                {(['all', 'ACTIVE', 'BANNED'] as const).map(status => (
                                                     <label key={status} className="flex items-center gap-2 cursor-pointer text-sm">
                                                         <input
                                                             type="radio"
                                                             name="status"
                                                             value={status}
                                                             checked={tempFilters.status === status}
-                                                            onChange={(e) => setTempFilters({ ...tempFilters, status: e.target.value as 'all' | 'Active' | 'Banned' })}
+                                                            onChange={(e) => setTempFilters({ ...tempFilters, status: e.target.value as 'all' | 'ACTIVE' | 'BANNED' })}
                                                             className="w-4 h-4 text-primary focus:ring-primary focus:ring-offset-0 cursor-pointer"
                                                         />
-                                                        <span>{status === 'all' ? 'Tất cả' : status}</span>
+                                                        <span>{status === 'all' ? 'Tất cả' : (status === 'ACTIVE' ? 'Hoạt động' : 'Bị khóa')}</span>
                                                     </label>
                                                 ))}
                                             </div>
@@ -217,26 +229,39 @@ export default function UserManagement() {
                     </div>
 
                     {/* TABLE */}
-                    {filteredUsers.length === 0 ? (
-                        <div className="bg-white rounded-2xl shadow p-8 text-center text-on-surface-variant">
-                            {users.length === 0 ? "Chưa có người dùng nào" : "Không tìm thấy người dùng nào khớp với bộ lọc."}
-                        </div>
-                    ) : (
-                        <div className="bg-white rounded-2xl shadow overflow-hidden">
-                            <div className="overflow-x-auto">
-                                <table className="w-full min-w-[800px]">
-                                    <thead className="bg-gray-100 text-on-surface-variant text-xs uppercase">
-                                        <tr>
-                                            <th className="text-left p-4">Người dùng</th>
-                                            <th className="text-left p-4">Email</th>
-                                            <th className="text-left p-4">Vai trò</th>
-                                            <th className="text-left p-4">Trạng thái</th>
-                                            <th className="text-right p-4">Hành động</th>
-                                        </tr>
-                                    </thead>
+                    <div className="bg-white rounded-2xl shadow overflow-hidden">
 
-                                    <tbody>
-                                        {filteredUsers.map((u, i) => (
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[800px]">
+                                <thead className="bg-gray-100 text-on-surface-variant text-xs uppercase">
+                                    <tr>
+                                        <th className="text-left p-4">Người dùng</th>
+                                        <th className="text-left p-4">Email</th>
+                                        <th className="text-left p-4">Vai trò</th>
+                                        <th className="text-left p-4">Trạng thái</th>
+                                        <th className="text-right p-4">Hành động</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    {isLoading ? (
+                                        <tr>
+                                            <td colSpan={5} className="p-8 text-center text-on-surface-variant">Đang tải dữ liệu...</td>
+                                        </tr>
+                                    ) : error ? (
+                                        <tr>
+                                            <td colSpan={5} className="p-8 text-center text-red-500">{error}</td>
+                                        </tr>
+                                    ) : users.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={5} className="p-8 text-center text-on-surface-variant">Chưa có người dùng nào.</td>
+                                        </tr>
+                                    ) : filteredUsers.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={5} className="p-8 text-center text-on-surface-variant">Không tìm thấy người dùng nào khớp với bộ lọc.</td>
+                                        </tr>
+                                    ) : (
+                                        filteredUsers.map((u, i) => (
                                             <tr key={i} className="border-t border-gray-100 hover:bg-gray-50 transition">
                                                 <td className="p-4 flex items-center gap-3">
                                                     <img
@@ -259,7 +284,7 @@ export default function UserManagement() {
 
                                                 <td className="p-4">
                                                     <span className={`text-sm font-bold ${u.statusColor}`}>
-                                                        {u.status}
+                                                        {u.statusLabel}
                                                     </span>
                                                 </td>
 
@@ -276,14 +301,14 @@ export default function UserManagement() {
                                                     </button>
                                                 </td>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
-                    )}
+                    </div>
 
-                    {filteredUsers.length > 0 && (
+                    {!isLoading && !error && filteredUsers.length > 0 && (
                         // {/* PAGINATION */}
                         <div className="flex justify-center items-center mt-6 text-sm text-on-surface-variant">
 
