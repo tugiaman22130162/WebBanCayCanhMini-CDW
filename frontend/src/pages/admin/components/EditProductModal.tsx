@@ -161,9 +161,7 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, productId
                 new Blob([JSON.stringify(productPayload)], { type: "application/json" })
             );
 
-            await axios.put(`http://localhost:8080/api/products/${productId}`, formData, {
-                headers: { "Content-Type": "multipart/form-data" }
-            });
+            await axios.put(`http://localhost:8080/api/products/${productId}`, formData);
 
             alert("Cập nhật sản phẩm thành công!");
             onClose();
@@ -222,7 +220,7 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, productId
                                     </div>
                                 )}
                             </div>
-                            <div><label className="block text-sm font-semibold mb-1 text-gray-700">Mô tả sản phẩm</label><textarea ref={descriptionRef} rows={3} name="description" value={editProduct.description} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none overflow-hidden"></textarea></div>
+                            <div><label className="block text-sm font-semibold mb-1 text-gray-700">Mô tả sản phẩm</label><textarea ref={descriptionRef} rows={3} name="description" maxLength={1000} value={editProduct.description} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none overflow-hidden"></textarea></div>
                         </div>
 
                         {/* CHI TIẾT CHĂM SÓC */}
@@ -239,7 +237,7 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, productId
                                 <div><label className="block text-sm font-semibold mb-1 text-gray-700">Loại chậu</label><input type="text" name="potType" value={editProduct.potType} onChange={handleInputChange} placeholder="Gốm, Nhựa..." className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary" /></div>
                                 <div><label className="block text-sm font-semibold mb-1 text-gray-700">Trọng lượng (kg)</label><input type="number" step="0.1" name="weight" value={editProduct.weight} onChange={handleInputChange} placeholder="1.5" className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary" /></div>
                             </div>
-                            <div><label className="block text-sm font-semibold mb-1 text-gray-700">Lưu ý</label><textarea ref={noteRef} rows={2} name="note" value={editProduct.note} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none overflow-hidden"></textarea></div>
+                            <div><label className="block text-sm font-semibold mb-1 text-gray-700">Lưu ý</label><textarea ref={noteRef} rows={2} name="note" maxLength={255} value={editProduct.note} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none overflow-hidden"></textarea></div>
                         </div>
                     </div>
 

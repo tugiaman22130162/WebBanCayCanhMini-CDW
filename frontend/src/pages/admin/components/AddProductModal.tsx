@@ -113,11 +113,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
             );
 
             // 3. Gửi Request lên Backend
-            await axios.post("http://localhost:8080/api/products", formData, {
-                headers: {
-                    "Content-Type": "multipart/form-data"
-                }
-            });
+            await axios.post("http://localhost:8080/api/products", formData);
 
             alert("Thêm sản phẩm thành công!");
             onClose();
