@@ -7,6 +7,7 @@ import com.example.minigarden.entity.ProductDetails;
 import com.example.minigarden.entity.Categories;
 import com.example.minigarden.entity.Products;
 import com.example.minigarden.entity.ProductImages;
+import com.example.minigarden.entity.CareInstructions;
 import com.example.minigarden.repository.CategoryRepository;
 import com.example.minigarden.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -71,6 +72,7 @@ public class ProductService {
                     .potType(product.getDetails().getPotType())
                     .weight(product.getDetails().getWeight())
                     .note(product.getDetails().getNote())
+                    .care_instruction(product.getDetails().getCare_instructions() != null && !product.getDetails().getCare_instructions().isEmpty() ? product.getDetails().getCare_instructions().get(0) : null)
                     .build();
         }
 
@@ -119,6 +121,24 @@ public class ProductService {
             details.setPotType(dto.getDetails().getPotType());
             details.setWeight(dto.getDetails().getWeight());
             details.setNote(dto.getDetails().getNote());
+
+            if (dto.getDetails().getCare_instruction() != null) {
+                List<CareInstructions> cares = details.getCare_instructions();
+                if (cares == null) {
+                    cares = new ArrayList<>();
+                    details.setCare_instructions(cares);
+                }
+                CareInstructions care = cares.isEmpty() ? new CareInstructions() : cares.get(0);
+                
+                care.setWatering(dto.getDetails().getCare_instruction().getWatering());
+                care.setSunlight(dto.getDetails().getCare_instruction().getSunlight());
+                care.setFertilizing(dto.getDetails().getCare_instruction().getFertilizing());
+                care.setProduct_detail(details); // Bắt buộc để map Foreign Key
+                
+                if (cares.isEmpty()) {
+                    cares.add(care);
+                }
+            }
             product.setDetails(details);
         }
 
@@ -192,6 +212,18 @@ public class ProductService {
             details.setPotType(dto.getDetails().getPotType());
             details.setWeight(dto.getDetails().getWeight());
             details.setNote(dto.getDetails().getNote());
+
+            if (dto.getDetails().getCare_instruction() != null) {
+                CareInstructions care = new CareInstructions();
+                care.setWatering(dto.getDetails().getCare_instruction().getWatering());
+                care.setSunlight(dto.getDetails().getCare_instruction().getSunlight());
+                care.setFertilizing(dto.getDetails().getCare_instruction().getFertilizing());
+                care.setProduct_detail(details); // Bắt buộc để map Foreign Key
+                
+                List<CareInstructions> cares = new ArrayList<>();
+                cares.add(care);
+                details.setCare_instructions(cares);
+            }
 
             details.setProduct(product);
             product.setDetails(details);
