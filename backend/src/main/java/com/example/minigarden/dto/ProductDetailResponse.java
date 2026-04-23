@@ -3,6 +3,7 @@ package com.example.minigarden.dto;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import com.example.minigarden.entity.CareInstructions;
 
 @Getter
 @Setter
@@ -16,4 +17,5 @@ public class ProductDetailResponse {
     private String potType;
     private Double weight;
     private String note;
+    private CareInstructions care_instruction;
 }

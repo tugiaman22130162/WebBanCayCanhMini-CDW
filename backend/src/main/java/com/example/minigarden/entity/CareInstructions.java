@@ -1,5 +1,6 @@
 package com.example.minigarden.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -19,6 +20,7 @@ public class CareInstructions {
     // Liên kết tới product_details
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_detail_id", nullable = false)
+    @JsonIgnore
     private ProductDetails product_detail;
 
     // Tưới nước

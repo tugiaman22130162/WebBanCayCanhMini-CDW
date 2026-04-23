@@ -1,5 +1,6 @@
 package com.example.minigarden.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.*;
 import java.util.List;
@@ -20,6 +21,7 @@ public class ProductDetails {
     // Liên kết với products (1-1)
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false, unique = true)
+    @JsonBackReference
     private Products product;
 
     // Ánh sáng

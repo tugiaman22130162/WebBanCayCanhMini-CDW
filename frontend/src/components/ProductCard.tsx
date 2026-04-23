@@ -21,9 +21,19 @@ const ProductCard: React.FC<Props> = ({
         }
     };
 
-    const priceString =
+    // Demo tính toán phần trăm giảm giá (Cố định 20%)
+    const mockDiscountPercent = 10;
+
+    // Giá gốc (lấy trực tiếp từ database)
+    const originalPriceString =
         typeof product.price === "number"
             ? product.price.toLocaleString("vi-VN") + "đ"
+            : null;
+
+    // Giá sau khi giảm (giá bán thực tế)
+    const priceString =
+        typeof product.price === "number"
+            ? (product.price * (1 - mockDiscountPercent / 100)).toLocaleString("vi-VN") + "đ"
             : product.price;
 
     return (
@@ -60,8 +70,17 @@ const ProductCard: React.FC<Props> = ({
             </div>
 
             <div className="flex flex-col flex-grow gap-3">
-                <h4 className="text-lg font-bold line-clamp-1">{product.name}</h4>
-                <p className="text-emerald-600 font-bold">{priceString}</p>
+                <h4 className="text-lg font-bold break-words">{product.name}</h4>
+                
+                <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-emerald-600 font-bold">{priceString}</p>
+                    {originalPriceString && (
+                        <p className="text-sm text-gray-400 line-through">{originalPriceString}</p>
+                    )}
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-red-50 border border-red-200 text-red-600 rounded-full">
+                        -{mockDiscountPercent}%
+                    </span>
+                </div>
 
                 <button className="w-full mt-auto pt-3 pb-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary-container hover:scale-[1.02] active:scale-95 transition-all">
                     Thêm vào giỏ
