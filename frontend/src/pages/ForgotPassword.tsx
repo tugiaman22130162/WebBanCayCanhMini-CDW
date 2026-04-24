@@ -39,28 +39,29 @@ export default function ForgotPassword() {
     };
 
     return (
-        <div className="min-h-screen bg-surface-container-lowest flex items-center justify-center p-6 bg-[#FDFFDA]">
+        <div className="min-h-screen bg-[#222] flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
 
-            {/* Container: Hình ảnh và Form quên mật khẩu */}
-            <div className="flex flex-col md:flex-row w-full max-w-5xl min-h-[650px] shadow-2xl gap-[10px]">
+            {/* Ảnh nền cover toàn màn hình */}
+            <div className="absolute inset-0 z-0">
+                <img
+                    src="/images/bg_forgot.png"
+                    alt="Background forgot password"
+                    className="w-full h-full object-cover object-center"
+                />
+                {/* Lớp phủ tối mờ để tạo chiều sâu và nổi bật form */}
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+            </div>
 
-                {/* Bên trái: Hình ảnh */}
-                <div className="hidden md:block md:w-1/2 relative rounded-[10px] overflow-hidden">
-                    <img
-                        src="/images/bg_forgotpass.png"
-                        alt="Background login"
-                        className="absolute inset-0 w-full h-full"
-                    />
-                    {/*overlay */}
-                    <div className="absolute inset-0 bg-black/10"></div>
-                </div>
+            {/* Container: Form quên mật khẩu nổi lên giữa màn hình */}
+            <div className="relative z-10 w-full max-w-lg bg-white px-8 py-12 md:px-10 md:py-16 min-h-[450px] flex flex-col justify-center rounded-[24px] shadow-2xl">
+                    <Link to="/login" className="absolute top-8 left-8 md:top-10 md:left-10 text-gray-400 hover:text-primary transition-colors group" title="Quay lại đăng nhập">
+                        <span className="material-symbols-outlined text-primary text-[28px] group-hover:-translate-x-1 transition-transform">arrow_back</span>
+                    </Link>
 
-                {/* Bên phải: Form quên mật khẩu*/}
-                <div className="w-full md:w-1/2 bg-white p-8 md:p-12 rounded-[10px] flex flex-col justify-center">
-                    <h2 className="text-3xl font-bold text-left text-[#406D5E] mb-2">
+                    <h1 className="text-4xl font-bold text-center text-primary mb-3">
                         Quên Mật Khẩu?
-                    </h2>
-                    <p className="text-left text-[#65645F] mb-8 text-sm">
+                    </h1>
+                    <p className="text-center text-[#65645F] mb-12 text-sm px-4">
                         Nhập email của bạn để nhận liên kết khôi phục mật khẩu.
                     </p>
 
@@ -68,41 +69,31 @@ export default function ForgotPassword() {
                     <form onSubmit={handleSubmit} className="space-y-5" noValidate>
                         <div>
                             <label className="block text-sm text-[#65645F] font-bold mb-1">
-                                EMAIL
+                                Email
                             </label>
                             <div className="relative">
+                                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                                    mail
+                                </span>
                                 <input
                                     type="email"
                                     name="email"
                                     value={formData.email}
                                     onChange={handleChange}
                                     placeholder="hello@minigarden.com"
-                                    className={`w-full pl-4 pr-12 py-3 bg-[#F0EEE5] rounded-[10px] border ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-transparent hover:bg-[#B7E7D5]/20 focus:border-[#65645F] focus:ring-[#65645F]'} focus:ring-1 outline-none transition-all`}
+                                    className={`w-full pl-12 pr-4 py-3 bg-info-bg rounded-[10px] border ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-transparent hover:border-[#006c49] focus:border-[#006c49] focus:ring-[#006c49]'} focus:ring-1 outline-none transition-all`}
                                     required
                                 />
-                                <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
-                                    mail
-                                </span>
                             </div>
                             {errors.email && <p className="text-red-500 text-xs mt-1 ml-1">{errors.email}</p>}
                         </div>
 
                         <button
                             type="submit"
-                            className="w-full py-4 mt-2 bg-[#406D5E] hover:bg-[#2f5146] text-white font-bold rounded-[24px] transition-colors shadow-md"
-                        >
+                            className="w-full py-4 mt-12 bg-gradient-to-br from-primary to-primary-container text-on-primary font-semibold rounded-full shadow-md hover:shadow-lg hover:scale-[1.02] transition-all">                                               
                             Gửi yêu cầu
                         </button>
                     </form>
-
-                    <div className="mt-6">
-                        <Link to="/login" className="inline-flex items-center gap-1 text-sm text-[#406D5E] font-bold group">
-                            <span className="material-symbols-outlined text-[18px] transition-transform group-hover:-translate-x-1">arrow_back</span>
-                            <span className="group-hover:underline">Quay lại đăng nhập</span>
-                        </Link>
-                    </div>
-                </div>
-
             </div>
         </div>
     );

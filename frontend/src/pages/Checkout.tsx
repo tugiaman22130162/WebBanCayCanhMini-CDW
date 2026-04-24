@@ -1,6 +1,51 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
+import Swal from "sweetalert2";
+
+// Theo dõi vị trí con trỏ chuột để hiển thị thông báo
+let cursorX = 0;
+let cursorY = 0;
+if (typeof window !== "undefined") {
+    window.addEventListener("click", (e) => {
+        cursorX = e.clientX;
+        cursorY = e.clientY;
+    }, true);
+}
+
+// Cấu hình mặc định cho Toast (Nhỏ gọn, hiển thị tại vị trí click chuột)
+const Toast = Swal.mixin({
+    toast: true,
+    position: 'top-start', // Đặt vị trí gốc để kích hoạt container
+    showConfirmButton: false,
+    timer: 2000,
+    width: 'auto',
+    padding: '0.4em 0.8em',
+    customClass: {
+        // Phá vỡ các giới hạn của lớp bọc ngoài cùng (container)
+        container: '!fixed !p-0 !m-0 !w-auto !h-auto !overflow-visible !pointer-events-none',
+        popup: '!rounded-full shadow-xl border border-gray-200 !min-h-0 !flex !items-center !gap-1.5 !m-0 !bg-white !pointer-events-auto',
+        title: '!text-sm !font-bold !text-gray-700 !m-0 !p-0',
+        icon: '!text-[8px] !m-0 !p-0',
+    },
+    didOpen: (toast) => {
+        const container = Swal.getContainer();
+        if (container) {
+            // Tính toán vị trí chuột
+            let topPos = cursorY - 50;
+            let leftPos = cursorX + 15;
+            
+            if (topPos < 10) topPos = cursorY + 20; 
+            if (leftPos + toast.offsetWidth > window.innerWidth) leftPos = window.innerWidth - toast.offsetWidth - 10;
+            
+            // Dịch chuyển toàn bộ container đến đúng vị trí chuột
+            container.style.transform = `translate(${leftPos}px, ${topPos}px)`;
+        }
+        
+        toast.addEventListener('mouseenter', Swal.stopTimer)
+        toast.addEventListener('mouseleave', Swal.resumeTimer)
+    }
+});
 
 // Mock data for the order summary
 const cartItems = [
@@ -34,6 +79,17 @@ export default function Checkout() {
     const [searchPromo, setSearchPromo] = useState("");
     const [manualPromoCode, setManualPromoCode] = useState("");
 
+    // State mới cho Modal địa chỉ
+    const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+    const [newAddress, setNewAddress] = useState({
+        name: '',
+        phone: '',
+        province: '',
+        district: '',
+        ward: '',
+        street: '',
+    });
+
     const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const shippingFee = shippingMethod === "standard" ? 30000 : 0;
     const total = Math.max(0, subtotal + shippingFee - productDiscount - shippingDiscount);
@@ -47,14 +103,38 @@ export default function Checkout() {
             setProductDiscount(subtotal * 0.1); // Giảm giá 10%
             setManualPromoCode("");
             setIsPromoModalOpen(false);
+            Toast.fire({
+                icon: 'success',
+                title: 'Áp dụng mã giảm giá thành công!'
+            });
         } else if (upperCode === "FREESHIP") {
             setShippingPromoCode(upperCode);
             setShippingDiscount(shippingFee); // Giảm tối đa bằng phí vận chuyển
             setManualPromoCode("");
             setIsPromoModalOpen(false);
+            Toast.fire({
+                icon: 'success',
+                title: 'Áp dụng mã Freeship thành công!'
+            });
         } else {
-            alert("Mã giảm giá không hợp lệ!");
+            Toast.fire({
+                icon: 'error',
+                title: 'Mã giảm giá không hợp lệ!'
+            });
         }
+    };
+
+    const handleSaveAddress = (e: React.FormEvent) => {
+        e.preventDefault();
+        // Trong ứng dụng thực tế, bạn sẽ lưu địa chỉ này vào backend hoặc state chung
+        console.log("Lưu địa chỉ mới:", newAddress);
+        // Tạm thời, chỉ đóng modal và reset form
+        setIsAddressModalOpen(false);
+        setNewAddress({ name: '', phone: '', province: '', district: '', ward: '', street: '' });
+        Toast.fire({
+            icon: 'success',
+            title: 'Đã thêm địa chỉ mới thành công!'
+        });
     };
 
     return (
@@ -63,8 +143,8 @@ export default function Checkout() {
                 <div className="max-w-7xl mx-auto">
                 {/* Back to Cart Link */}
                 <div className="mb-8">
-                    <Link to="/cart" className="inline-flex items-center gap-2 text-[#406D5E] font-bold group">
-                        <span className="material-symbols-outlined transition-transform group-hover:-translate-x-1">
+                    <Link to="/cart" className="inline-flex items-center gap-2 text-primary font-bold group">
+                        <span className="material-symbols-outlined text-primary transition-transform group-hover:-translate-x-1">
                             arrow_back
                         </span>
                         <span>Quay lại giỏ hàng</span>
@@ -76,12 +156,15 @@ export default function Checkout() {
                     <div className="lg:col-span-7 space-y-8">
                         
                         {/* 1. Shipping Address */}
-                        <div className="bg-white p-6 rounded-xl shadow-sm">
+                        <div className="bg- p-6 rounded-xl shadow-sm">
                             <div className="flex justify-between items-center mb-4">
                                 <h2 className="text-xl font-bold text-[#406D5E]">Địa chỉ giao hàng</h2>
-                                <button className="flex items-center gap-2 text-sm font-semibold text-[#406D5E] hover:text-[#2f5146]">
-                                    <span className="material-symbols-outlined">add</span>
-                                    Nhập địa chỉ
+                                <button 
+                                    onClick={() => setIsAddressModalOpen(true)}
+                                    className="flex bg-info-bg rounded-[10px] items-center gap-2 text-sm font-semibold text-[#406D5E] hover:text-[#2f5146] px-3 py-2 transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-base">add</span>
+                                    <span>Thêm địa chỉ</span>
                                 </button>
                             </div>
                             <div className="grid sm:grid-cols-2 gap-4">
@@ -219,7 +302,7 @@ export default function Checkout() {
                                         placeholder="Nhập mã giảm giá..."
                                         className="w-full px-4 py-2 bg-gray-100 rounded-lg border-transparent focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] outline-none transition-colors text-sm"
                                     />
-                                    <button onClick={() => handleApplyPromo(manualPromoCode)} className="px-4 py-2 bg-[#406D5E] text-white font-semibold rounded-lg hover:bg-[#2f5146] transition-colors text-sm whitespace-nowrap">
+                                <button onClick={() => handleApplyPromo(manualPromoCode)} className="px-4 py-2 rounded-lg text-sm whitespace-nowrap bg-primary text-white font-semibold hover:bg-primary-container hover:scale-[1.02] active:scale-95 transition-all shadow-md">
                                         Áp dụng
                                     </button>
                                 </div>
@@ -276,7 +359,7 @@ export default function Checkout() {
                                 </div>
                             </div>
 
-                            <button className="w-full py-3 mt-4 bg-[#406D5E] hover:bg-[#2f5146] text-white font-bold rounded-xl transition-colors shadow-md">
+                            <button className="w-full py-3 mt-4 rounded-xl bg-primary text-white font-semibold hover:bg-primary-container hover:scale-[1.02] active:scale-95 transition-all shadow-md">
                                 Đặt hàng
                             </button>
                         </div>
@@ -346,6 +429,102 @@ export default function Checkout() {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Thêm Địa Chỉ Mới */}
+            {isAddressModalOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col overflow-hidden animate-in fade-in zoom-in-50 duration-300">
+                        <div className="flex justify-between items-center p-4 border-b">
+                            <h3 className="font-bold text-lg text-[#406D5E]">Địa chỉ giao hàng mới</h3>
+                            <button onClick={() => setIsAddressModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        <form onSubmit={handleSaveAddress} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold mb-1 text-gray-700">Họ và tên</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="Nguyễn Văn A"
+                                    value={newAddress.name}
+                                    onChange={(e) => setNewAddress({...newAddress, name: e.target.value})}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold mb-1 text-gray-700">Số điện thoại</label>
+                                <input 
+                                    type="tel" 
+                                    placeholder="0987654321"
+                                    value={newAddress.phone}
+                                    onChange={(e) => setNewAddress({...newAddress, phone: e.target.value})}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                                    <div>
+                                        <label className="block text-sm font-semibold mb-1 text-gray-700">Tỉnh/Thành phố</label>
+                                        <select 
+                                            value={newAddress.province}
+                                            onChange={(e) => setNewAddress({...newAddress, province: e.target.value})}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white"
+                                            required
+                                        >
+                                            <option value="">Chọn Tỉnh/Thành</option>
+                                            <option value="Hà Nội">Hà Nội</option>
+                                            <option value="TP Hồ Chí Minh">TP Hồ Chí Minh</option>
+                                            <option value="Đà Nẵng">Đà Nẵng</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold mb-1 text-gray-700">Quận/Huyện</label>
+                                        <select 
+                                            value={newAddress.district}
+                                            onChange={(e) => setNewAddress({...newAddress, district: e.target.value})}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white"
+                                            required
+                                        >
+                                            <option value="">Chọn Quận/Huyện</option>
+                                            <option value="Quận 1">Quận 1</option>
+                                            <option value="Quận 2">Quận 2</option>
+                                            <option value="Quận 3">Quận 3</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold mb-1 text-gray-700">Phường/Xã</label>
+                                        <select 
+                                            value={newAddress.ward}
+                                            onChange={(e) => setNewAddress({...newAddress, ward: e.target.value})}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white"
+                                            required
+                                        >
+                                            <option value="">Chọn Phường/Xã</option>
+                                            <option value="Phường 1">Phường 1</option>
+                                            <option value="Phường 2">Phường 2</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <label className="block text-sm font-semibold mb-1 text-gray-700">Địa chỉ cụ thể (Số nhà, Tên đường...)</label>
+                                <input 
+                                    type="text"
+                                    placeholder="VD: 123 Đường ABC"
+                                    value={newAddress.street}
+                                    onChange={(e) => setNewAddress({...newAddress, street: e.target.value})}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                                    required
+                                />
+                            </div>
+                            <div className="pt-4 mt-2 border-t flex justify-end gap-3">
+                                <button type="button" onClick={() => setIsAddressModalOpen(false)} className="px-6 py-2 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition-colors">Hủy</button>
+                                <button type="submit" className="px-6 py-2 rounded-xl bg-primary text-white font-bold hover:bg-[#2f5146] transition-colors">Lưu địa chỉ</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

@@ -10,6 +10,13 @@ import NewsArrivalProduct from "./pages/NewsArrivalProduct"
 import UserManagement from "./pages/admin/pages/UserManagement"
 import ProductManagement from "./pages/admin/pages/ProductManagement"
 import OrderManagement from "./pages/admin/pages/OrderManagement"
+import PromotionManagement from "./pages/admin/pages/PromotionManagement"
+import Dashboard from "./pages/admin/pages/Dashboard"
+import CategoryManagement from "./pages/admin/pages/CategoryManagement"
+import CancelPayment from "./pages/CancelPayment"
+import SuccessPayment from "./pages/SuccessPayment"
+import Checkout from "./pages/Checkout"
+import Cart from "./pages/Cart"
 
 export default function App() {
   return (
@@ -24,11 +31,18 @@ export default function App() {
         <Route path="/favorites" element={<ProductFavorite />} />
         <Route path="/best-sellers" element={<SellerProduct />} />
         <Route path="/new-arrivals" element={<NewsArrivalProduct />} />
+        <Route path="/cart" element={<Cart/>}/>
+        <Route path="/checkout" element={<Checkout />}/>
+        <Route path="/success" element={<SuccessPayment />} />
+        <Route path="/cancel" element={<CancelPayment />} />
 
         {/* ADMIN */}
         <Route path="/admin/users" element={<UserManagement />} />
         <Route path="/admin/products" element={<ProductManagement />} />
         <Route path="/admin/orders" element={<OrderManagement />} />
+        <Route path="/admin/categories" element={<CategoryManagement />} />
+        <Route path="/admin/dashboard" element={<Dashboard />} />
+        <Route path="/admin/promotions" element={<PromotionManagement />} />
       </Routes>
     </BrowserRouter>
   )

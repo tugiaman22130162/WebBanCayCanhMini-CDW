@@ -22,9 +22,9 @@ export default function Login() {
             isValid = false;
         }
 
-        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/;
         if (!passwordRegex.test(formData.password)) {
-            newErrors.password = "Mật khẩu phải từ 8 ký tự, gồm chữ hoa, thường, số và ký tự đặc biệt.";
+            newErrors.password = "Mật khẩu phải từ 6 ký tự, gồm chữ hoa, thường, số và ký tự đặc biệt.";
             isValid = false;
         }
 
@@ -48,36 +48,33 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen bg-surface-container-lowest flex items-center justify-center p-6 bg-[#FDFFDA]">
+        <div className="min-h-screen bg-[#222] flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
 
-            {/* Container: Hình ảnh và Form đăng nhập */}
-            <div className="flex flex-col md:flex-row w-full max-w-5xl shadow-2xl gap-[10px]">
+            {/* Ảnh nền phủ giới hạn ở size Full HD (1920x1080) */}
+            <div className="absolute inset-0 z-0 flex items-center justify-center">
+                <img
+                    src="/images/bg_login.png"
+                    alt="Background login"
+                    className="w-full h-full max-w-[1920px] max-h-[1080px] object-cover object-center shadow-2xl"
+                />
+                {/* Lớp phủ tối mờ để tạo chiều sâu và nổi bật form */}
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+            </div>
 
-                {/* Bên trái: Hình ảnh */}
-                <div className="hidden md:block md:w-1/2 relative rounded-[10px] overflow-hidden">
-                    <img
-                        src="/images/bg_login.png"
-                        alt="Background login"
-                        className="absolute inset-0 w-full h-full"
-                    />
-                    {/*overlay */}
-                    <div className="absolute inset-0 bg-black/10"></div>
-                </div>
-
-                {/* Bên phải: Form đăng nhập */}
-                <div className="w-full md:w-1/2 bg-white p-8 md:p-12 rounded-[10px]">
-                    <h2 className="text-3xl font-bold text-left text-[#406D5E] mb-2">
+            {/* Container: Form đăng nhập nổi lên giữa màn hình */}
+            <div className="relative z-10 w-full max-w-lg bg-white p-8 md:p-10 rounded-[24px] shadow-2xl">
+                    <h1 className="text-4xl font-bold text-center text-primary mb-2">
                         Đăng Nhập
-                    </h2>
-                    <p className="text-left text-[#65645F] mb-8 text-sm">
-                        Chào mừng bạn quay lại với cửa hàng cây cảnh mini!
+                    </h1>
+                    <p className="text-center text-on-surface-variant mb-8 text-sm">
+                        Chào mừng bạn quay lại với cửa hàng cây cảnh MiniGarden!
                     </p>
 
 
                     <form onSubmit={handleSubmit} className="space-y-5" noValidate>
                         <div>
                             <label className="block text-sm text-[#65645F] font-bold mb-1">
-                                EMAIL
+                                Email
                             </label>
                             <div className="relative">
                                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
@@ -89,8 +86,7 @@ export default function Login() {
                                     value={formData.email}
                                     onChange={handleChange}
                                     placeholder="hello@minigarden.com"
-                                    className={`w-full pl-12 pr-4 py-3 bg-[#F0EEE5] rounded-[10px] border ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-transparent hover:bg-[#B7E7D5]/20 focus:border-[#65645F] focus:ring-[#65645F]'} focus:ring-1 outline-none transition-all`}
-                                    required
+                                    className={`w-full pl-12 pr-4 py-3 bg-info-bg rounded-[10px] border ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-transparent hover:border-[#006c49] focus:border-[#006c49] focus:ring-[#006c49]'} focus:ring-1 outline-none transition-all`}
                                 />
                             </div>
                             {errors.email && <p className="text-red-500 text-xs mt-1 ml-1">{errors.email}</p>}
@@ -99,7 +95,7 @@ export default function Login() {
                         <div className="flex flex-col sm:flex-row gap-5">
                             <div className="flex-1">
                                 <label className="block text-sm text-[#65645F] font-bold mb-1">
-                                    MẬT KHẨU
+                                    Mật khẩu
                                 </label>
                                 <div className="relative">
                                     <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
@@ -111,7 +107,7 @@ export default function Login() {
                                         value={formData.password}
                                         onChange={handleChange}
                                         placeholder="***"
-                                        className={`w-full pl-12 pr-12 py-3 bg-[#F0EEE5] rounded-[10px] border ${errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-transparent hover:bg-[#B7E7D5]/20 focus:border-[#65645F] focus:ring-[#65645F]'} focus:ring-1 outline-none transition-all`}
+                                        className={`w-full pl-12 pr-12 py-3 bg-info-bg rounded-[10px] border ${errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-transparent hover:border-[#006c49] focus:border-[#006c49] focus:ring-[#006c49]'} focus:ring-1 outline-none transition-all`}
                                         required
                                     />
                                     <button
@@ -133,21 +129,20 @@ export default function Login() {
                                 <input
                                     id="remember"
                                     type="checkbox"
-                                    className="w-4 h-4 text-[#406D5E] bg-[#F0EEE5] border-gray-300 rounded-[10px] focus:ring-[#406D5E] focus:ring-1 cursor-pointer accent-[#406D5E]"
+                                    className="w-4 h-4 text-[#406D5E] bg-[#F0EEE5] border-gray-300 rounded-[10px] focus:ring-primary focus:ring-1 cursor-pointer accent-primary"
                                 />
-                                <label htmlFor="remember" className="ml-2 text-sm text-[#65645F] font-medium cursor-pointer">
+                                <label htmlFor="remember" className="ml-2 text-sm text-primary font-medium cursor-pointer">
                                     Ghi nhớ mật khẩu
                                 </label>
                             </div>
-                            <Link to="/forgot-password" className="text-sm text-[#406D5E] font-bold hover:underline">
+                            <Link to="/forgot-password" className="text-sm text-primary font-bold hover:text-primary-container transition-colors">
                                 Quên mật khẩu?
                             </Link>
                         </div>
 
                         <button
                             type="submit"
-                            className="w-full py-4 mt-2 bg-[#406D5E] hover:bg-[#2f5146] text-white font-bold rounded-[24px] transition-colors shadow-md"
-                        >
+                            className="w-full py-4 mt-2 bg-gradient-to-br from-primary to-primary-container text-on-primary font-semibold rounded-full shadow-md hover:shadow-lg hover:scale-[1.02] transition-all">                        
                             Đăng nhập
                         </button>
                     </form>
@@ -158,26 +153,21 @@ export default function Login() {
                         <span className="w-1/5 border-b border-gray-300 lg:w-1/4"></span>
                     </div>
 
-                    <div className="flex gap-4 mt-6">
-                        <button className="flex-1 flex items-center justify-center py-3 bg-[#F0EEE5] rounded-[10px]  hover:bg-[#B7E7D5]/20 focus:border-[#65645F] focus:ring-[#65645F] outline-none transition-all">
-                            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5 mr-2" />
-                            <span className="text-sm font-medium text-gray-700">Google</span>
-                        </button>
-                        <button className="flex-1 flex items-center justify-center py-3 bg-[#F0EEE5] rounded-[10px]  hover:bg-[#B7E7D5]/20 focus:border-[#65645F] focus:ring-[#65645F] outline-none transition-all">
-                            <img src="https://www.svgrepo.com/show/475647/facebook-color.svg" alt="Facebook" className="w-5 h-5 mr-2" />
-                            <span className="text-sm font-medium text-gray-700">Facebook</span>
-                        </button>
+                    <div className="flex gap-4 mt-6 justify-center">
+                        <a href="#login-google" className="w-14 h-14 flex items-center justify-center bg-white rounded-full border border-gray-200 shadow-sm hover:shadow-md hover:border-[#006c49] hover:-translate-y-0.5 focus:border-[#006c49] focus:ring-1 focus:ring-[#006c49] outline-none transition-all duration-200">
+                            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-6 h-6" />
+                        </a>
+                        <a href="#login-facebook" className="w-14 h-14 flex items-center justify-center bg-white rounded-full border border-gray-200 shadow-sm hover:shadow-md hover:border-[#006c49] hover:-translate-y-0.5 focus:border-[#006c49] focus:ring-1 focus:ring-[#006c49] outline-none transition-all duration-200">
+                            <img src="https://www.svgrepo.com/show/475647/facebook-color.svg" alt="Facebook" className="w-6 h-6" />
+                        </a>
                     </div>
-
                     <p className="text-center text-sm text-[#65645F] font-medium mt-6">
                         Đã có tài khoản?{" "}
-                        <Link to="/register" className="text-[#406D5E] font-bold hover:underline">
+                        <Link to="/register" className="text-primary font-bold hover:text-primary-container transition-colors">
                             Đăng ký ngay
                         </Link>
                     </p>
                 </div>
-
-            </div>
         </div>
     );
 }
