@@ -28,8 +28,9 @@ export default function PromotionManagement() {
     const [promotions, setPromotions] = useState<Promotion[]>(initialPromos);
     
     // States bộ lọc
-    const [searchTerm, setSearchTerm] = useState("");
-    const [typeFilter, setTypeFilter] = useState<PromoType | 'ALL'>('ALL');
+    const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+    const [currentFilters, setCurrentFilters] = useState<{type: PromoType | 'ALL', status: PromoStatus | 'ALL'}>({ type: 'ALL', status: 'ALL' });
+    const [tempFilters, setTempFilters] = useState<{type: PromoType | 'ALL', status: PromoStatus | 'ALL'}>({ type: 'ALL', status: 'ALL' });
     
     // States phân trang
     const [currentPage, setCurrentPage] = useState(1);
@@ -43,14 +44,14 @@ export default function PromotionManagement() {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [promoToDelete, setPromoToDelete] = useState<number | null>(null);
 
-    // Xử lý Lọc & Tìm kiếm
+    // Xử lý Lọc
     const filteredPromos = useMemo(() => {
         return promotions.filter(promo => {
-            const matchSearch = promo.code.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchType = typeFilter === 'ALL' || promo.type === typeFilter;
-            return matchSearch && matchType;
+            const matchType = currentFilters.type === 'ALL' || promo.type === currentFilters.type;
+            const matchStatus = currentFilters.status === 'ALL' || promo.status === currentFilters.status;
+            return matchType && matchStatus;
         });
-    }, [promotions, searchTerm, typeFilter]);
+    }, [promotions, currentFilters]);
 
     // Xử lý Phân trang
     const totalPages = Math.ceil(filteredPromos.length / itemsPerPage);
@@ -133,6 +134,20 @@ export default function PromotionManagement() {
         }
     };
 
+    const handleApplyFilters = () => {
+        setCurrentFilters(tempFilters);
+        setIsFilterPanelOpen(false);
+        setCurrentPage(1);
+    };
+
+    const handleClearFilters = () => {
+        const clearedFilters = { type: 'ALL' as const, status: 'ALL' as const };
+        setTempFilters(clearedFilters);
+        setCurrentFilters(clearedFilters);
+        setIsFilterPanelOpen(false);
+        setCurrentPage(1);
+    };
+
     // Helpers hiển thị
     const getTypeLabel = (type: PromoType) => {
         switch (type) {
@@ -150,8 +165,85 @@ export default function PromotionManagement() {
                 <AdminHeader />
 
                 <main className="p-6 md:p-8 flex-1 overflow-y-auto">
-                    <div className="mb-8">
-                        <h2 className="text-3xl md:text-4xl font-extrabold mb-2 text-gray-800">Quản Lý Khuyến Mãi</h2>
+                    <div className="flex justify-between items-end mb-10">
+                        <div>
+                            <h2 className="text-4xl font-extrabold text-gray-800">Quản Lý Khuyến Mãi</h2>
+                        </div>
+                        
+                        <div className="flex gap-3">
+                            <div className="relative">
+                                <button
+                                    onClick={() => {
+                                        setTempFilters(currentFilters);
+                                        setIsFilterPanelOpen(true);
+                                    }}
+                                    className="px-6 py-3 rounded-xl bg-white flex items-center gap-2 hover:bg-gray-50 transition shadow-sm border border-gray-100"
+                                >
+                                    <span className="material-symbols-outlined text-lg">filter_list</span>
+                                    Bộ lọc
+                                </button>
+
+                                {isFilterPanelOpen && (
+                                    <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border z-20 animate-in fade-in slide-in-from-top-2">
+                                        <div className="p-5 border-b">
+                                            <div className="flex justify-between items-center">
+                                                <h4 className="font-bold text-gray-800">Bộ lọc</h4>
+                                                <button onClick={() => setIsFilterPanelOpen(false)} className="p-1 rounded-full text-gray-500 hover:text-red-500 hover:bg-red-50 transition">
+                                                    <span className="material-symbols-outlined text-xl">close</span>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-5 space-y-6 max-h-[60vh] overflow-y-auto">
+                                            <div>
+                                                <label className="block text-xs font-bold uppercase text-gray-500 mb-3">Loại khuyến mãi</label>
+                                                <div className="space-y-2">
+                                                    {(['ALL', 'ALL_PRODUCTS', 'SPECIFIC_PRODUCT', 'SHIPPING'] as const).map(type => (
+                                                        <label key={type} className="flex items-center gap-2 cursor-pointer text-sm">
+                                                            <input
+                                                                type="radio"
+                                                                name="type"
+                                                                value={type}
+                                                                checked={tempFilters.type === type}
+                                                                onChange={(e) => setTempFilters({ ...tempFilters, type: e.target.value as any })}
+                                                                className="w-4 h-4 text-primary focus:ring-primary focus:ring-offset-0 cursor-pointer"
+                                                            />
+                                                            <span>{type === 'ALL' ? 'Tất cả' : type === 'ALL_PRODUCTS' ? 'Toàn shop' : type === 'SPECIFIC_PRODUCT' ? 'Sản phẩm cụ thể' : 'Vận chuyển'}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold uppercase text-gray-500 mb-3">Trạng thái</label>
+                                                <div className="space-y-2">
+                                                    {(['ALL', 'ACTIVE', 'EXPIRED', 'HIDDEN'] as const).map(status => (
+                                                        <label key={status} className="flex items-center gap-2 cursor-pointer text-sm">
+                                                            <input
+                                                                type="radio"
+                                                                name="status"
+                                                                value={status}
+                                                                checked={tempFilters.status === status}
+                                                                onChange={(e) => setTempFilters({ ...tempFilters, status: e.target.value as any })}
+                                                                className="w-4 h-4 text-primary focus:ring-primary focus:ring-offset-0 cursor-pointer"
+                                                            />
+                                                            <span>{status === 'ALL' ? 'Tất cả' : status === 'ACTIVE' ? 'Hoạt động' : status === 'EXPIRED' ? 'Hết hạn' : 'Đang ẩn'}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-gray-50 p-4 flex justify-end gap-3 rounded-b-2xl border-t">
+                                            <button onClick={handleClearFilters} className="px-4 py-2 text-sm font-semibold rounded-lg border bg-white hover:bg-gray-100 transition">Xóa lọc</button>
+                                            <button onClick={handleApplyFilters} className="px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-white hover:bg-[#2f5146] transition">Áp dụng</button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <button onClick={handleOpenAddModal} className="px-6 py-3 rounded-xl bg-primary text-on-primary font-bold hover:bg-[#2f5146] transition-colors shadow-sm">
+                                Tạo mã mới
+                            </button>
+                        </div>
                     </div>
 
                     {/* STATS */}
@@ -186,41 +278,13 @@ export default function PromotionManagement() {
                     </div>
 
                     {/* TOOLBAR */}
-                    <div className="bg-white p-4 rounded-t-2xl border border-gray-100 border-b-0 flex flex-col lg:flex-row justify-between gap-4 items-center">
-                        <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
-                            {/* Search */}
-                            <div className="relative w-full sm:w-64">
-                                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">search</span>
-                                <input 
-                                    type="text" 
-                                    placeholder="Tìm mã khuyến mãi..." 
-                                    value={searchTerm}
-                                    onChange={(e) => {setSearchTerm(e.target.value); setCurrentPage(1);}}
-                                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] outline-none text-sm transition-all uppercase"
-                                />
-                            </div>
-                            {/* Filter */}
-                            <select 
-                                value={typeFilter}
-                                onChange={(e) => {setTypeFilter(e.target.value as PromoType | 'ALL'); setCurrentPage(1);}}
-                                className="px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:border-[#406D5E] focus:ring-1 outline-none text-sm font-semibold text-gray-700 cursor-pointer"
-                            >
-                                <option value="ALL">Tất cả loại mã</option>
-                                <option value="ALL_PRODUCTS">Toàn shop</option>
-                                <option value="SPECIFIC_PRODUCT">Sản phẩm cụ thể</option>
-                                <option value="SHIPPING">Vận chuyển</option>
-                            </select>
-                        </div>
-
+                    <div className="bg-white p-4 rounded-t-2xl border border-gray-100 border-b-0 flex justify-end gap-4 items-center">
                         <div className="flex flex-wrap gap-3 w-full lg:w-auto justify-end">
                             <button onClick={handleImport} className="px-4 py-2.5 flex items-center gap-2 rounded-xl bg-white border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors shadow-sm">
                                 <span className="material-symbols-outlined text-[18px]">upload</span> Nhập
                             </button>
                             <button onClick={handleExport} className="px-4 py-2.5 flex items-center gap-2 rounded-xl bg-white border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors shadow-sm">
                                 <span className="material-symbols-outlined text-[18px]">download</span> Xuất
-                            </button>
-                            <button onClick={handleOpenAddModal} className="px-4 py-2.5 flex items-center gap-2 rounded-xl bg-[#406D5E] text-white font-bold text-sm hover:bg-[#2f5146] transition-colors shadow-md">
-                                <span className="material-symbols-outlined text-[18px]">add</span> Tạo mã mới
                             </button>
                         </div>
                     </div>
@@ -235,8 +299,8 @@ export default function PromotionManagement() {
                                         <th className="text-left p-4">Loại Khuyến Mãi</th>
                                         <th className="text-left p-4">Mức Giảm</th>
                                         <th className="text-left p-4">Hạn Sử Dụng</th>
-                                        <th className="text-center p-4">Trạng thái</th>
-                                        <th className="text-right p-4 pr-6 w-28">Thao tác</th>
+                                        <th className="text-left p-4">Trạng thái</th>
+                                        <th className="text-right p-4">Hành động</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -269,21 +333,21 @@ export default function PromotionManagement() {
                                                 <td className="p-4 text-sm text-gray-600 font-medium">
                                                     {new Date(promo.expiryDate).toLocaleDateString('vi-VN')}
                                                 </td>
-                                                <td className="p-4 text-center">
-                                                    <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
-                                                        promo.status === 'ACTIVE' ? 'bg-blue-50 text-blue-700 border-blue-200' : 
-                                                        promo.status === 'EXPIRED' ? 'bg-red-50 text-red-700 border-red-200' : 
-                                                        'bg-gray-100 text-gray-600 border-gray-200'
+                                                <td className="p-4">
+                                                    <span className={`text-xs font-semibold px-3 py-1.5 rounded-full ${
+                                                        promo.status === 'ACTIVE' ? 'text-emerald-700 bg-emerald-100' : 
+                                                        promo.status === 'EXPIRED' ? 'text-red-700 bg-red-100' : 
+                                                        'text-gray-700 bg-gray-100'
                                                     }`}>
                                                         {promo.status === 'ACTIVE' ? 'Hoạt động' : promo.status === 'EXPIRED' ? 'Hết hạn' : 'Đang ẩn'}
                                                     </span>
                                                 </td>
-                                                <td className="p-4 pr-6 text-right space-x-2">
-                                                    <button onClick={() => handleOpenEditModal(promo)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Sửa">
-                                                        <span className="material-symbols-outlined text-[20px]">edit</span>
+                                                <td className="p-4 text-right space-x-2">
+                                                    <button onClick={() => handleOpenEditModal(promo)} className="group px-2 py-1 text-sm rounded hover:bg-gray-100 transition" title="Chỉnh sửa">
+                                                        <span className="material-symbols-outlined text-[20px] align-middle text-gray-500 group-hover:text-primary transition-colors">edit</span>
                                                     </button>
-                                                    <button onClick={() => {setPromoToDelete(promo.id); setIsDeleteModalOpen(true);}} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Xóa">
-                                                        <span className="material-symbols-outlined text-[20px]">delete</span>
+                                                    <button onClick={() => {setPromoToDelete(promo.id); setIsDeleteModalOpen(true);}} className="group px-2 py-1 text-sm rounded hover:bg-red-50 transition" title="Xóa">
+                                                        <span className="material-symbols-outlined text-[20px] align-middle text-red-500 group-hover:text-red-700 transition-colors">delete</span>
                                                     </button>
                                                 </td>
                                             </tr>
@@ -293,40 +357,38 @@ export default function PromotionManagement() {
                             </table>
                         </div>
 
-                        {/* PAGINATION */}
-                        {totalPages > 1 && (
-                            <div className="p-4 border-t border-gray-100 flex items-center justify-between">
-                                <span className="text-sm text-gray-500">
-                                    Hiển thị {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredPromos.length)} trong {filteredPromos.length}
-                                </span>
-                                <div className="flex gap-1">
-                                    <button 
-                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
-                                        disabled={currentPage === 1}
-                                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                        <span className="material-symbols-outlined text-sm">chevron_left</span>
-                                    </button>
-                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                                        <button 
-                                            key={page}
-                                            onClick={() => setCurrentPage(page)}
-                                            className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold transition-colors ${currentPage === page ? 'bg-[#406D5E] text-white border border-[#406D5E]' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-                                        >
-                                            {page}
-                                        </button>
-                                    ))}
-                                    <button 
-                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
-                                        disabled={currentPage === totalPages}
-                                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                        <span className="material-symbols-outlined text-sm">chevron_right</span>
-                                    </button>
-                                </div>
-                            </div>
-                        )}
                     </div>
+
+                    {/* PAGINATION */}
+                    {totalPages > 1 && (
+                        <div className="flex justify-center items-center mt-6 text-sm text-on-surface-variant">
+                            <div className="flex flex-wrap justify-center gap-2">
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className="px-3 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition"
+                                >
+                                    ‹
+                                </button>
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                    <button
+                                        key={page}
+                                        onClick={() => setCurrentPage(page)}
+                                        className={`px-3 py-1 rounded transition ${currentPage === page ? 'bg-primary text-white font-bold' : 'border hover:bg-gray-50'}`}
+                                    >
+                                        {page}
+                                    </button>
+                                ))}
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="px-3 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition"
+                                >
+                                    ›
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </main>
             </div>
 
