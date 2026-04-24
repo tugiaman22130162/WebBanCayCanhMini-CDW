@@ -10,26 +10,28 @@ type Category = {
     description: string;
     productCount: number;
     status: CategoryStatus;
+    image: string;
 };
 
 // Mock Data giả lập
 const initialCategories: Category[] = [
-    { id: 1, name: "Sen đá", description: "Các loại sen đá mini để bàn, dễ chăm sóc.", productCount: 45, status: 'ACTIVE' },
-    { id: 2, name: "Terrarium", description: "Hệ sinh thái thu nhỏ trong bình kính thủy tinh.", productCount: 12, status: 'ACTIVE' },
-    { id: 3, name: "Cây để bàn", description: "Cây xanh trang trí bàn làm việc, văn phòng.", productCount: 30, status: 'ACTIVE' },
-    { id: 4, name: "Chậu gốm sứ", description: "Các loại chậu trồng cây bằng gốm sứ cao cấp.", productCount: 50, status: 'ACTIVE' },
-    { id: 5, name: "Phân bón & Đất", description: "Phụ kiện chăm sóc cây trồng chuyên dụng.", productCount: 15, status: 'HIDDEN' },
-    { id: 6, name: "Cây phong thủy", description: "Cây mang lại tài lộc, may mắn cho gia chủ.", productCount: 22, status: 'ACTIVE' },
-    { id: 7, name: "Dụng cụ làm vườn", description: "Kéo, xẻng, bình tưới nước mini.", productCount: 8, status: 'HIDDEN' },
+    { id: 1, name: "Sen đá", description: "Các loại sen đá mini để bàn, dễ chăm sóc.", productCount: 45, status: 'ACTIVE', image: "https://images.unsplash.com/photo-1459411552884-841db9b3cc2a?w=100&h=100&fit=crop" },
+    { id: 2, name: "Terrarium", description: "Hệ sinh thái thu nhỏ trong bình kính thủy tinh.", productCount: 12, status: 'ACTIVE', image: "https://images.unsplash.com/photo-1528698827591-e19ccd7bc23d?w=100&h=100&fit=crop" },
+    { id: 3, name: "Cây để bàn", description: "Cây xanh trang trí bàn làm việc, văn phòng.", productCount: 30, status: 'ACTIVE', image: "https://images.unsplash.com/photo-1485955900006-10f4d324d411?w=100&h=100&fit=crop" },
+    { id: 4, name: "Chậu gốm sứ", description: "Các loại chậu trồng cây bằng gốm sứ cao cấp.", productCount: 50, status: 'ACTIVE', image: "https://images.unsplash.com/photo-1614594975525-e45190c55d40?w=100&h=100&fit=crop" },
+    { id: 5, name: "Phân bón & Đất", description: "Phụ kiện chăm sóc cây trồng chuyên dụng.", productCount: 15, status: 'HIDDEN', image: "https://images.unsplash.com/photo-1585314062340-f1a5a7c9328d?w=100&h=100&fit=crop" },
+    { id: 6, name: "Cây phong thủy", description: "Cây mang lại tài lộc, may mắn cho gia chủ.", productCount: 22, status: 'ACTIVE', image: "https://images.unsplash.com/photo-1509423350716-97f9360b4e09?w=100&h=100&fit=crop" },
+    { id: 7, name: "Dụng cụ làm vườn", description: "Kéo, xẻng, bình tưới nước mini.", productCount: 8, status: 'HIDDEN', image: "https://images.unsplash.com/photo-1416879598553-3b2d18919af4?w=100&h=100&fit=crop" },
 ];
 
 export default function CategoryManagement() {
     const [categories, setCategories] = useState<Category[]>(initialCategories);
     
-    // States cho bộ lọc & tìm kiếm
-    const [searchTerm, setSearchTerm] = useState("");
-    const [statusFilter, setStatusFilter] = useState<CategoryStatus | 'ALL'>('ALL');
-    
+    // States quản lý Bộ lọc
+    const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+    const [currentFilters, setCurrentFilters] = useState({ status: 'ALL' });
+    const [tempFilters, setTempFilters] = useState({ status: 'ALL' });
+
     // States phân trang
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 5;
@@ -42,15 +44,13 @@ export default function CategoryManagement() {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [categoryToDelete, setCategoryToDelete] = useState<number | null>(null);
 
-    // Xử lý Lọc & Tìm kiếm
+    // Xử lý Lọc
     const filteredCategories = useMemo(() => {
         return categories.filter(cat => {
-            const matchSearch = cat.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                                cat.description.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchStatus = statusFilter === 'ALL' || cat.status === statusFilter;
-            return matchSearch && matchStatus;
+            const matchStatus = currentFilters.status === 'ALL' || cat.status === currentFilters.status;
+            return matchStatus;
         });
-    }, [categories, searchTerm, statusFilter]);
+    }, [categories, currentFilters]);
 
     // Xử lý Phân trang
     const totalPages = Math.ceil(filteredCategories.length / itemsPerPage);
@@ -82,7 +82,7 @@ export default function CategoryManagement() {
 
     const handleOpenAddModal = () => {
         setModalMode('ADD');
-        setCurrentCategory({ name: "", description: "", status: 'ACTIVE' });
+        setCurrentCategory({ name: "", description: "", status: 'ACTIVE', image: "" });
         setIsModalOpen(true);
     };
 
@@ -101,7 +101,8 @@ export default function CategoryManagement() {
                 name: currentCategory.name || "Danh mục mới",
                 description: currentCategory.description || "",
                 productCount: 0,
-                status: currentCategory.status as CategoryStatus || 'ACTIVE'
+            status: currentCategory.status as CategoryStatus || 'ACTIVE',
+            image: currentCategory.image || "https://images.unsplash.com/photo-1614594975525-e45190c55d40?w=100&h=100&fit=crop"
             };
             setCategories([newCat, ...categories]);
         } else {
@@ -118,6 +119,20 @@ export default function CategoryManagement() {
         }
     };
 
+    const handleApplyFilters = () => {
+        setCurrentFilters(tempFilters);
+        setIsFilterPanelOpen(false);
+        setCurrentPage(1);
+    };
+
+    const handleClearFilters = () => {
+        const clearedFilters = { status: 'ALL' };
+        setTempFilters(clearedFilters);
+        setCurrentFilters(clearedFilters);
+        setIsFilterPanelOpen(false);
+        setCurrentPage(1);
+    };
+
     return (
         <div className="h-screen bg-[#F8F9F5] text-gray-800 flex overflow-hidden font-[Plus_Jakarta_Sans]">
             <AdminSidebar />
@@ -126,8 +141,67 @@ export default function CategoryManagement() {
                 <AdminHeader />
 
                 <main className="p-6 md:p-8 flex-1 overflow-y-auto">
-                    <div className="mb-8">
-                        <h2 className="text-3xl md:text-4xl font-extrabold mb-2 text-gray-800">Quản Lý Danh Mục</h2>
+                    <div className="flex justify-between items-end mb-10">
+                        <div>
+                            <h2 className="text-4xl font-extrabold text-gray-800">Quản Lý Danh Mục</h2>
+                        </div>
+                        
+                        <div className="flex gap-3">
+                            <div className="relative">
+                                <button
+                                    onClick={() => {
+                                        setTempFilters(currentFilters);
+                                        setIsFilterPanelOpen(true);
+                                    }}
+                                    className="px-6 py-3 rounded-xl bg-white flex items-center gap-2 hover:bg-gray-50 transition shadow-sm border border-gray-100"
+                                >
+                                    <span className="material-symbols-outlined text-lg">filter_list</span>
+                                    Bộ lọc
+                                </button>
+
+                                {isFilterPanelOpen && (
+                                    <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border z-20 animate-in fade-in slide-in-from-top-2">
+                                        <div className="p-5 border-b">
+                                            <div className="flex justify-between items-center">
+                                                <h4 className="font-bold text-gray-800">Bộ lọc</h4>
+                                                <button onClick={() => setIsFilterPanelOpen(false)} className="p-1 rounded-full text-gray-500 hover:text-red-500 hover:bg-red-50 transition">
+                                                    <span className="material-symbols-outlined text-xl">close</span>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-5 space-y-6 max-h-[60vh] overflow-y-auto">
+                                            <div>
+                                                <label className="block text-xs font-bold uppercase text-gray-500 mb-3">Trạng thái</label>
+                                                <div className="space-y-2">
+                                                    {(['ALL', 'ACTIVE', 'HIDDEN'] as const).map(status => (
+                                                        <label key={status} className="flex items-center gap-2 cursor-pointer text-sm">
+                                                            <input
+                                                                type="radio"
+                                                                name="status"
+                                                                value={status}
+                                                                checked={tempFilters.status === status}
+                                                                onChange={(e) => setTempFilters({ ...tempFilters, status: e.target.value })}
+                                                                className="w-4 h-4 text-primary focus:ring-primary focus:ring-offset-0 cursor-pointer"
+                                                            />
+                                                            <span>{status === 'ALL' ? 'Tất cả' : status === 'ACTIVE' ? 'Hoạt động' : 'Đang ẩn'}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-gray-50 p-4 flex justify-end gap-3 rounded-b-2xl border-t">
+                                            <button onClick={handleClearFilters} className="px-4 py-2 text-sm font-semibold rounded-lg border bg-white hover:bg-gray-100 transition">Xóa lọc</button>
+                                            <button onClick={handleApplyFilters} className="px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-white hover:bg-[#2f5146] transition">Áp dụng</button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <button onClick={handleOpenAddModal} className="px-6 py-3 rounded-xl bg-primary text-on-primary font-bold hover:bg-[#2f5146] transition-colors shadow-sm">
+                                Thêm Danh Mục
+                            </button>
+                        </div>
                     </div>
 
                     {/* STATS */}
@@ -162,40 +236,13 @@ export default function CategoryManagement() {
                     </div>
 
                     {/* TOOLBAR */}
-                    <div className="bg-white p-4 rounded-t-2xl border border-gray-100 border-b-0 flex flex-col lg:flex-row justify-between gap-4 items-center">
-                        <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
-                            {/* Search */}
-                            <div className="relative w-full sm:w-64">
-                                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">search</span>
-                                <input 
-                                    type="text" 
-                                    placeholder="Tìm kiếm danh mục..." 
-                                    value={searchTerm}
-                                    onChange={(e) => {setSearchTerm(e.target.value); setCurrentPage(1);}}
-                                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] outline-none text-sm transition-all"
-                                />
-                            </div>
-                            {/* Filter */}
-                            <select 
-                                value={statusFilter}
-                                onChange={(e) => {setStatusFilter(e.target.value as CategoryStatus | 'ALL'); setCurrentPage(1);}}
-                                className="px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:border-[#406D5E] focus:ring-1 outline-none text-sm font-semibold text-gray-700 cursor-pointer"
-                            >
-                                <option value="ALL">Tất cả trạng thái</option>
-                                <option value="ACTIVE">Đang hoạt động</option>
-                                <option value="HIDDEN">Đang ẩn</option>
-                            </select>
-                        </div>
-
+                    <div className="bg-white p-4 rounded-t-2xl border border-gray-100 border-b-0 flex justify-end gap-4 items-center">
                         <div className="flex flex-wrap gap-3 w-full lg:w-auto justify-end">
                             <button onClick={handleImport} className="px-4 py-2.5 flex items-center gap-2 rounded-xl bg-white border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors shadow-sm">
                                 <span className="material-symbols-outlined text-[18px]">upload</span> Nhập
                             </button>
                             <button onClick={handleExport} className="px-4 py-2.5 flex items-center gap-2 rounded-xl bg-white border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors shadow-sm">
                                 <span className="material-symbols-outlined text-[18px]">download</span> Xuất
-                            </button>
-                            <button onClick={handleOpenAddModal} className="px-4 py-2.5 flex items-center gap-2 rounded-xl bg-[#406D5E] text-white font-bold text-sm hover:bg-[#2f5146] transition-colors shadow-md">
-                                <span className="material-symbols-outlined text-[18px]">add</span> Thêm mới
                             </button>
                         </div>
                     </div>
@@ -207,11 +254,11 @@ export default function CategoryManagement() {
                                 <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold">
                                     <tr>
                                         <th className="text-left p-4 pl-6 w-16">ID</th>
-                                        <th className="text-left p-4 w-1/4">Tên Danh Mục</th>
+                                        <th className="text-left p-4 w-1/4">Danh Mục</th>
                                         <th className="text-left p-4">Mô tả</th>
                                         <th className="text-center p-4 w-32">Số sản phẩm</th>
-                                        <th className="text-center p-4 w-36">Trạng thái</th>
-                                        <th className="text-right p-4 pr-6 w-28">Thao tác</th>
+                                        <th className="text-left p-4">Trạng thái</th>
+                                        <th className="text-right p-4">Hành động</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -223,24 +270,27 @@ export default function CategoryManagement() {
                                         paginatedCategories.map((category) => (
                                             <tr key={category.id} className="border-t border-gray-100 hover:bg-gray-50/80 transition-colors">
                                                 <td className="p-4 pl-6 font-bold text-gray-700">#{category.id}</td>
-                                                <td className="p-4 font-bold text-[#406D5E]">{category.name}</td>
+                                                <td className="p-4 flex items-center gap-3">
+                                                    <img src={category.image} alt={category.name} className="w-10 h-10 rounded-lg object-cover border border-gray-100" />
+                                                    <span className="font-bold text-[#406D5E]">{category.name}</span>
+                                                </td>
                                                 <td className="p-4 text-sm text-gray-600 truncate max-w-[250px]">{category.description || "—"}</td>
                                                 <td className="p-4 text-center">
                                                     <span className="inline-flex items-center justify-center bg-gray-100 text-gray-700 text-xs font-bold px-2.5 py-1 rounded-full">
                                                         {category.productCount}
                                                     </span>
                                                 </td>
-                                                <td className="p-4 text-center">
-                                                    <span className={`text-xs font-bold px-3 py-1 rounded-full border ${category.status === 'ACTIVE' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                                <td className="p-4">
+                                                    <span className={`text-xs font-semibold px-3 py-1.5 rounded-full ${category.status === 'ACTIVE' ? 'text-emerald-700 bg-emerald-100' : 'text-gray-700 bg-gray-100'}`}>
                                                         {category.status === 'ACTIVE' ? 'Hoạt động' : 'Đang ẩn'}
                                                     </span>
                                                 </td>
-                                                <td className="p-4 pr-6 text-right space-x-2">
-                                                    <button onClick={() => handleOpenEditModal(category)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Sửa">
-                                                        <span className="material-symbols-outlined text-[20px]">edit</span>
+                                                <td className="p-4 text-right space-x-2">
+                                                    <button onClick={() => handleOpenEditModal(category)} className="group px-2 py-1 text-sm rounded hover:bg-gray-100 transition" title="Chỉnh sửa">
+                                                        <span className="material-symbols-outlined text-[20px] align-middle text-gray-500 group-hover:text-primary transition-colors">edit</span>
                                                     </button>
-                                                    <button onClick={() => {setCategoryToDelete(category.id); setIsDeleteModalOpen(true);}} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Xóa">
-                                                        <span className="material-symbols-outlined text-[20px]">delete</span>
+                                                    <button onClick={() => {setCategoryToDelete(category.id); setIsDeleteModalOpen(true);}} className="group px-2 py-1 text-sm rounded hover:bg-red-50 transition" title="Xóa">
+                                                        <span className="material-symbols-outlined text-[20px] align-middle text-red-500 group-hover:text-red-700 transition-colors">delete</span>
                                                     </button>
                                                 </td>
                                             </tr>
@@ -249,41 +299,38 @@ export default function CategoryManagement() {
                                 </tbody>
                             </table>
                         </div>
-                        
-                        {/* PAGINATION */}
-                        {totalPages > 1 && (
-                            <div className="p-4 border-t border-gray-100 flex items-center justify-between">
-                                <span className="text-sm text-gray-500">
-                                    Hiển thị {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredCategories.length)} trong {filteredCategories.length}
-                                </span>
-                                <div className="flex gap-1">
-                                    <button 
-                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
-                                        disabled={currentPage === 1}
-                                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                        <span className="material-symbols-outlined text-sm">chevron_left</span>
-                                    </button>
-                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                                        <button 
-                                            key={page}
-                                            onClick={() => setCurrentPage(page)}
-                                            className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold transition-colors ${currentPage === page ? 'bg-[#406D5E] text-white border border-[#406D5E]' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-                                        >
-                                            {page}
-                                        </button>
-                                    ))}
-                                    <button 
-                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
-                                        disabled={currentPage === totalPages}
-                                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                        <span className="material-symbols-outlined text-sm">chevron_right</span>
-                                    </button>
-                                </div>
-                            </div>
-                        )}
                     </div>
+
+                    {/* PAGINATION */}
+                    {totalPages > 1 && (
+                        <div className="flex justify-center items-center mt-6 text-sm text-on-surface-variant">
+                            <div className="flex flex-wrap justify-center gap-2">
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className="px-3 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition"
+                                >
+                                    ‹
+                                </button>
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                    <button
+                                        key={page}
+                                        onClick={() => setCurrentPage(page)}
+                                        className={`px-3 py-1 rounded transition ${currentPage === page ? 'bg-primary text-white font-bold' : 'border hover:bg-gray-50'}`}
+                                    >
+                                        {page}
+                                    </button>
+                                ))}
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="px-3 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition"
+                                >
+                                    ›
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </main>
             </div>
 
@@ -308,6 +355,16 @@ export default function CategoryManagement() {
                                     value={currentCategory.name || ''}
                                     onChange={(e) => setCurrentCategory({...currentCategory, name: e.target.value})}
                                     placeholder="VD: Cây phong thủy"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E]"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold mb-1 text-gray-700">Hình ảnh (URL)</label>
+                                <input 
+                                    type="text" 
+                                    value={currentCategory.image || ''}
+                                    onChange={(e) => setCurrentCategory({...currentCategory, image: e.target.value})}
+                                    placeholder="Nhập đường dẫn hình ảnh..."
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E]"
                                 />
                             </div>

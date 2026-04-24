@@ -92,11 +92,22 @@ export default function OrderManagement() {
     const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
+    // State phân trang
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
     // Lọc danh sách theo trạng thái
     const filteredOrders = useMemo(() => {
         if (statusFilter === 'ALL') return orders;
         return orders.filter(order => order.status === statusFilter);
     }, [orders, statusFilter]);
+
+    // Tính toán dữ liệu cho trang hiện tại
+    const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+    const currentOrders = filteredOrders.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
 
     // Thống kê
     const totalOrders = orders.length;
@@ -158,7 +169,7 @@ export default function OrderManagement() {
                             {(['ALL', 'PENDING', 'CONFIRMED', 'SHIPPING', 'DELIVERED', 'CANCELLED'] as const).map(status => (
                                 <button
                                     key={status}
-                                    onClick={() => setStatusFilter(status)}
+                                    onClick={() => { setStatusFilter(status); setCurrentPage(1); }}
                                     className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${statusFilter === status ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                                 >
                                     {status === 'ALL' ? 'Tất cả' : getStatusLabel(status as OrderStatus)}
@@ -182,7 +193,7 @@ export default function OrderManagement() {
                                     {filteredOrders.length === 0 ? (
                                         <tr><td colSpan={6} className="p-8 text-center text-gray-500">Không có đơn hàng nào.</td></tr>
                                     ) : (
-                                        filteredOrders.map((order) => (
+                                        currentOrders.map((order) => (
                                             <tr key={order.id} className="border-t border-gray-50 hover:bg-gray-50 transition">
                                                 <td className="p-4 font-bold text-primary">#{order.id}</td>
                                                 <td className="p-4">
@@ -206,15 +217,35 @@ export default function OrderManagement() {
                     </div>
 
                     {/* PAGINATION */}
-                    <div className="flex justify-center items-center mt-6 text-sm text-on-surface-variant">
-                        <div className="flex flex-wrap justify-center gap-2">
-                            <button className="px-3 py-1 rounded border">‹</button>
-                            <button className="px-3 py-1 rounded bg-primary text-white">1</button>
-                            <button className="px-3 py-1 rounded border">2</button>
-                            <button className="px-3 py-1 rounded border">3</button>
-                            <button className="px-3 py-1 rounded border">›</button>
+                    {totalPages > 1 && (
+                        <div className="flex justify-center items-center mt-6 text-sm text-on-surface-variant">
+                            <div className="flex flex-wrap justify-center gap-2">
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className="px-3 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition"
+                                >
+                                    ‹
+                                </button>
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                    <button
+                                        key={page}
+                                        onClick={() => setCurrentPage(page)}
+                                        className={`px-3 py-1 rounded transition ${currentPage === page ? 'bg-primary text-white font-bold' : 'border hover:bg-gray-50'}`}
+                                    >
+                                        {page}
+                                    </button>
+                                ))}
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="px-3 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition"
+                                >
+                                    ›
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </main>
             </div>
 
