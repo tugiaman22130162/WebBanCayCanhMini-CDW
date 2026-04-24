@@ -3,6 +3,7 @@
     "@cloudinary/react": "^1.14.4",
     "@cloudinary/url-gen": "^1.22.0",
     "axios": "^1.15.1",
-    "framer-motion": "^12.38.0"
+    "framer-motion": "^12.38.0",
+    "sweetalert2": "^11.26.24"
   }
 }

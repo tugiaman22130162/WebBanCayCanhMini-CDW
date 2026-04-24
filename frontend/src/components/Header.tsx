@@ -36,9 +36,9 @@ export default function Header() {
                             favorite
                         </Link>
 
-                        <button className="material-symbols-outlined text-white hover:text-green-100 transition-all active:scale-95">
+                        <Link to="/cart" className="material-symbols-outlined text-white hover:text-red-500 transition-all active:scale-95 block">
                             shopping_cart
-                        </button>
+                        </Link>
 
                         <button className="material-symbols-outlined text-white hover:text-green-100 transition-all active:scale-95">
                             account_circle
