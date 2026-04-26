@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 export default function Categories() {
     return (
@@ -36,9 +37,9 @@ export default function Categories() {
                                 Hệ sinh thái khép kín đầy nghệ thuật trong lọ thủy tinh.
                             </p>
 
-                            <a href="#" className="text-white font-semibold underline translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-900">
+                            <Link to="/builder" className="text-white font-semibold underline translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-900">
                                 Xem chi tiết
-                            </a>
+                            </Link>
                         </div>
                     </div>
 

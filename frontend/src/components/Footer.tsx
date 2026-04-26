@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 const Footer = () => {
     return (
         <footer className="w-full pt-16 pb-8 bg-header-footer text-white">
@@ -30,12 +32,12 @@ const Footer = () => {
                     <h4 className="font-bold uppercase tracking-widest text-xs text-emerald-300">
                         Về chúng tôi
                     </h4>
-                    <a href="#" className="text-white/80 hover:text-emerald-300 transition">
+                    <Link to="/about" className="text-white/80 hover:text-emerald-300 transition">
                         Giới thiệu
-                    </a>
-                    <a href="#" className="text-white/80 hover:text-emerald-300 transition">
+                    </Link>
+                    <Link to="/care-instruction" className="text-white/80 hover:text-emerald-300 transition">
                         Hướng dẫn chăm sóc
-                    </a>
+                    </Link>
                     <a href="#" className="text-white/80 hover:text-emerald-300 transition">
                         Vận chuyển
                     </a>
