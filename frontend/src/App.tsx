@@ -19,10 +19,10 @@ import SuccessPayment from "./pages/SuccessPayment"
 import Checkout from "./pages/Checkout"
 import Cart from "./pages/Cart"
 import PaymentManagement from "./pages/admin/pages/PaymentManagement"
-import ProductReview from "./pages/ProductReview"
 import TerrariumBuilder from "./pages/TerrariumBuilder"
 import About from "./pages/About"
 import CareInstruction from "./pages/CareInstruction"
+import Profile from "./pages/Profile"
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -51,10 +51,11 @@ export default function App() {
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/success" element={<SuccessPayment />} />
         <Route path="/cancel" element={<CancelPayment />} />
-        <Route path="/review" element={<ProductReview />} />
         <Route path="/builder" element={<TerrariumBuilder />} />
         <Route path="/about" element={<About />} />
         <Route path="/care-instruction" element={<CareInstruction />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/profile/:tab" element={<Profile />} />
 
         {/* ADMIN */}
         <Route path="/admin/users" element={<UserManagement />} />

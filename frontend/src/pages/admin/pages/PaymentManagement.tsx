@@ -99,8 +99,8 @@ export default function PaymentManagement() {
                 <AdminHeader />
 
                 <main className="p-8 flex-1 overflow-y-auto">
-                    <div className="mb-8">
-                        <h2 className="text-4xl font-extrabold mb-2 text-gray-800">Quản Lý Thanh Toán</h2>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
+                        <h2 className="text-4xl font-extrabold text-gray-800">Quản Lý Thanh Toán</h2>
                     </div>
 
                     {/* THỐNG KÊ */}

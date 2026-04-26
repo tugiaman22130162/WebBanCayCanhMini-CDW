@@ -46,8 +46,9 @@ export default function Dashboard() {
 
                 {/* SCROLLABLE AREA */}
                 <main className="p-8 flex-1 overflow-y-auto">
-                    <div className="mb-8">
-                        <h2 className="text-4xl font-extrabold mb-2 text-gray-800">Tổng quan</h2>                    </div>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
+                        <h2 className="text-4xl font-extrabold text-gray-800">Tổng Quan</h2>
+                    </div>
 
                     {/* 1. STATS CARDS */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
