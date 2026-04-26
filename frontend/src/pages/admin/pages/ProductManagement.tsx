@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import * as XLSX from "xlsx";
 import axios from "axios";
 import AdminHeader from "../components/AdminHeader";
 import AdminSidebar from "../components/AdminSidebar";
@@ -124,6 +125,65 @@ export default function ProductManagement() {
         setCurrentPage(1); // Reset về trang 1 khi xóa lọc
     };
 
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleExportExcel = () => {
+        if (products.length === 0) {
+            alert("Không có dữ liệu để xuất!");
+            return;
+        }
+
+        // Tạo cấu trúc dữ liệu cho Excel
+        const exportData = products.map((p, index) => ({
+            "STT": index + 1,
+            "ID Sản phẩm": p.id,
+            "Tên sản phẩm": p.name,
+            "Danh mục": p.category,
+            "Giá": p.price,
+            "Tồn kho": p.stock,
+            "Trạng thái": p.status
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(exportData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "DanhSachSanPham");
+
+        XLSX.writeFile(workbook, "DanhSachSanPham.xlsx");
+    };
+
+    const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+            try {
+                const bstr = evt.target?.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const wsname = wb.SheetNames[0];
+                const ws = wb.Sheets[wsname];
+                const data = XLSX.utils.sheet_to_json(ws);
+
+                console.log("Dữ liệu từ Excel:", data);
+                alert(`Đã đọc thành công ${data.length} sản phẩm từ file Excel!\n(Vui lòng mở Console F12 để xem cấu trúc dữ liệu. Để lưu thực tế, cần tạo API thêm hàng loạt ở Backend).`);
+                
+                // Ví dụ khi có API Backend:
+                // await axios.post("http://localhost:8080/api/products/batch", data);
+                // fetchProducts();
+
+            } catch (error) {
+                console.error("Lỗi khi import file Excel:", error);
+                alert("Có lỗi xảy ra khi đọc file Excel. Vui lòng kiểm tra lại định dạng file!");
+            } finally {
+                // Reset lại input để có thể chọn lại đúng file đó vào lần sau
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = "";
+                }
+            }
+        };
+        reader.readAsBinaryString(file);
+    };
+
     const filteredProducts = useMemo(() => {
         return products.filter(p => {
             const statusMatch = currentFilters.status === 'all' || p.status === currentFilters.status;
@@ -160,6 +220,19 @@ export default function ProductManagement() {
                         </div>
 
                         <div className="flex gap-3">
+                            <input 
+                                type="file" 
+                                accept=".xlsx, .xls" 
+                                ref={fileInputRef} 
+                                onChange={handleImportExcel} 
+                                className="hidden" 
+                            />
+                            <button onClick={() => fileInputRef.current?.click()} className="px-4 py-3 rounded-xl bg-white flex items-center gap-2 hover:bg-gray-50 transition shadow-sm border border-gray-100 text-sm font-semibold text-gray-700">
+                                <span className="material-symbols-outlined text-[18px]">upload</span> Nhập
+                            </button>
+                            <button onClick={handleExportExcel} className="px-4 py-3 rounded-xl bg-white flex items-center gap-2 hover:bg-gray-50 transition shadow-sm border border-gray-100 text-sm font-semibold text-gray-700">
+                                <span className="material-symbols-outlined text-[18px]">download</span> Xuất
+                            </button>
                             <div className="relative">
                                 <button
                                     onClick={() => {

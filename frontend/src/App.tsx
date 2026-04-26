@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom"
+import { useEffect } from "react"
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom"
 import Home from "./pages/Home"
 import Products from "./pages/Products"
 import Register from "./pages/Register"
@@ -17,10 +18,25 @@ import CancelPayment from "./pages/CancelPayment"
 import SuccessPayment from "./pages/SuccessPayment"
 import Checkout from "./pages/Checkout"
 import Cart from "./pages/Cart"
+import PaymentManagement from "./pages/admin/pages/PaymentManagement"
+import ProductReview from "./pages/ProductReview"
+import TerrariumBuilder from "./pages/TerrariumBuilder"
+import About from "./pages/About"
+import CareInstruction from "./pages/CareInstruction"
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
+
 
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
         {/* USER */}
         <Route path="/" element={<Home />} />
@@ -31,10 +47,14 @@ export default function App() {
         <Route path="/favorites" element={<ProductFavorite />} />
         <Route path="/best-sellers" element={<SellerProduct />} />
         <Route path="/new-arrivals" element={<NewsArrivalProduct />} />
-        <Route path="/cart" element={<Cart/>}/>
-        <Route path="/checkout" element={<Checkout />}/>
+        <Route path="/cart" element={<Cart />} />
+        <Route path="/checkout" element={<Checkout />} />
         <Route path="/success" element={<SuccessPayment />} />
         <Route path="/cancel" element={<CancelPayment />} />
+        <Route path="/review" element={<ProductReview />} />
+        <Route path="/builder" element={<TerrariumBuilder />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/care-instruction" element={<CareInstruction />} />
 
         {/* ADMIN */}
         <Route path="/admin/users" element={<UserManagement />} />
@@ -43,6 +63,7 @@ export default function App() {
         <Route path="/admin/categories" element={<CategoryManagement />} />
         <Route path="/admin/dashboard" element={<Dashboard />} />
         <Route path="/admin/promotions" element={<PromotionManagement />} />
+        <Route path="/admin/payments" element={<PaymentManagement />} />
       </Routes>
     </BrowserRouter>
   )
