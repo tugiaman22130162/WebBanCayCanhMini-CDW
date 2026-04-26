@@ -116,9 +116,7 @@ export default function UserManagement() {
 
                     {/* HEADER */}
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
-                        <div className="w-full md:w-auto">
-                            <h2 className="text-4xl font-black">Quản lý người dùng</h2>
-                        </div>
+                        <h2 className="text-4xl font-extrabold text-gray-800">Quản Lý Người Dùng</h2>
 
                         <div className="relative">
                             <button

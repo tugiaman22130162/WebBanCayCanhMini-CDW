@@ -158,8 +158,8 @@ export default function ProductManagement() {
         const reader = new FileReader();
         reader.onload = async (evt) => {
             try {
-                const bstr = evt.target?.result;
-                const wb = XLSX.read(bstr, { type: 'binary' });
+                const arrayBuffer = evt.target?.result;
+                const wb = XLSX.read(arrayBuffer, { type: 'array' });
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
                 const data = XLSX.utils.sheet_to_json(ws);
@@ -181,7 +181,7 @@ export default function ProductManagement() {
                 }
             }
         };
-        reader.readAsBinaryString(file);
+        reader.readAsArrayBuffer(file);
     };
 
     const filteredProducts = useMemo(() => {
@@ -213,11 +213,8 @@ export default function ProductManagement() {
 
                 <main className="p-8 flex-1 overflow-y-auto">
                     {/* HEADER */}
-                    <div className="flex justify-between items-end mb-10">
-                        <div>
-                            <h2 className="text-4xl font-extrabold">Quản Lý Sản Phẩm</h2>
-
-                        </div>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
+                        <h2 className="text-4xl font-extrabold text-gray-800">Quản Lý Sản Phẩm</h2>
 
                         <div className="flex gap-3">
                             <input 

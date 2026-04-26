@@ -113,10 +113,8 @@ export default function OrderManagement() {
 
                 <main className="p-8 flex-1 overflow-y-auto">
                     {/* HEADER */}
-                    <div className="flex justify-between items-end mb-8">
-                        <div>
-                            <h2 className="text-4xl font-extrabold mb-2">Quản Lý Đơn Hàng</h2>
-                        </div>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
+                        <h2 className="text-4xl font-extrabold text-gray-800">Quản Lý Đơn Hàng</h2>
                     </div>
 
                     {/* STATS CARDS */}

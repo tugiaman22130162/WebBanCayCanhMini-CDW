@@ -7,9 +7,9 @@ const AdminHeader: React.FC = () => {
     // Hàm lấy tên trang hiện tại dựa trên đường dẫn
     const getPageName = () => {
         if (location.pathname.includes("/users")) return "Quản lý người dùng";
-        if (location.pathname.includes("/products")) return "Sản phẩm";
+        if (location.pathname.includes("/products")) return "Quản lý sản phẩm";
         if (location.pathname.includes("/categories")) return "Quản lý danh mục";
-        if (location.pathname.includes("/orders")) return "Đơn hàng";
+        if (location.pathname.includes("/orders")) return "Quản lý đơn hàng";
         if (location.pathname.includes("/promotions")) return "Quản lý khuyến mãi";
         if (location.pathname.includes("/payments")) return "Quản lý thanh toán";
         return "Tổng quan";

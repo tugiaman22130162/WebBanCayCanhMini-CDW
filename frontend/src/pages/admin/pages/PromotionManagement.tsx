@@ -165,10 +165,8 @@ export default function PromotionManagement() {
                 <AdminHeader />
 
                 <main className="p-6 md:p-8 flex-1 overflow-y-auto">
-                    <div className="flex justify-between items-end mb-10">
-                        <div>
-                            <h2 className="text-4xl font-extrabold text-gray-800">Quản Lý Khuyến Mãi</h2>
-                        </div>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
+                        <h2 className="text-4xl font-extrabold text-gray-800">Quản Lý Khuyến Mãi</h2>
                         
                         <div className="flex gap-3">
                             <div className="relative">

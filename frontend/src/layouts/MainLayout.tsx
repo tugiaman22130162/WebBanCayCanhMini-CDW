@@ -8,7 +8,7 @@ type Props = {
 
 export default function MainLayout({ children }: Props) {
     return (
-        <div className="bg-[#fff8f5] text-[#1f1b17] min-h-screen">
+        <div className="bg-background text-[#1f1b17] min-h-screen">
             <Header />
             <main className="pt-16">{children}</main>
             <Footer />

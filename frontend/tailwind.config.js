@@ -28,7 +28,7 @@ module.exports = {
         "tertiary-fixed": "#ffdcc3",
         "tertiary-fixed-dim": "#ffb77d",
 
-        background: "#fff8f5",
+        background: "#F8F9F5",
         "header-footer": "#0F4D2E",
 
         surface: "#fff8f5",
