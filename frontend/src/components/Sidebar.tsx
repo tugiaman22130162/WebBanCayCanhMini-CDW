@@ -6,8 +6,8 @@ interface SidebarProps {
         email: string;
         avatar: string;
     };
-    activeTab: 'info' | 'orders' | 'reviews' | 'password';
-    setActiveTab: (tab: 'info' | 'orders' | 'reviews' | 'password') => void;
+    activeTab: 'info' | 'orders' | 'history' | 'reviews' | 'password';
+    setActiveTab: (tab: 'info' | 'orders' | 'history' | 'reviews' | 'password') => void;
     pendingReviewsCount: number;
     onLogout: () => void;
 }
@@ -46,6 +46,13 @@ export default function Sidebar({ user, activeTab, setActiveTab, pendingReviewsC
                 >
                     <span className="material-symbols-outlined">shopping_bag</span>
                     Đơn hàng của tôi
+                </button>
+                <button
+                    onClick={() => setActiveTab('history')}
+                    className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl font-semibold transition-colors ${activeTab === 'history' ? 'bg-[#E8F1EE] text-primary' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
+                >
+                    <span className="material-symbols-outlined">history</span>
+                    Lịch sử mua hàng
                 </button>
                 <button
                     onClick={() => setActiveTab('reviews')}

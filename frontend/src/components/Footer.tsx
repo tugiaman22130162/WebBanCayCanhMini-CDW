@@ -38,9 +38,9 @@ const Footer = () => {
                     <Link to="/care-instruction" className="text-white/80 hover:text-emerald-300 transition">
                         Hướng dẫn chăm sóc
                     </Link>
-                    <a href="#" className="text-white/80 hover:text-emerald-300 transition">
+                    <Link to="/shipping" className="text-white/80 hover:text-emerald-300 transition">
                         Vận chuyển
-                    </a>
+                    </Link>
                 </div>
 
                 {/* Column 3 */}
@@ -48,9 +48,9 @@ const Footer = () => {
                     <h4 className="font-bold uppercase tracking-widest text-xs text-emerald-300">
                         Pháp lý
                     </h4>
-                    <a href="#" className="text-white/80 hover:text-emerald-300 transition">
+                    <Link to="/terms" className="text-white/80 hover:text-emerald-300 transition">
                         Điều khoản
-                    </a>
+                    </Link>
                     <a href="#" className="text-white/80 hover:text-emerald-300 transition">
                         Bản tin
                     </a>
