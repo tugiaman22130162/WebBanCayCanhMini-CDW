@@ -2,18 +2,19 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import Sidebar from "../components/Sidebar";
+import OrderHistory from "../components/OrderHistory";
 
 export default function Profile() {
     const { tab } = useParams<{ tab: string }>();
     const navigate = useNavigate();
 
-    const [activeTab, setActiveTab] = useState<'info' | 'orders' | 'reviews' | 'password'>(
-        (tab as 'info' | 'orders' | 'reviews' | 'password') || 'info'
+    const [activeTab, setActiveTab] = useState<'info' | 'orders' | 'history' | 'reviews' | 'password'>(
+        (tab as 'info' | 'orders' | 'history' | 'reviews' | 'password') || 'info'
     );
 
     useEffect(() => {
-        if (tab && ['info', 'orders', 'reviews', 'password'].includes(tab)) {
-            setActiveTab(tab as 'info' | 'orders' | 'reviews' | 'password');
+        if (tab && ['info', 'orders', 'history', 'reviews', 'password'].includes(tab)) {
+            setActiveTab(tab as 'info' | 'orders' | 'history' | 'reviews' | 'password');
         } else if (!tab) {
             setActiveTab('info');
         }
@@ -77,7 +78,7 @@ export default function Profile() {
         alert("Cập nhật mật khẩu thành công!");
     };
 
-    const handleTabChange = (newTab: 'info' | 'orders' | 'reviews' | 'password') => {
+    const handleTabChange = (newTab: 'info' | 'orders' | 'history' | 'reviews' | 'password') => {
         setActiveTab(newTab);
         navigate(newTab === 'info' ? '/profile' : `/profile/${newTab}`);
     };
@@ -168,8 +169,8 @@ export default function Profile() {
                                     <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
                                         <h2 className="text-2xl font-bold text-gray-800">Đơn Hàng Của Tôi</h2>
                                         <button
-                                            onClick={() => setOrderStatusFilter('Đã giao')}
-                                            className="text-sm font-medium text-gray-500 hover:text-primary transition-colors hover:underline"
+                                            onClick={() => handleTabChange('history')}
+                                            className="text-sm font-bold text-primary hover:text-primary-container transition-colors hover:underline"
                                         >Lịch sử mua hàng</button>
                                     </div>
 
@@ -253,6 +254,17 @@ export default function Profile() {
                                         </table>
                                     </div>
                                 </div>
+                            )}
+
+                            {/* TAB: LỊCH SỬ MUA HÀNG */}
+                            {activeTab === 'history' && (
+                                <OrderHistory 
+                                    orders={orders} 
+                                    onViewDetails={(order) => { 
+                                        setSelectedOrder(order); 
+                                        setIsOrderModalOpen(true); 
+                                    }} 
+                                />
                             )}
 
                             {/* TAB: ĐÁNH GIÁ CỦA TÔI */}

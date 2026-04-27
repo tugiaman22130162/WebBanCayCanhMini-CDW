@@ -23,6 +23,11 @@ import TerrariumBuilder from "./pages/TerrariumBuilder"
 import About from "./pages/About"
 import CareInstruction from "./pages/CareInstruction"
 import Profile from "./pages/Profile"
+import ProductDetail from "./pages/ProductDetail"
+import TermsOfService from "./pages/TermsOfService"
+import ShippingPolicy from "./pages/ShippingPolicy"
+import NewsDetail from "./pages/NewsDetail"
+import AdminProfile from "./pages/admin/pages/AdminProfile"
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -56,6 +61,10 @@ export default function App() {
         <Route path="/care-instruction" element={<CareInstruction />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/profile/:tab" element={<Profile />} />
+        <Route path="/products/:id" element={<ProductDetail />} />
+        <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/shipping" element={<ShippingPolicy />} />
+        <Route path="/news/:id" element={<NewsDetail />} />
 
         {/* ADMIN */}
         <Route path="/admin/users" element={<UserManagement />} />
@@ -65,6 +74,7 @@ export default function App() {
         <Route path="/admin/dashboard" element={<Dashboard />} />
         <Route path="/admin/promotions" element={<PromotionManagement />} />
         <Route path="/admin/payments" element={<PaymentManagement />} />
+        <Route path="/admin/profile" element={<AdminProfile />} />
       </Routes>
     </BrowserRouter>
   )
