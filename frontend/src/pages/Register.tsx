@@ -1,5 +1,7 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
+import Swal from "sweetalert2";
 
 export default function Register() {
     const [formData, setFormData] = useState({
@@ -16,6 +18,35 @@ export default function Register() {
     });
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const navigate = useNavigate();
+
+    // Hiệu ứng (Debounce) kiểm tra email ngay khi người dùng ngừng gõ
+    useEffect(() => {
+        const checkEmail = async () => {
+            if (!formData.email.trim()) return;
+
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(formData.email)) {
+                setErrors(prev => ({ ...prev, email: "Email không đúng định dạng." }));
+                return;
+            }
+
+            try {
+                // Gọi API kiểm tra email đã tồn tại hay chưa
+                const response = await axios.get(`http://localhost:8080/api/auth/check-email?email=${formData.email}`);
+                if (response.data.exists) {
+                    setErrors(prev => ({ ...prev, email: "Email đã được sử dụng." }));
+                } else {
+                    setErrors(prev => ({ ...prev, email: "" }));
+                }
+            } catch (error) {
+                console.error("Lỗi kiểm tra email:", error);
+            }
+        };
+
+        const timeoutId = setTimeout(checkEmail, 500); // Chờ 500ms sau khi ngừng gõ
+        return () => clearTimeout(timeoutId);
+    }, [formData.email]);
 
     const validateForm = () => {
         let newErrors = { fullName: "", email: "", password: "", confirmPassword: "" };
@@ -30,6 +61,9 @@ export default function Register() {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(formData.email)) {
             newErrors.email = "Email không đúng định dạng.";
+            isValid = false;
+        } else if (errors.email === "Email đã được sử dụng.") {
+            newErrors.email = "Email đã được sử dụng.";
             isValid = false;
         }
 
@@ -57,11 +91,43 @@ export default function Register() {
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (validateForm()) {
-            // gửi dữ liệu đk lên server nếu form hợp lệ
-            console.log("Dữ liệu đăng ký:", formData);
+            try {
+                await axios.post("http://localhost:8080/api/auth/register", formData);
+                Swal.fire({
+                    toast: true,
+                    position: 'bottom',
+                    icon: 'success',
+                    title: 'Đăng ký thành công! Vui lòng đăng nhập.',
+                    showConfirmButton: false,
+                    timer: 2000,
+                    width: 'auto',
+                    padding: '0.5em 1em',
+                    customClass: {
+                        popup: 'mb-6 rounded-full shadow-lg border border-gray-100',
+                        title: 'text-sm font-bold text-gray-700',
+                    }
+                }).then(() => {
+                    navigate("/login");
+                });
+            } catch (error: any) {
+                Swal.fire({
+                    toast: true,
+                    position: 'bottom',
+                    icon: 'error',
+                    title: error.response?.data?.message || 'Đăng ký thất bại, vui lòng thử lại!',
+                    showConfirmButton: false,
+                    timer: 2500,
+                    width: 'auto',
+                    padding: '0.5em 1em',
+                    customClass: {
+                        popup: 'mb-6 rounded-full shadow-lg border border-gray-100',
+                        title: 'text-sm font-bold text-gray-700',
+                    }
+                });
+            }
         }
     };
 
@@ -127,10 +193,6 @@ export default function Register() {
                                 />
                             </div>
                             {errors.email && <p className="text-red-500 text-xs mt-1 ml-1">{errors.email}</p>}
-                        <p className="flex items-center gap-1 text-[#006c49] text-xs mt-2 ml-1">
-                                <span className="material-symbols-outlined text-[14px]">info</span>
-                            Bạn sẽ nhận được email xác thực sau khi đăng ký.
-                            </p>
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-5">
