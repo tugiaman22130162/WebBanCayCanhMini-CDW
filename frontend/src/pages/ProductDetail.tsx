@@ -38,20 +38,6 @@ const mockReviews = [
     }
 ];
 
-const mockRelatedProducts: any[] = [
-    { id: 101, name: "Terrarium Trụ Thủy Tinh", price: 280000, image: "https://images.unsplash.com/photo-1614594975525-e45190c55d40?w=400&h=400&fit=crop", category: "Terrarium" },
-    { id: 102, name: "Sen Đá Kim Cương", price: 85000, image: "/images/sen_da.webp", category: "Sen đá" },
-    { id: 103, name: "Cẩm Nhung Xanh", price: 65000, image: "/images/cam_nhung_xanh.png", category: "Cây mini" },
-    { id: 104, name: "Chậu Gốm Để Bàn", price: 120000, image: "https://images.unsplash.com/photo-1585314062340-f1a5a7c9328d?w=400&h=400&fit=crop", category: "Phụ kiện" },
-];
-
-const mockViewedProducts: any[] = [
-    { id: 201, name: "Sen đá Echeveria Laui", price: 50000, image: "/images/sen_da.webp", category: "Sen đá" },
-    { id: 202, name: "Cây Trầu Bà Đế Vương", price: 150000, image: "/images/cay_trong_nha.jpg", category: "Cây để bàn" },
-    { id: 203, name: "Đất Nền Mùn Akadama", price: 45000, image: "https://images.unsplash.com/photo-1585314062340-f1a5a7c9328d?w=400&h=400&fit=crop", category: "Vật tư" },
-    { id: 204, name: "Rêu Đuôi Chồn", price: 35000, image: "/images/reu_duoi_chon.png", category: "Phụ kiện" },
-];
-
 export default function ProductDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -60,6 +46,8 @@ export default function ProductDetail() {
     const [product, setProduct] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
+    const [viewedProducts, setViewedProducts] = useState<any[]>([]);
 
     const [mainImage, setMainImage] = useState("");
     const [quantity, setQuantity] = useState(1);
@@ -96,17 +84,70 @@ export default function ProductDetail() {
                     category: data.categoryName || data.category?.name || data.category || "Chưa phân loại",
                     images: data.images?.length > 0 ? data.images : ["https://images.unsplash.com/photo-1614594975525-e45190c55d40?w=600&h=600&fit=crop"],
                     description: data.description || "Chưa có mô tả cho sản phẩm này.",
+                    summary: {
+                        light: data.details?.light || "Ánh sáng gián tiếp hoặc đèn huỳnh quang.",
+                        water: data.details?.water || "Tưới khi thấy đất mặt đã khô.",
+                        temperature: data.details?.temperature || "18°C - 28°C (Mát mẻ, phòng máy lạnh)."
+                    },
                     care: {
-                        light: data.details?.light || data.details?.care_instruction?.sunlight || "Ánh sáng gián tiếp hoặc đèn huỳnh quang văn phòng.",
-                        water: data.details?.water || data.details?.care_instruction?.watering || "Tưới khi thấy đất mặt đã khô.",
-                        temperature: data.details?.temperature || "18°C - 28°C (Mát mẻ, phòng máy lạnh cực kỳ thích hợp).",
-                        fertilizer: data.details?.care_instruction?.fertilizing || "Bón phân 1-2 lần/tháng để cây phát triển tốt."
+                        light: data.details?.care_instruction?.sunlight || data.details?.light || "Nên đặt cây ở nơi có ánh sáng tự nhiên.",
+                        water: data.details?.care_instruction?.watering || data.details?.water || "Tưới lượng vừa đủ để đất ẩm nhẹ.",
+                        temperature: data.details?.temperature || "Phù hợp với khí hậu trong nhà.",
+                        fertilizer: data.details?.care_instruction?.fertilizing || "Bón phân định kỳ mỗi tháng 1 lần."
+                    },
+                    specifications: {
+                        size: data.details?.size || "Đang cập nhật",
+                        origin: data.details?.origin || "Đang cập nhật",
+                        potType: data.details?.potType || "Đang cập nhật",
+                        weight: data.details?.weight ? `${data.details?.weight} kg` : "Đang cập nhật",
+                        note: data.details?.note || ""
                     },
                     stock: data.quantity || 0
                 };
                 
                 setProduct(formattedProduct);
                 setMainImage(formattedProduct.images[0]);
+
+                // --- Xử lý Cập nhật và Lấy Sản phẩm vừa xem từ LocalStorage ---
+                const viewed = JSON.parse(localStorage.getItem("viewedProducts") || "[]");
+                const updatedViewed = viewed.filter((item: any) => item.id !== formattedProduct.id);
+                updatedViewed.unshift({
+                    id: formattedProduct.id,
+                    name: formattedProduct.name,
+                    price: formattedProduct.price,
+                    image: formattedProduct.images[0],
+                    category: formattedProduct.category
+                });
+                // Chỉ lưu tối đa 5 sản phẩm gần nhất (để khi trừ sản phẩm hiện tại ra vẫn còn đủ 4)
+                if (updatedViewed.length > 5) updatedViewed.pop();
+                localStorage.setItem("viewedProducts", JSON.stringify(updatedViewed));
+                
+                // Cập nhật state (bỏ sản phẩm hiện tại ra khỏi danh sách vừa xem)
+                setViewedProducts(updatedViewed.filter((item: any) => item.id !== formattedProduct.id).slice(0, 4));
+
+                // --- Gọi API Lấy sản phẩm liên quan (Gợi ý) từ DB ---
+                try {
+                    // Lấy tất cả sản phẩm đang có trong Database
+                    const relatedRes = await axios.get(`http://localhost:8080/api/products`);
+                    
+                    // Lọc ra các sản phẩm có "cùng Danh mục" và "khác ID sản phẩm hiện tại"
+                    const sameCategoryProducts = relatedRes.data.filter((item: any) => {
+                        const itemCategory = item.categoryName || item.category?.name || item.category;
+                        const currentCategory = data.categoryName || data.category?.name || data.category;
+                        return itemCategory === currentCategory && item.id !== data.id;
+                    }).slice(0, 4); // Chỉ lấy tối đa 4 sản phẩm
+
+                    const formattedRelated = sameCategoryProducts.map((item: any) => ({
+                        id: item.id,
+                        name: item.name,
+                        price: item.price || 0,
+                        image: (item.images && item.images.length > 0) ? item.images[0] : "https://images.unsplash.com/photo-1614594975525-e45190c55d40?w=400&h=400&fit=crop",
+                        category: item.categoryName || item.category?.name || item.category || "Chưa phân loại"
+                    }));
+                    setRelatedProducts(formattedRelated);
+                } catch (err) {
+                    console.error("Lỗi tải sản phẩm liên quan:", err);
+                }
             } catch (err) {
                 console.error("Lỗi tải chi tiết sản phẩm:", err);
                 setError("Không thể tải thông tin sản phẩm. Vui lòng kiểm tra lại.");
@@ -227,7 +268,7 @@ export default function ProductDetail() {
     return (
         <MainLayout>
             <div className="bg-[#F8F9F5] min-h-screen pt-[100px] pb-24 font-body">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
                     
                     {/* Breadcrumbs */}
                     <motion.nav 
@@ -250,18 +291,13 @@ export default function ProductDetail() {
                         initial={{ opacity: 0, y: 40 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.7, delay: 0.2 }}
-                        className="bg-white rounded-3xl p-6 md:p-10 shadow-sm border border-gray-100 grid grid-cols-1 lg:grid-cols-2 gap-12"
+                        className="bg-white rounded-3xl p-6 md:p-8 lg:p-10 shadow-sm border border-gray-100 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12"
                     >
                         
                         {/* Hình ảnh */}
-                        <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-4 lg:col-span-5 xl:col-span-5">
                             <div className="aspect-square w-full rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 relative">
                                 <img src={mainImage} alt={product.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
-                                {product.originalPrice > product.price && (
-                                    <div className="absolute top-4 left-4 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">
-                                        -{Math.round((1 - product.price / product.originalPrice) * 100)}%
-                                    </div>
-                                )}
                             </div>
                             <div className="flex gap-4 overflow-x-auto pb-2 hide-scrollbar">
                                 {product.images.map((img: string, idx: number) => (
@@ -277,11 +313,11 @@ export default function ProductDetail() {
                         </div>
 
                         {/* Chi tiết thông tin */}
-                        <div className="flex flex-col">
+                        <div className="flex flex-col lg:col-span-7 xl:col-span-7">
                             <p className="text-sm font-bold text-primary uppercase tracking-wider mb-2">{product.category}</p>
                             <h1 className="text-3xl md:text-4xl font-black text-gray-800 mb-4 leading-tight">{product.name}</h1>
                             
-                            <div className="flex flex-wrap items-center gap-4 mb-6">
+                            <div className="flex flex-wrap items-center gap-4 mb-5">
                                 <div className="flex items-center gap-2">
                                     {renderStars(product.rating)}
                                     <span className="font-bold text-gray-700">{product.rating}</span>
@@ -292,30 +328,35 @@ export default function ProductDetail() {
                                 <span className="text-gray-600 text-sm">Đã bán <span className="font-bold text-gray-800">{product.soldCount}</span></span>
                             </div>
 
-                            <div className="flex items-end gap-4 mb-8">
+                            <div className="flex items-end gap-3 mb-6">
                                 <span className="text-3xl md:text-4xl font-black text-primary">{product.price.toLocaleString('vi-VN')}đ</span>
                                 {product.originalPrice > product.price && (
-                                    <span className="text-lg text-gray-400 line-through mb-1 font-semibold">{product.originalPrice.toLocaleString('vi-VN')}đ</span>
+                                    <>
+                                        <span className="text-lg text-gray-400 line-through mb-1 font-semibold">{product.originalPrice.toLocaleString('vi-VN')}đ</span>
+                                        <span className="text-sm font-bold bg-red-50 text-red-600 border border-red-100 px-2 py-0.5 rounded-lg mb-1">
+                                            -{Math.round((1 - product.price / product.originalPrice) * 100)}%
+                                        </span>
+                                    </>
                                 )}
                             </div>
 
-                            <div className="bg-emerald-50 rounded-2xl p-5 mb-8 border border-emerald-100 space-y-3">
+                            <div className="bg-emerald-50 rounded-2xl p-5 mb-6 border border-emerald-100 space-y-3">
                                 <h3 className="font-bold text-emerald-800 text-sm uppercase tracking-wider mb-2">Tóm tắt chăm sóc</h3>
                                 <div className="flex items-center gap-3 text-sm text-emerald-700">
                                     <span className="material-symbols-outlined text-[20px]">light_mode</span>
-                                    <span className="font-medium line-clamp-1">{product.care.light}</span>
+                                    <span className="font-medium line-clamp-1">{product.summary.light}</span>
                                 </div>
                                 <div className="flex items-center gap-3 text-sm text-emerald-700">
                                     <span className="material-symbols-outlined text-[20px]">water_drop</span>
-                                    <span className="font-medium line-clamp-1">{product.care.water}</span>
+                                    <span className="font-medium line-clamp-1">{product.summary.water}</span>
                                 </div>
                                 <div className="flex items-center gap-3 text-sm text-emerald-700">
                                     <span className="material-symbols-outlined text-[20px]">thermostat</span>
-                                    <span className="font-medium line-clamp-1">{product.care.temperature}</span>
+                                    <span className="font-medium line-clamp-1">{product.summary.temperature}</span>
                                 </div>
                             </div>
 
-                            <div className="mt-auto space-y-6">
+                            <div className="mt-auto space-y-5">
                                 <div className="flex items-center gap-4">
                                     <span className="font-bold text-gray-700">Số lượng:</span>
                                     <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden h-12">
@@ -382,9 +423,38 @@ export default function ProductDetail() {
                             {activeTab === 'description' && (
                                 <motion.div 
                                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}
-                                    className="prose max-w-none text-gray-600 leading-relaxed font-medium whitespace-pre-line"
                                 >
-                                    {product.description}
+                                    <h4 className="text-xl font-bold text-gray-800 mb-4">Thông số chi tiết</h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 bg-gray-50 p-6 rounded-2xl border border-gray-100 text-sm">
+                                        <div className="flex justify-between border-b border-gray-200 pb-2">
+                                            <span className="text-gray-500 font-bold">Kích thước:</span>
+                                            <span className="font-bold text-gray-800">{product.specifications.size}</span>
+                                        </div>
+                                        <div className="flex justify-between border-b border-gray-200 pb-2">
+                                            <span className="text-gray-500 font-bold">Xuất xứ:</span>
+                                            <span className="font-bold text-gray-800">{product.specifications.origin}</span>
+                                        </div>
+                                        <div className="flex justify-between border-b border-gray-200 pb-2 sm:border-b-0">
+                                            <span className="text-gray-500 font-bold">Loại chậu:</span>
+                                            <span className="font-bold text-gray-800">{product.specifications.potType}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-500 font-bold">Trọng lượng:</span>
+                                            <span className="font-bold text-gray-800">{product.specifications.weight}</span>
+                                        </div>
+                                    </div>
+
+                                    <h4 className="text-xl font-bold text-gray-800 mb-4">Mô tả sản phẩm</h4>
+                                    <div className="prose max-w-none text-gray-600 leading-relaxed font-medium whitespace-pre-line">
+                                        {product.description}
+                                    </div>
+
+                                    {product.specifications.note && (
+                                        <div className="mt-8 bg-orange-50 border border-orange-100 p-4 rounded-xl text-orange-800 text-sm font-medium flex gap-3 items-start">
+                                            <span className="material-symbols-outlined text-orange-500">info</span>
+                                            <div><span className="font-bold block mb-1">Lưu ý:</span> {product.specifications.note}</div>
+                                        </div>
+                                    )}
                                 </motion.div>
                             )}
 
@@ -605,7 +675,7 @@ export default function ProductDetail() {
                         </motion.div>
                         
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-                            {mockRelatedProducts.map((product: any, index: number) => {
+                            {relatedProducts.map((product: any, index: number) => {
                                 const isLiked = isFavorited(product);
                                 return (
                                     <motion.div
@@ -639,7 +709,7 @@ export default function ProductDetail() {
                         </motion.div>
                         
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-                            {mockViewedProducts.map((product: any, index: number) => {
+                            {viewedProducts.map((product: any, index: number) => {
                                 const isLiked = isFavorited(product);
                                 return (
                                     <motion.div

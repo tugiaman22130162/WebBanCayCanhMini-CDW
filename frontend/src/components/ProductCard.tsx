@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import type { Product } from "../data/products";
+import { Link } from "react-router-dom";
 
 type Props = {
     product: Product;
@@ -42,15 +43,18 @@ const ProductCard: React.FC<Props> = ({
             className="group h-full flex flex-col border-[2px] border-gray-200 rounded-xl p-6 bg-white"
         >
             <div className="aspect-square rounded-lg overflow-hidden bg-gray-100 mb-6 relative">
-                <motion.img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                    whileHover={{ scale: 1.1 }}
-                    transition={{ duration: 0.5 }}
-                />
+                {/* lay id tu database de tao link den trang chi tiet san pham */}
+                <Link to={`/products/${product.id}`} className="block w-full h-full">
+                    <motion.img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                        whileHover={{ scale: 1.1 }}
+                        transition={{ duration: 0.5 }}
+                    />
+                </Link>
 
-                <span className="absolute top-3 left-3 bg-primary text-white text-xs px-3 py-1 rounded-full">
+                <span className="absolute top-3 left-3 bg-primary text-white text-xs px-3 py-1 rounded-full pointer-events-none">
                     {product.category}
                 </span>
 
@@ -70,7 +74,9 @@ const ProductCard: React.FC<Props> = ({
             </div>
 
             <div className="flex flex-col flex-grow gap-3">
-                <h4 className="text-lg font-bold break-words">{product.name}</h4>
+                <Link to={`/products/${product.id}`}>
+                    <h4 className="text-lg font-bold break-words hover:text-primary transition-colors">{product.name}</h4>
+                </Link>
                 
                 <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-emerald-600 font-bold">{priceString}</p>

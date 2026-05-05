@@ -1,5 +1,7 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
+import Swal from "sweetalert2";
 
 export default function Login() {
     const [formData, setFormData] = useState({
@@ -11,6 +13,7 @@ export default function Login() {
         password: "",
     });
     const [showPassword, setShowPassword] = useState(false);
+    const navigate = useNavigate();
 
     const validateForm = () => {
         let newErrors = { email: "", password: "" };
@@ -39,11 +42,53 @@ export default function Login() {
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (validateForm()) {
-            // gửi dữ liệu đn lên server
-            console.log("Dữ liệu đăng nhập:", formData);
+            try {
+                // Gọi API Login tới Backend Spring Boot
+                const response = await axios.post("http://localhost:8080/api/auth/login", formData);
+                const data = response.data;
+                
+                // Lưu Token vào LocalStorage và chuyển hướng
+                localStorage.setItem("token", data.token);
+                Swal.fire({
+                    toast: true,
+                    position: 'bottom',
+                    icon: 'success',
+                    title: 'Đăng nhập thành công!',
+                    timer: 1500,
+                    showConfirmButton: false,
+                    width: 'auto',
+                    padding: '0.5em 1em',
+                    customClass: {
+                        popup: 'mb-6 rounded-full shadow-lg border border-gray-100',
+                        title: 'text-sm font-bold text-gray-700',
+                    }
+                }).then(() => {
+                    if (data.role === "ADMIN") {
+                        navigate("/admin/dashboard");
+                    } else {
+                        navigate("/"); 
+                    }
+                });
+            } catch (error: any) {
+                console.error("Lỗi đăng nhập:", error);
+                Swal.fire({
+                    toast: true,
+                    position: 'bottom',
+                    icon: 'error',
+                    title: error.response?.data?.message || "Đăng nhập thất bại!",
+                    showConfirmButton: false,
+                    timer: 2500,
+                    width: 'auto',
+                    padding: '0.5em 1em',
+                    customClass: {
+                        popup: 'mb-6 rounded-full shadow-lg border border-gray-100',
+                        title: 'text-sm font-bold text-gray-700',
+                    }
+                });
+            }
         }
     };
 

@@ -1,13 +1,42 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 
 export default function Header() {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [userEmail, setUserEmail] = useState("Đang tải...");
+    const [userName, setUserName] = useState("Đang tải...");
+    const [userAvatar, setUserAvatar] = useState("");
+    const [userRole, setUserRole] = useState("");
     const profileRef = useRef<HTMLDivElement>(null);
+    const navigate = useNavigate();
     
-    // Đổi thành true/false để kiểm tra trạng thái Đăng nhập / Chưa đăng nhập
-    // (Sau này bạn sẽ thay bằng Context hoặc Redux)
-    const isLoggedIn = false; 
+    // Kiểm tra trạng thái đăng nhập từ localStorage khi component mount
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        if (token) {
+            setIsLoggedIn(true);
+
+            axios.get("http://localhost:8080/api/users/me", {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            .then(response => {
+                const data = response.data;
+                const name = data.fullName || (data.email ? data.email.split('@')[0] : "Người dùng");
+                setUserName(name);
+                setUserEmail(data.email || "");
+                setUserAvatar(data.avatar || "");
+                setUserRole(data.role || "");
+            })
+            .catch(error => {
+                console.error("Token không hợp lệ hoặc đã hết hạn:", error);
+                if (error.response?.status === 401 || error.response?.status === 403) {
+                    handleLogout();
+                }
+            });
+        }
+    }, []);
 
     // Đóng dropdown khi click ra ngoài vùng profile
     useEffect(() => {
@@ -20,11 +49,19 @@ export default function Header() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Dữ liệu người dùng mẫu
+    // logout
+    const handleLogout = () => {
+        localStorage.removeItem("token");
+        setIsLoggedIn(false);
+        setIsProfileOpen(false);
+        navigate("/login");
+    };
+
+    //Lay du lieu nguoi dung tu DB de hien thi tren header
     const mockUser = {
-        name: "Nguyễn Văn A",
-        email: "hello@minigarden.com",
-        avatar: "https://i.pravatar.cc/150?u=hello@minigarden.com"
+        name: userName,
+        email: userEmail,
+        avatar: userAvatar || "" //chua co avatar thi hien thi icon mac dinh
     };
 
     return (
@@ -71,7 +108,7 @@ export default function Header() {
                                 onClick={() => setIsProfileOpen(!isProfileOpen)}
                                 className={`block ${isLoggedIn ? 'w-9 h-9 border-transparent' : 'w-8 h-8 border-transparent'} rounded-full overflow-hidden border-2 hover:border-emerald-300 focus:border-emerald-300 transition-all active:scale-95 outline-none flex items-center justify-center`}
                             >
-                                {isLoggedIn ? (
+                                {isLoggedIn && mockUser.avatar ? (
                                     <img src={mockUser.avatar} alt={mockUser.name} className="w-full h-full object-cover" />
                                 ) : (
                                     <span className="material-symbols-outlined text-white text-[32px]">
@@ -86,20 +123,29 @@ export default function Header() {
                                     {isLoggedIn ? (
                                         <>
                                             <div className="p-4 border-b border-gray-50 flex items-center gap-3 bg-gray-50/50">
-                                                <img src={mockUser.avatar} alt={mockUser.name} className="w-10 h-10 rounded-full object-cover border border-gray-200 shadow-sm" />
+                                                {mockUser.avatar ? (
+                                                    <img src={mockUser.avatar} alt={mockUser.name} className="w-10 h-10 rounded-full object-cover border border-gray-200 shadow-sm shrink-0" />
+                                                ) : (
+                                                    <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center border border-emerald-200 shadow-sm shrink-0">
+                                                        <span className="material-symbols-outlined">person</span>
+                                                    </div>
+                                                )}
                                                 <div className="flex flex-col">
                                                     <span className="text-sm font-bold text-gray-800">{mockUser.name}</span>
                                                     <span className="text-xs text-gray-500 truncate w-40">{mockUser.email}</span>
                                                 </div>
                                             </div>
                                             <div className="p-2 flex flex-col gap-1">
+                                                {userRole === "ADMIN" && (
+                                                    <Link to="/admin/dashboard" onClick={() => setIsProfileOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-primary hover:bg-emerald-50 rounded-xl transition-colors"><span className="material-symbols-outlined text-[20px]">admin_panel_settings</span> Trang quản trị</Link>
+                                                )}
                                                 <Link to="/profile/info" onClick={() => setIsProfileOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-600 hover:text-primary hover:bg-emerald-50 rounded-xl transition-colors"><span className="material-symbols-outlined text-[20px]">person</span> Thông tin cá nhân</Link>
                                                 <Link to="/profile/orders" onClick={() => setIsProfileOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-600 hover:text-primary hover:bg-emerald-50 rounded-xl transition-colors"><span className="material-symbols-outlined text-[20px]">shopping_bag</span> Đơn hàng của tôi</Link>
                                                 <Link to="/profile/history" onClick={() => setIsProfileOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-600 hover:text-primary hover:bg-emerald-50 rounded-xl transition-colors"><span className="material-symbols-outlined text-[20px]">history</span> Lịch sử đơn hàng</Link>
                                                 <Link to="/profile/reviews" onClick={() => setIsProfileOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-600 hover:text-primary hover:bg-emerald-50 rounded-xl transition-colors"><span className="material-symbols-outlined text-[20px]">rate_review</span> Đánh giá của tôi</Link>
                                             </div>
                                             <div className="p-2 border-t border-gray-50">
-                                                <button onClick={() => { setIsProfileOpen(false); alert("Đăng xuất thành công!"); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 rounded-xl transition-colors"><span className="material-symbols-outlined text-[20px]">logout</span> Đăng xuất</button>
+                                            <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 rounded-xl transition-colors"><span className="material-symbols-outlined text-[20px]">logout</span> Đăng xuất</button>
                                             </div>
                                         </>
                                     ) : (

@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import Swal from "sweetalert2";
+import axios from "axios";
 
 export default function ForgotPassword() {
     const [formData, setFormData] = useState({
@@ -8,6 +10,7 @@ export default function ForgotPassword() {
     const [errors, setErrors] = useState({
         email: "",
     });
+    const [isLoading, setIsLoading] = useState(false);
 
     const validateForm = () => {
         let newErrors = { email: "" };
@@ -30,11 +33,45 @@ export default function ForgotPassword() {
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (validateForm()) {
-            // gửi dữ liệu email lên server
-            console.log("Dữ liệu email:", formData);
+            setIsLoading(true);
+            try {
+                const response = await axios.post(`http://localhost:8080/api/auth/forgot-password?email=${formData.email}`);
+                Swal.fire({
+                    toast: true,
+                    position: 'bottom',
+                    icon: 'success',
+                    title: response.data.message || 'Đã gửi email khôi phục mật khẩu!',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    width: 'auto',
+                    padding: '0.5em 1em',
+                    customClass: {
+                        popup: 'mb-6 rounded-full shadow-lg border border-gray-100',
+                        title: 'text-sm font-bold text-gray-700',
+                    }
+                });
+                setFormData({ email: "" }); // Reset lại form
+            } catch (error: any) {
+                Swal.fire({
+                    toast: true,
+                    position: 'bottom',
+                    icon: 'error',
+                    title: error.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại sau!',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    width: 'auto',
+                    padding: '0.5em 1em',
+                    customClass: {
+                        popup: 'mb-6 rounded-full shadow-lg border border-gray-100',
+                        title: 'text-sm font-bold text-gray-700',
+                    }
+                });
+            } finally {
+                setIsLoading(false);
+            }
         }
     };
 
@@ -90,8 +127,10 @@ export default function ForgotPassword() {
 
                         <button
                             type="submit"
-                            className="w-full py-4 mt-12 bg-gradient-to-br from-primary to-primary-container text-on-primary font-semibold rounded-full shadow-md hover:shadow-lg hover:scale-[1.02] transition-all">                                               
-                            Gửi yêu cầu
+                            disabled={isLoading}
+                            className={`w-full flex items-center justify-center gap-2 py-4 mt-12 bg-gradient-to-br from-primary to-primary-container text-on-primary font-semibold rounded-full shadow-md transition-all ${isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-lg hover:scale-[1.02]'}`}>                                               
+                            {isLoading ? <span className="material-symbols-outlined animate-spin">autorenew</span> : null}
+                            {isLoading ? 'Đang gửi...' : 'Gửi yêu cầu'}
                         </button>
                     </form>
             </div>
