@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import MainLayout from "../layouts/MainLayout";
-import Sidebar from "../components/Sidebar";
-import OrderHistory from "../components/OrderHistory";
+import MainLayout from "../../layouts/MainLayout";
+import Sidebar from "../../components/user/Sidebar";
+import OrderHistory from "../../components/user/OrderHistory";
 
 export default function Profile() {
     const { tab } = useParams<{ tab: string }>();
@@ -116,7 +116,7 @@ export default function Profile() {
 
     return (
         <MainLayout>
-            <div className="bg-[#F8F9F5] min-h-screen pt-[50px] mb-[-70px] font-body">
+            <div className="bg-[#F8F9F5] min-h-screen pt-[50px] mb-[-10px] font-body">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">

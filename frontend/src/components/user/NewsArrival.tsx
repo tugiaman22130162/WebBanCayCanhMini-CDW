@@ -1,8 +1,8 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import ProductCard from "./ProductCard";
-import { useFavorites } from "../data/useFavorites";
+import ProductCard from "../user/ProductCard";
+import { useFavorites } from "../../data/useFavorites";
 
 const products = [
     {
@@ -25,6 +25,7 @@ const products = [
         category: "Terrarium",
         price: "485.000đ",
         image: "./images/terrarium.jpg",
+
     },
     {
         id: 4,
@@ -35,31 +36,31 @@ const products = [
     },
 ];
 
-export default function SellerProducts() {
+export default function NewArrivals() {
     const { isFavorited, toggleFavorite } = useFavorites();
 
     return (
         <section className="mt-[30px] py-10 px-8 bg-surface-container-lowest">
             <div className="max-w-7xl mx-auto">
+
                 {/* HEADER */}
                 <div className="flex justify-between items-end mb-16">
                     <div>
                         <h2 className="text-4xl font-bold tracking-tight mb-4">
-                            Sản phẩm bán chạy
+                            Sản phẩm mới
                         </h2>
                         <p className="text-gray-600">
-                            Tuyển chọn những sản phẩm mới nhất, tinh tế và đầy cảm hứng{" "}
-                        </p>
+                            Tuyển chọn những sản phẩm mới nhất, tinh tế và đầy cảm hứng                        </p>
                     </div>
 
                     <Link
-                        to="/best-sellers"
+                        to="/new-arrivals"
                         className="px-6 py-2 rounded-full font-semibold text-white 
-bg-gradient-to-r from-emerald-500 to-emerald-600
-hover:from-emerald-600 hover:to-emerald-700
-shadow-md hover:shadow-lg hover:shadow-emerald-300/40
-active:scale-95
-transition-all duration-300 flex items-center gap-2 group"
+                    bg-gradient-to-r from-emerald-500 to-emerald-600
+                    hover:from-emerald-600 hover:to-emerald-700
+                    shadow-md hover:shadow-lg hover:shadow-emerald-300/40
+                    active:scale-95
+                    transition-all duration-300 flex items-center gap-2 group"
                     >
                         Xem tất cả
                     </Link>

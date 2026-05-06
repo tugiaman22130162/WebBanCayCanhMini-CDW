@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import * as XLSX from "xlsx";
 import axios from "axios";
-import AdminHeader from "../components/AdminHeader";
-import AdminSidebar from "../components/AdminSidebar";
-import AddProductModal from "../components/AddProductModal";
-import EditProductModal from "../components/EditProductModal";
+import AdminHeader from "../../components/admin/AdminHeader";
+import AdminSidebar from "../../components/admin/AdminSidebar";
+import AddProductModal from "../../components/admin/AddProductModal";
+import EditProductModal from "../../components/admin/EditProductModal";
 
 type Product = {
     id: string;
@@ -166,7 +166,7 @@ export default function ProductManagement() {
 
                 console.log("Dữ liệu từ Excel:", data);
                 alert(`Đã đọc thành công ${data.length} sản phẩm từ file Excel!\n(Vui lòng mở Console F12 để xem cấu trúc dữ liệu. Để lưu thực tế, cần tạo API thêm hàng loạt ở Backend).`);
-                
+
                 // Ví dụ khi có API Backend:
                 // await axios.post("http://localhost:8080/api/products/batch", data);
                 // fetchProducts();
@@ -217,12 +217,12 @@ export default function ProductManagement() {
                         <h2 className="text-4xl font-extrabold text-gray-800">Quản Lý Sản Phẩm</h2>
 
                         <div className="flex gap-3">
-                            <input 
-                                type="file" 
-                                accept=".xlsx, .xls" 
-                                ref={fileInputRef} 
-                                onChange={handleImportExcel} 
-                                className="hidden" 
+                            <input
+                                type="file"
+                                accept=".xlsx, .xls"
+                                ref={fileInputRef}
+                                onChange={handleImportExcel}
+                                className="hidden"
                             />
                             <button onClick={() => fileInputRef.current?.click()} className="px-4 py-3 rounded-xl bg-white flex items-center gap-2 hover:bg-gray-50 transition shadow-sm border border-gray-100 text-sm font-semibold text-gray-700">
                                 <span className="material-symbols-outlined text-[18px]">upload</span> Nhập

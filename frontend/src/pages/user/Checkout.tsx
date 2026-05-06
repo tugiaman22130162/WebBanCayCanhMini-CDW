@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import MainLayout from "../layouts/MainLayout";
+import MainLayout from "../../layouts/MainLayout";
 import Swal from "sweetalert2";
 
 // Theo dõi vị trí con trỏ chuột để hiển thị thông báo

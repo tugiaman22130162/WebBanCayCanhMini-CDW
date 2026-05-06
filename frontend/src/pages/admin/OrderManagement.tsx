@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
-import AdminHeader from "../components/AdminHeader";
-import AdminSidebar from "../components/AdminSidebar";
-import OrderDetailModal from "../components/OrderDetailModal";
+import AdminHeader from "../../components/admin/AdminHeader";
+import AdminSidebar from "../../components/admin/AdminSidebar";
+import OrderDetailModal from "../../components/admin/OrderDetailModal";
 
 // Khai báo Type dựa trên Entity Orders của Backend
 type OrderStatus = 'PENDING' | 'CONFIRMED' | 'SHIPPING' | 'DELIVERED' | 'CANCELLED';

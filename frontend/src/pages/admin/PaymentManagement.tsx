@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
-import AdminHeader from "../components/AdminHeader";
-import AdminSidebar from "../components/AdminSidebar";
+import AdminHeader from "../../components/admin/AdminHeader";
+import AdminSidebar from "../../components/admin/AdminSidebar";
 
 type PaymentStatus = 'SUCCESS' | 'PENDING' | 'FAILED' | 'REFUNDED';
 type PaymentMethod = 'COD' | 'VNPAY';

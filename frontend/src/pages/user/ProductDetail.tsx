@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import MainLayout from "../layouts/MainLayout";
-import ProductCard from "../components/ProductCard";
-import { useFavorites } from "../data/useFavorites";
+import MainLayout from "../../layouts/MainLayout";
+import ProductCard from "../../components/user/ProductCard";
+import { useFavorites } from "../../data/useFavorites";
 import axios from "axios";
 import { motion } from "framer-motion";
 
