@@ -1,10 +1,33 @@
-import React from "react";
+import React, { useRef, useState } from "react";
+import axios from "axios";
+import Swal from "sweetalert2";
+import { useAuth } from "../../context/AuthContext";
+
+// Cấu hình mặc định cho các thông báo Toast
+const Toast = Swal.mixin({
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true,
+    width: 'auto',
+    padding: '0.5em 1em',
+    customClass: {
+        popup: 'rounded-2xl shadow-lg border border-gray-100 font-body flex items-center mt-20',
+        title: 'text-sm font-bold text-gray-800 whitespace-nowrap'
+    },
+    didOpen: (toast) => {
+        toast.onmouseenter = Swal.stopTimer;
+        toast.onmouseleave = Swal.resumeTimer;
+    }
+});
 
 interface SidebarProps {
     user: {
         name: string;
         email: string;
         avatar: string;
+        initial?: string;
     };
     activeTab: 'info' | 'orders' | 'history' | 'reviews' | 'password';
     setActiveTab: (tab: 'info' | 'orders' | 'history' | 'reviews' | 'password') => void;
@@ -13,20 +36,119 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ user, activeTab, setActiveTab, pendingReviewsCount, onLogout }: SidebarProps) {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const { token, updateUser, user: authUser } = useAuth();
+
+    const handleCameraClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            Toast.fire({ icon: 'error', title: 'Vui lòng chọn file hình ảnh hợp lệ!' });
+            return;
+        }
+
+        setSelectedFile(file);
+        setAvatarPreview(URL.createObjectURL(file));
+    };
+
+    const handleSaveAvatar = async () => {
+        if (!selectedFile) return;
+
+        const formData = new FormData();
+        formData.append('avatar', selectedFile);
+
+        setIsUploading(true);
+        try {
+            const response = await axios.post('http://localhost:8080/api/users/me/avatar', formData, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+            
+            if (authUser) {
+                updateUser({ ...authUser, avatar: response.data.avatarUrl });
+            }
+            Toast.fire({ icon: 'success', title: 'Cập nhật ảnh đại diện thành công!' });
+            setAvatarPreview(null);
+            setSelectedFile(null);
+        } catch (error) {
+            Toast.fire({ icon: 'error', title: 'Không thể cập nhật ảnh đại diện' });
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleCancelAvatar = () => {
+        setAvatarPreview(null);
+        setSelectedFile(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
     return (
         <div className="lg:col-span-1 space-y-6">
             {/* User Info Card */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 text-center animate-in fade-in slide-in-from-left-4 duration-500">
                 <div className="relative w-24 h-24 mx-auto mb-4">
-                    <img
-                        src={user.avatar}
-                        alt={user.name}
-                        className="w-full h-full object-cover rounded-full border-4 border-emerald-50 shadow-sm"
-                    />
-                    <button className="absolute bottom-0 right-0 w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center border-2 border-white hover:bg-[#2f5146] transition-colors shadow-sm" title="Thay đổi ảnh đại diện">
-                        <span className="material-symbols-outlined text-[16px]">photo_camera</span>
-                    </button>
+                    {avatarPreview ? (
+                        <img
+                            src={avatarPreview}
+                            alt="Preview"
+                            className="w-full h-full object-cover rounded-full border-4 border-emerald-50 shadow-sm"
+                        />
+                    ) : user.avatar ? (
+                        <img
+                            src={user.avatar}
+                            alt={user.name}
+                            className="w-full h-full object-cover rounded-full border-4 border-emerald-50 shadow-sm"
+                        />
+                    ) : (
+                        <div className="w-full h-full rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-[40px] border-4 border-emerald-50 shadow-sm">
+                            {user.initial}
+                        </div>
+                    )}
+                    {!avatarPreview && (
+                        <button 
+                            onClick={handleCameraClick}
+                            className="absolute bottom-0 right-0 w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center border-2 border-white hover:bg-[#2f5146] transition-colors shadow-sm" 
+                            title="Thay đổi ảnh đại diện"
+                        >
+                            <span className="material-symbols-outlined text-[16px]">photo_camera</span>
+                        </button>
+                    )}
+                    
+                    {/* Input file ẩn */}
+                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
                 </div>
+                {avatarPreview && (
+                    <div className="flex justify-center gap-2 mb-4">
+                        <button 
+                            onClick={handleCancelAvatar}
+                            disabled={isUploading}
+                            className="px-3 py-1.5 text-xs font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                            Hủy
+                        </button>
+                        <button 
+                            onClick={handleSaveAvatar}
+                            disabled={isUploading}
+                            className="px-3 py-1.5 text-xs font-bold text-white bg-primary hover:bg-[#2f5146] rounded-lg transition-colors flex items-center gap-1 disabled:opacity-50"
+                        >
+                            {isUploading && <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
+                            Lưu ảnh
+                        </button>
+                    </div>
+                )}
                 <h3 className="text-xl font-bold text-gray-800">{user.name}</h3>
                 <p className="text-sm text-gray-500 mt-1">{user.email}</p>
             </div>
