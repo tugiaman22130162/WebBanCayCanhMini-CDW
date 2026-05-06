@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react"
 import axios from "axios"
-import MainLayout from "../layouts/MainLayout"
-import FilterBar from "../components/FilterBar"
-import ProductCard from "../components/ProductCard"
-import { Product } from "../data/products"
-import { useFavorites } from "../data/useFavorites"
+import MainLayout from "../../layouts/MainLayout"
+import FilterBar from "../../components/user/FilterBar"
+import ProductCard from "../../components/user/ProductCard"
+import { Product } from "../../data/products"
+import { useFavorites } from "../../data/useFavorites"
 
 export default function Products() {
     const [products, setProducts] = useState<Product[]>([])

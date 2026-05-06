@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import type { Product } from "../data/products";
+import type { Product } from "../../data/products";
 import { Link } from "react-router-dom";
 
 type Props = {

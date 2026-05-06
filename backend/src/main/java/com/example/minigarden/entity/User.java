@@ -1,6 +1,5 @@
 package com.example.minigarden.entity;
 
-import com.example.minigarden.entity.AuthProvider;
 import jakarta.persistence.*;
 import lombok.*;
 

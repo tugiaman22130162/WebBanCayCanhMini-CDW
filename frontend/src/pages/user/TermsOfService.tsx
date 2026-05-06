@@ -1,42 +1,42 @@
 import React from "react";
-import MainLayout from "../layouts/MainLayout";
+import MainLayout from "../../layouts/MainLayout";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 
-const shippingData = [
+const termsData = [
     {
-        id: "fees",
-        title: "1. Phí vận chuyển",
-        icon: "payments",
-        content: "MiniGarden áp dụng mức phí vận chuyển đồng giá 30.000đ cho tất cả các đơn hàng tiêu chuẩn trên toàn quốc. Đặc biệt, MIỄN PHÍ GIAO HÀNG (Freeship) cho các đơn hàng có tổng giá trị từ 500.000đ trở lên."
+        id: "general",
+        title: "1. Quy định chung",
+        icon: "gavel",
+        content: "Chào mừng bạn đến với MiniGarden. Bằng việc truy cập và mua sắm tại website của chúng tôi, bạn đồng ý tuân thủ các điều khoản và điều kiện dưới đây. Xin vui lòng đọc kỹ trước khi quyết định mua hàng. MiniGarden có quyền thay đổi, chỉnh sửa hoặc cập nhật các điều khoản này bất cứ lúc nào mà không cần báo trước."
     },
     {
-        id: "time",
-        title: "2. Thời gian giao hàng",
-        icon: "schedule",
-        content: "- Khu vực nội thành TP.HCM: Giao hàng trong vòng 1-2 ngày làm việc.\n- Khu vực ngoại thành và các tỉnh/thành khác: Giao hàng từ 3-5 ngày làm việc.\n*Lưu ý: Thời gian giao hàng không tính các ngày Chủ nhật, Lễ, Tết. Đối với sản phẩm Terrarium thiết kế riêng, thời gian chuẩn bị có thể kéo dài thêm 1-2 ngày."
+        id: "products",
+        title: "2. Thông tin sản phẩm cây cảnh",
+        icon: "potted_plant",
+        content: "Cây cảnh và Terrarium là sản phẩm tự nhiên, do đó mỗi cây sẽ có hình dáng, kích thước và màu sắc chênh lệch đôi chút so với ảnh mẫu trên website (khoảng 5-10%). Chúng tôi cam kết giao đúng giống cây và đảm bảo cây luôn ở trạng thái khỏe mạnh nhất khi xuất vườn."
     },
     {
-        id: "packaging",
-        title: "3. Quy cách đóng gói an toàn",
-        icon: "inventory_2",
-        content: "Vì đặc thù là cây xanh sống và bình thủy tinh/gốm sứ dễ vỡ, mỗi sản phẩm tại MiniGarden đều được đóng gói theo quy chuẩn nghiêm ngặt 4 lớp:\n1. Bọc giấy mềm giữ ẩm cho rễ cây.\n2. Cố định cây trong chậu bằng lớp màng bọc chuyên dụng.\n3. Quấn nhiều lớp xốp chống sốc (bubble wrap) quanh bình/chậu.\n4. Đóng gói trong thùng carton cứng cáp và dán tem 'Hàng Dễ Vỡ'."
+        id: "shipping",
+        title: "3. Vận chuyển và Đóng gói",
+        icon: "local_shipping",
+        content: "Vì đặc thù là hàng dễ vỡ (bình thủy tinh, chậu gốm) và cây xanh sống, MiniGarden áp dụng quy trình đóng gói nhiều lớp cực kỳ cẩn thận. Thời gian giao hàng dự kiến từ 1-3 ngày (nội thành) và 3-5 ngày (ngoại tỉnh). Trong một số điều kiện thời tiết khắc nghiệt, chúng tôi có thể xin phép lùi lịch giao để đảm bảo an toàn cho cây."
     },
     {
-        id: "tracking",
-        title: "4. Theo dõi tình trạng đơn hàng",
-        icon: "location_on",
-        content: "Ngay sau khi đơn hàng được giao cho đơn vị vận chuyển, bạn sẽ nhận được một email/tin báo chứa Mã vận đơn. Bạn có thể sử dụng mã này để tra cứu trực tiếp trên website của đối tác giao hàng hoặc xem ngay trong mục 'Đơn hàng của tôi' trên trang cá nhân."
+        id: "return",
+        title: "4. Chính sách Đổi trả & Bảo hành",
+        icon: "assignment_return",
+        content: "Chúng tôi bảo hành 1 ĐỔI 1 hoặc HOÀN TIỀN 100% trong vòng 3 ngày đầu tiên nếu: \n- Cây bị dập nát, gãy cành nặng do quá trình vận chuyển.\n- Bình thủy tinh, chậu gốm bị nứt vỡ.\n*Lưu ý: Quý khách vui lòng quay lại video quá trình mở hộp (unbox) để được hỗ trợ giải quyết khiếu nại nhanh nhất. Các trường hợp cây chết do chăm sóc sai cách sẽ không được bảo hành."
     },
     {
-        id: "issues",
-        title: "5. Xử lý sự cố khi nhận hàng",
-        icon: "support_agent",
-        content: "Nếu gói hàng có dấu hiệu móp méo, ướt sũng hoặc nghi ngờ cây bên trong bị hỏng hóc, vui lòng khoan từ chối nhận hàng. Hãy nhận hàng, quay lại video toàn bộ quá trình mở hộp (unbox) rõ nét và liên hệ ngay với Hotline/Fanpage của MiniGarden trong vòng 24h. Chúng tôi cam kết bảo hành 1 đổi 1 hoặc hoàn tiền nhanh chóng cho các trường hợp rủi ro do quá trình vận chuyển."
+        id: "privacy",
+        title: "5. Bảo mật thông tin",
+        icon: "shield_lock",
+        content: "MiniGarden tôn trọng và cam kết bảo mật tuyệt đối thông tin cá nhân của khách hàng. Thông tin của bạn (Tên, Số điện thoại, Địa chỉ, Email) chỉ được sử dụng cho mục đích xử lý đơn hàng và hỗ trợ chăm sóc khách hàng, hoàn toàn không cung cấp cho bên thứ ba với mục đích thương mại."
     }
 ];
 
-export default function ShippingPolicy() {
+export default function TermsOfService() {
     return (
         <MainLayout>
             <div className="bg-[#F8F9F5] min-h-screen pb-24 font-body">
@@ -44,19 +44,19 @@ export default function ShippingPolicy() {
                 <div className="relative pt-[84px] h-[450px] flex items-center justify-center overflow-hidden">
                     <div className="absolute inset-0 z-0">
                         <img 
-                            src="https://images.unsplash.com/photo-1610484826967-09c5720778c7?w=1600&q=80" 
-                            alt="Chính sách vận chuyển" 
+                            src="/images/terms.png" 
+                            alt="Điều khoản dịch vụ" 
                             className="w-full h-full object-cover" 
                         />
                         <div className="absolute inset-0 bg-black/50"></div>
                     </div>
                     <div className="relative z-10 text-center text-white px-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
                         <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg border border-white/30">
-                            <span className="material-symbols-outlined text-4xl text-white">local_shipping</span>
+                            <span className="material-symbols-outlined text-4xl text-white">gavel</span>
                         </div>
-                        <h1 className="text-4xl md:text-6xl font-black mb-4 tracking-tight drop-shadow-md">Chính Sách Vận Chuyển</h1>
+                        <h1 className="text-4xl md:text-6xl font-black mb-4 tracking-tight drop-shadow-md">Điều Khoản Dịch Vụ</h1>
                         <p className="text-lg md:text-xl font-medium max-w-2xl mx-auto text-white/90 drop-shadow-sm">
-                            Giao hàng nhanh chóng, đóng gói cẩn thận, đảm bảo mầm xanh luôn khỏe mạnh.
+                            Cam kết minh bạch và bảo vệ quyền lợi của bạn tại MiniGarden.
                         </p>
                     </div>
                 </div>
@@ -77,7 +77,7 @@ export default function ShippingPolicy() {
                     </motion.div>
 
                     <div className="space-y-6">
-                        {shippingData.map((term, index) => (
+                        {termsData.map((term, index) => (
                                 <motion.div 
                                     key={term.id} 
                                     initial={{ opacity: 0, y: 50 }}
@@ -113,17 +113,17 @@ export default function ShippingPolicy() {
                         className="my-16 rounded-3xl overflow-hidden aspect-[21/9] md:aspect-[21/7] relative group shadow-lg"
                     >
                         <img 
-                            src="https://images.unsplash.com/photo-1622383563227-04401ab4e5ea?w=1200&q=80" 
-                            alt="Đóng gói an toàn" 
+                            src="/images/about-1.png" 
+                            alt="Mầm xanh vươn lên" 
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000 ease-out"
                         />
                         <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent flex items-center p-8 md:p-16">
                             <div className="max-w-lg">
-                                <span className="px-4 py-1 bg-primary text-white text-xs font-bold uppercase tracking-widest rounded-full mb-4 inline-block shadow-sm">Cam kết</span>
+                                <span className="px-4 py-1 bg-primary text-white text-xs font-bold uppercase tracking-widest rounded-full mb-4 inline-block shadow-sm">Tin Cậy</span>
                                 <h3 className="text-2xl md:text-4xl font-black text-white leading-tight mb-4 drop-shadow-md">
-                                    Mỗi chậu cây đều được đóng gói như một món quà.
+                                    Mọi mầm xanh đều được nâng niu trước khi đến tay bạn.
                                 </h3>
-                                <p className="text-white/90 font-medium">Bảo vệ an toàn tối đa cho mầm xanh trên mọi nẻo đường.</p>
+                                <p className="text-white/90 font-medium">Bảo vệ môi trường đi đôi với bảo vệ quyền lợi người tiêu dùng.</p>
                             </div>
                         </div>
                     </motion.div>
@@ -139,10 +139,10 @@ export default function ShippingPolicy() {
                         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-0"></div>
                         <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl -z-0"></div>
                         <div className="relative z-10">
-                            <h3 className="text-2xl md:text-3xl font-black text-gray-800 mb-4">Bạn có yêu cầu giao hỏa tốc?</h3>
-                            <p className="text-gray-600 mb-8 max-w-xl mx-auto text-lg">Liên hệ ngay với MiniGarden để được hỗ trợ sắp xếp các chuyến xe trong ngày (chỉ áp dụng nội thành).</p>
+                            <h3 className="text-2xl md:text-3xl font-black text-gray-800 mb-4">Bạn vẫn còn thắc mắc?</h3>
+                            <p className="text-gray-600 mb-8 max-w-xl mx-auto text-lg">Đội ngũ CSKH của chúng tôi luôn sẵn sàng giải đáp mọi câu hỏi của bạn.</p>
                             <Link to="/about" className="inline-flex items-center gap-2 px-10 py-4 bg-primary text-white font-bold rounded-2xl hover:bg-[#2f5146] transition-all shadow-lg hover:shadow-xl hover:-translate-y-1">
-                                Liên hệ hỗ trợ <span className="material-symbols-outlined text-[20px]">support_agent</span>
+                                Liên hệ ngay <span className="material-symbols-outlined text-[20px]">support_agent</span>
                             </Link>
                         </div>
                     </motion.div>
