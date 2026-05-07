@@ -1,42 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { Link } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Header() {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [userEmail, setUserEmail] = useState("Đang tải...");
-    const [userName, setUserName] = useState("Đang tải...");
-    const [userAvatar, setUserAvatar] = useState("");
-    const [userRole, setUserRole] = useState("");
     const profileRef = useRef<HTMLDivElement>(null);
-    const navigate = useNavigate();
-
-    // Kiểm tra trạng thái đăng nhập từ localStorage khi component mount
-    useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (token) {
-            setIsLoggedIn(true);
-
-            axios.get("http://localhost:8080/api/users/me", {
-                headers: { Authorization: `Bearer ${token}` }
-            })
-                .then(response => {
-                    const data = response.data;
-                    const name = data.fullName || (data.email ? data.email.split('@')[0] : "Người dùng");
-                    setUserName(name);
-                    setUserEmail(data.email || "");
-                    setUserAvatar(data.avatar || "");
-                    setUserRole(data.role || "");
-                })
-                .catch(error => {
-                    console.error("Token không hợp lệ hoặc đã hết hạn:", error);
-                    if (error.response?.status === 401 || error.response?.status === 403) {
-                        handleLogout();
-                    }
-                });
-        }
-    }, []);
+    const { isLoggedIn, user, logout } = useAuth();
 
     // Đóng dropdown khi click ra ngoài vùng profile
     useEffect(() => {
@@ -51,17 +20,8 @@ export default function Header() {
 
     // logout
     const handleLogout = () => {
-        localStorage.removeItem("token");
-        setIsLoggedIn(false);
         setIsProfileOpen(false);
-        navigate("/login");
-    };
-
-    //Lay du lieu nguoi dung tu DB de hien thi tren header
-    const mockUser = {
-        name: userName,
-        email: userEmail,
-        avatar: userAvatar || "" //chua co avatar thi hien thi icon mac dinh
+        logout(); // Gọi hàm logout từ Context
     };
 
     // Hàm lấy chữ cái đầu của tên
@@ -77,8 +37,6 @@ export default function Header() {
                 {/* Logo */}
                 <Link
                     to="/"
-                    // className="text-2xl font-bold text-white tracking-tighter hover:opacity-80 transition"
-
                     className="text-2xl font-bold bg-gradient-to-r from-green-300 to-lime-200 bg-clip-text text-transparent tracking-tighter hover:opacity-80 transition"
                 >
                     MiniGarden
@@ -100,11 +58,21 @@ export default function Header() {
 
                     {/* Icons */}
                     <div className="flex items-center space-x-6">
-                        <Link to="/favorites" className="material-symbols-outlined text-white hover:text-red-500 transition-all active:scale-95 block">
+                        <button className="relative material-symbols-outlined text-white hover:text-emerald-300 transition-all active:scale-95 block">
+                            chat
+                            {/* Chấm đỏ thông báo có tin nhắn mới */}
+                            <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+                        </button>
+
+                        <button className="relative material-symbols-outlined text-white hover:text-emerald-300 transition-all active:scale-95 block">
+                            notifications
+                        </button>
+
+                        <Link to="/favorites" className="material-symbols-outlined text-white hover:text-emerald-300 transition-all active:scale-95 block">
                             favorite
                         </Link>
 
-                        <Link to="/cart" className="material-symbols-outlined text-white hover:text-red-500 transition-all active:scale-95 block">
+                        <Link to="/cart" className="material-symbols-outlined text-white hover:text-emerald-300 transition-all active:scale-95 block">
                             shopping_cart
                         </Link>
 
@@ -114,11 +82,11 @@ export default function Header() {
                                 onClick={() => setIsProfileOpen(!isProfileOpen)}
                                 className={`block ${isLoggedIn ? 'w-9 h-9 border-transparent' : 'w-8 h-8 border-transparent'} rounded-full overflow-hidden border-2 hover:border-emerald-300 focus:border-emerald-300 transition-all active:scale-95 outline-none flex items-center justify-center`}
                             >
-                                {isLoggedIn && mockUser.avatar ? (
-                                    <img src={mockUser.avatar} alt={mockUser.name} className="w-full h-full object-cover" />
-                                ) : isLoggedIn && getInitials(mockUser.name) ? (
+                                {isLoggedIn && user?.avatar ? (
+                                    <img src={user.avatar} alt={user.fullName} className="w-full h-full object-cover" />
+                                ) : isLoggedIn && user ? (
                                     <div className="w-full h-full bg-emerald-500 text-white flex items-center justify-center font-bold text-[14px]">
-                                        {getInitials(mockUser.name)}
+                                        {getInitials(user.fullName)}
                                     </div>
                                 ) : (
                                     <span className="material-symbols-outlined text-white text-[32px]">
@@ -138,24 +106,24 @@ export default function Header() {
                                         {isLoggedIn ? (
                                             <>
                                                 <div className="p-4 border-b border-gray-50 flex items-center gap-3 bg-gray-50/50">
-                                                    {mockUser.avatar ? (
-                                                        <img src={mockUser.avatar} alt={mockUser.name} className="w-10 h-10 rounded-full object-cover border border-gray-200 shadow-sm shrink-0" />
+                                                    {user?.avatar ? (
+                                                        <img src={user.avatar} alt={user.fullName} className="w-10 h-10 rounded-full object-cover border border-gray-200 shadow-sm shrink-0" />
                                                     ) : (
                                                         <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center border border-emerald-200 shadow-sm shrink-0">
-                                                            {getInitials(mockUser.name) ? (
-                                                                <span className="font-bold text-[16px]">{getInitials(mockUser.name)}</span>
+                                                            {getInitials(user?.fullName || "") ? (
+                                                                <span className="font-bold text-[16px]">{getInitials(user?.fullName || "")}</span>
                                                             ) : (
                                                                 <span className="material-symbols-outlined">person</span>
                                                             )}
                                                         </div>
                                                     )}
                                                     <div className="flex flex-col">
-                                                        <span className="text-sm font-bold text-gray-800">{mockUser.name}</span>
-                                                        <span className="text-xs text-gray-500 truncate w-40">{mockUser.email}</span>
+                                                        <span className="text-sm font-bold text-gray-800">{user?.fullName}</span>
+                                                        <span className="text-xs text-gray-500 truncate w-40">{user?.email}</span>
                                                     </div>
                                                 </div>
                                                 <div className="p-2 flex flex-col gap-1">
-                                                    {userRole === "ADMIN" && (
+                                                    {user?.role === "ADMIN" && (
                                                         <Link to="/admin/dashboard" onClick={() => setIsProfileOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-primary hover:bg-emerald-50 rounded-xl transition-colors"><span className="material-symbols-outlined text-[20px]">admin_panel_settings</span> Trang quản trị</Link>
                                                     )}
                                                     <Link to="/profile/info" onClick={() => setIsProfileOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-600 hover:text-primary hover:bg-emerald-50 rounded-xl transition-colors"><span className="material-symbols-outlined text-[20px]">person</span> Thông tin cá nhân</Link>

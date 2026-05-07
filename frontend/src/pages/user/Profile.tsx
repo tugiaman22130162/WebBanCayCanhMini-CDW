@@ -3,6 +3,28 @@ import { useNavigate, useParams } from "react-router-dom";
 import MainLayout from "../../layouts/MainLayout";
 import Sidebar from "../../components/user/Sidebar";
 import OrderHistory from "../../components/user/OrderHistory";
+import { useAuth } from "../../context/AuthContext";
+import axios from "axios";
+import Swal from "sweetalert2";
+
+// Cấu hình mặc định cho các thông báo Toast
+const Toast = Swal.mixin({
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true,
+    width: 'auto',
+    padding: '0.5em 1em',
+    customClass: {
+        popup: 'rounded-2xl shadow-lg border border-gray-100 font-body flex items-center mt-20',
+        title: 'text-sm font-bold text-gray-800 whitespace-nowrap'
+    },
+    didOpen: (toast) => {
+        toast.onmouseenter = Swal.stopTimer;
+        toast.onmouseleave = Swal.resumeTimer;
+    }
+});
 
 export default function Profile() {
     const { tab } = useParams<{ tab: string }>();
@@ -11,6 +33,9 @@ export default function Profile() {
     const [activeTab, setActiveTab] = useState<'info' | 'orders' | 'history' | 'reviews' | 'password'>(
         (tab as 'info' | 'orders' | 'history' | 'reviews' | 'password') || 'info'
     );
+    const { user: authUser, logout, isLoggedIn, isLoading, token, updateUser } = useAuth();
+    const [isUpdatingInfo, setIsUpdatingInfo] = useState(false);
+    const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
     useEffect(() => {
         if (tab && ['info', 'orders', 'history', 'reviews', 'password'].includes(tab)) {
@@ -35,14 +60,28 @@ export default function Profile() {
     const [reviewText, setReviewText] = useState("");
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
-    // Mock data người dùng
-    const user = {
-        name: "Nguyễn Văn A",
-        email: "hello@minigarden.com",
-        phone: "0987654321",
-        address: "123 Đường ABC, Phường 1, Quận 2, TP. HCM",
-        avatar: "https://i.pravatar.cc/150?u=hello@minigarden.com"
+    // Chuyển hướng nếu chưa đăng nhập
+    useEffect(() => {
+        if (!isLoading && !isLoggedIn) {
+            navigate("/login");
+        }
+    }, [isLoading, isLoggedIn, navigate]);
+
+    // Hàm lấy chữ cái đầu của tên
+    const getInitials = (name: string) => {
+        if (!name || name === "Đang tải...") return "";
+        return name.trim().charAt(0).toUpperCase();
     };
+
+    // Map dữ liệu người dùng từ AuthContext vào format cũ để tránh lỗi giao diện
+    const user = authUser ? {
+        name: authUser.fullName,
+        email: authUser.email,
+        phone: authUser.phoneNumber || "",
+        address: authUser.address || "",
+        avatar: authUser.avatar || "",
+        initial: getInitials(authUser.fullName)
+    } : { name: "", email: "", phone: "", address: "", avatar: "", initial: "" };
 
     // Mock data đơn hàng
     const orders = [
@@ -64,18 +103,66 @@ export default function Profile() {
     ];
 
     const handleLogout = () => {
-        alert("Đăng xuất thành công!");
-        navigate("/login");
+        logout(); // Handle logout via Context
     };
 
-    const handleUpdateInfo = (e: React.FormEvent) => {
+    const handleUpdateInfo = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        alert("Cập nhật thông tin thành công!");
+
+        const formData = new FormData(e.currentTarget);
+        const updatedData = {
+            fullName: formData.get('fullName')?.toString() || '',
+            phone: formData.get('phone')?.toString() || '',
+            address: formData.get('address')?.toString() || '',
+        };
+
+        setIsUpdatingInfo(true);
+        try {
+            await axios.put('http://localhost:8080/api/users/me/info', updatedData, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (authUser) {
+                updateUser({
+                    ...authUser,
+                    fullName: updatedData.fullName,
+                    phoneNumber: updatedData.phone,
+                    address: updatedData.address
+                });
+            }
+            Toast.fire({ icon: 'success', title: 'Cập nhật thông tin thành công!' });
+        } catch (error: any) {
+            Toast.fire({ icon: 'error', title: error.response?.data?.message || 'Cập nhật thất bại!' });
+        } finally {
+            setIsUpdatingInfo(false);
+        }
     };
 
-    const handleUpdatePassword = (e: React.FormEvent) => {
+    const handleUpdatePassword = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        alert("Cập nhật mật khẩu thành công!");
+        const form = e.currentTarget;
+        const formData = new FormData(form);
+        const currentPassword = formData.get('currentPassword')?.toString() || '';
+        const newPassword = formData.get('newPassword')?.toString() || '';
+        const confirmPassword = formData.get('confirmPassword')?.toString() || '';
+
+        if (newPassword !== confirmPassword) {
+            Toast.fire({ icon: 'error', title: 'Mật khẩu mới không khớp!' });
+            return;
+        }
+
+        setIsUpdatingPassword(true);
+        try {
+            await axios.put('http://localhost:8080/api/users/me/password', { currentPassword, newPassword }, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            Toast.fire({ icon: 'success', title: 'Cập nhật mật khẩu thành công!' });
+            form.reset(); // Xóa trắng form sau khi đổi thành công
+        } catch (error: any) {
+            Toast.fire({ icon: 'error', title: error.response?.data?.message || 'Cập nhật mật khẩu thất bại!' });
+        } finally {
+            setIsUpdatingPassword(false);
+        }
     };
 
     const handleTabChange = (newTab: 'info' | 'orders' | 'history' | 'reviews' | 'password') => {
@@ -114,6 +201,17 @@ export default function Profile() {
         setRating(5);
     };
 
+    // Hiển thị vòng xoay loading khi đang kiểm tra thông tin auth
+    if (isLoading) {
+        return (
+            <MainLayout>
+                <div className="min-h-[80vh] flex justify-center items-center">
+                    <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                </div>
+            </MainLayout>
+        );
+    }
+
     return (
         <MainLayout>
             <div className="bg-[#F8F9F5] min-h-screen pt-[50px] mb-[-10px] font-body">
@@ -140,11 +238,11 @@ export default function Profile() {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-1.5">Họ và tên</label>
-                                                <input type="text" defaultValue={user.name} required className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-all font-medium" />
+                                                <input type="text" name="fullName" defaultValue={user.name} required className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-all font-medium" />
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-1.5">Số điện thoại</label>
-                                                <input type="tel" defaultValue={user.phone} required className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-all font-medium" />
+                                                <input type="tel" name="phone" defaultValue={user.phone} required className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-all font-medium" />
                                             </div>
                                         </div>
                                         <div>
@@ -154,10 +252,13 @@ export default function Profile() {
                                         </div>
                                         <div>
                                             <label className="block text-sm font-bold text-gray-700 mb-1.5">Địa chỉ giao hàng mặc định</label>
-                                            <textarea defaultValue={user.address} rows={3} required className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-all resize-none font-medium"></textarea>
+                                            <textarea name="address" defaultValue={user.address} rows={3} required className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-all resize-none font-medium"></textarea>
                                         </div>
                                         <div className="pt-4 flex justify-end">
-                                            <button type="submit" className="px-8 py-3 bg-primary text-white font-bold rounded-xl hover:bg-[#2f5146] transition-colors shadow-md">Lưu Thay Đổi</button>
+                                            <button type="submit" disabled={isUpdatingInfo} className="px-8 py-3 bg-primary text-white font-bold rounded-xl hover:bg-[#2f5146] transition-colors shadow-md disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2">
+                                                {isUpdatingInfo && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
+                                                Lưu Thay Đổi
+                                            </button>
                                         </div>
                                     </form>
                                 </div>
@@ -258,12 +359,12 @@ export default function Profile() {
 
                             {/* TAB: LỊCH SỬ MUA HÀNG */}
                             {activeTab === 'history' && (
-                                <OrderHistory 
-                                    orders={orders} 
-                                    onViewDetails={(order) => { 
-                                        setSelectedOrder(order); 
-                                        setIsOrderModalOpen(true); 
-                                    }} 
+                                <OrderHistory
+                                    orders={orders}
+                                    onViewDetails={(order) => {
+                                        setSelectedOrder(order);
+                                        setIsOrderModalOpen(true);
+                                    }}
                                 />
                             )}
 
@@ -355,18 +456,21 @@ export default function Profile() {
                                     <form className="space-y-5 max-w-lg" onSubmit={handleUpdatePassword}>
                                         <div>
                                             <label className="block text-sm font-bold text-gray-700 mb-1.5">Mật khẩu hiện tại</label>
-                                            <input type="password" placeholder="••••••••" required className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-all font-medium" />
+                                            <input type="password" name="currentPassword" placeholder="••••••••" required className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-all font-medium" />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-bold text-gray-700 mb-1.5">Mật khẩu mới</label>
-                                            <input type="password" placeholder="••••••••" required className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-all font-medium" />
+                                            <input type="password" name="newPassword" placeholder="••••••••" required minLength={6} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-all font-medium" />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-bold text-gray-700 mb-1.5">Xác nhận mật khẩu mới</label>
-                                            <input type="password" placeholder="••••••••" required className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-all font-medium" />
+                                            <input type="password" name="confirmPassword" placeholder="••••••••" required minLength={6} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-all font-medium" />
                                         </div>
                                         <div className="pt-4 flex justify-start">
-                                            <button type="submit" className="px-8 py-3 bg-primary text-white font-bold rounded-xl hover:bg-[#2f5146] transition-colors shadow-md">Cập Nhật Mật Khẩu</button>
+                                            <button type="submit" disabled={isUpdatingPassword} className="px-8 py-3 bg-primary text-white font-bold rounded-xl hover:bg-[#2f5146] transition-colors shadow-md disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2">
+                                                {isUpdatingPassword && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
+                                                Cập Nhật Mật Khẩu
+                                            </button>
                                         </div>
                                     </form>
                                 </div>

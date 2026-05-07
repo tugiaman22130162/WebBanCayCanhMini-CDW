@@ -37,6 +37,9 @@ public class User {
     @Column(name = "avatar")
     private String avatar;
 
+    @Column(name = "is_default")
+    private Integer isDefault;
+
     @Enumerated(EnumType.STRING)
     private Role role; // ADMIN hoặc USER
 
