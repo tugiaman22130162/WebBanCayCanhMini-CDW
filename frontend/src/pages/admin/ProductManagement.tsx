@@ -3,6 +3,7 @@ import * as XLSX from "xlsx";
 import axios from "axios";
 import AdminHeader from "../../components/admin/AdminHeader";
 import AdminSidebar from "../../components/admin/AdminSidebar";
+import { useSearchParams } from "react-router-dom";
 import AddProductModal from "../../components/admin/AddProductModal";
 import EditProductModal from "../../components/admin/EditProductModal";
 
@@ -37,6 +38,10 @@ export default function ProductManagement() {
     const [tempFilters, setTempFilters] = useState({ status: "all", category: "all" });
     const [allCategories, setAllCategories] = useState<string[]>(['all']);
 
+    // State tìm kiếm từ URL
+    const [searchParams] = useSearchParams();
+    const searchTerm = searchParams.get("search") || "";
+
     // State phân trang
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
@@ -45,6 +50,10 @@ export default function ProductManagement() {
         fetchProducts();
         fetchAllCategories();
     }, []);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm]);
 
     const fetchAllCategories = async () => {
         try {
@@ -186,11 +195,14 @@ export default function ProductManagement() {
 
     const filteredProducts = useMemo(() => {
         return products.filter(p => {
+            const searchMatch = searchTerm === "" || 
+                                p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                p.id.toLowerCase().includes(searchTerm.toLowerCase());
             const statusMatch = currentFilters.status === 'all' || p.status === currentFilters.status;
             const categoryMatch = currentFilters.category === 'all' || p.category === currentFilters.category;
-            return statusMatch && categoryMatch;
+            return searchMatch && statusMatch && categoryMatch;
         });
-    }, [products, currentFilters]);
+    }, [products, currentFilters, searchTerm]);
 
     // Tính toán dữ liệu cho trang hiện tại
     const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);

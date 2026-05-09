@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import axios from "axios";
 import AdminHeader from "../../components/admin/AdminHeader";
 import AdminSidebar from "../../components/admin/AdminSidebar";
+import { useSearchParams } from "react-router-dom";
 
 type User = {
     name: string;
@@ -9,6 +10,7 @@ type User = {
     email: string;
     role: 'ADMIN' | 'USER';
     roleLabel: string;
+    roleColor?: string;
     status: 'ACTIVE' | 'BANNED';
     statusLabel: string;
     statusColor: string;
@@ -27,33 +29,61 @@ export default function UserManagement() {
         status: "all",
     });
 
-    // A temporary state for when the user is changing filters in the panel
     const [tempFilters, setTempFilters] = useState(currentFilters);
+
+    // State tìm kiếm từ URL
+    const [searchParams] = useSearchParams();
+    const searchTerm = searchParams.get("search") || "";
+
+    // State phân trang
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
+    // State quản lý Modal Xác nhận Khóa/Mở khóa
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [userToToggle, setUserToToggle] = useState<{ id: string, name: string, status: string } | null>(null);
+    const [isToggling, setIsToggling] = useState(false);
+
+    // State quản lý Modal Chỉnh sửa
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [userToEdit, setUserToEdit] = useState<{ id: string, name: string, role: string, status: string } | null>(null);
+    const [isEditing, setIsEditing] = useState(false);
 
     useEffect(() => {
         fetchUsers();
     }, []);
 
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm]);
+
     const fetchUsers = async () => {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await axios.get("http://localhost:8080/api/users");
+            const token = localStorage.getItem("token");
+            const response = await axios.get("http://localhost:8080/api/users", {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
 
             const formattedData: User[] = response.data.map((item: any) => {
                 let statusLabel = "Không xác định";
                 let statusColor = "text-gray-500";
                 if (item.status === 'ACTIVE') {
                     statusLabel = "Hoạt động";
-                    statusColor = "text-primary";
+                    statusColor = "text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg";
                 } else if (item.status === 'BANNED') {
                     statusLabel = "Bị khóa";
-                    statusColor = "text-red-500";
+                    statusColor = "text-red-700 bg-red-50 px-2 py-1 rounded-lg";
                 }
 
                 let roleLabel = "Người dùng";
+                let roleColor = "bg-blue-100 text-blue-700";
                 if (item.role === 'ADMIN') {
                     roleLabel = "Quản trị viên";
+                    roleColor = "bg-red-100 text-red-700";
                 }
 
                 return {
@@ -62,10 +92,11 @@ export default function UserManagement() {
                     email: item.email,
                     role: item.role,
                     roleLabel: roleLabel,
+                    roleColor: roleColor,
                     status: item.status,
                     statusLabel: statusLabel,
                     statusColor: statusColor,
-                    avatar: item.avatar || `https://i.pravatar.cc/150?u=${item.email}`,
+                    avatar: item.avatar || "",
                 };
             });
 
@@ -81,6 +112,7 @@ export default function UserManagement() {
     const handleApplyFilters = () => {
         setCurrentFilters(tempFilters);
         setIsFilterPanelOpen(false);
+        setCurrentPage(1);
     };
 
     const handleClearFilters = () => {
@@ -88,15 +120,80 @@ export default function UserManagement() {
         setTempFilters(clearedFilters);
         setCurrentFilters(clearedFilters);
         setIsFilterPanelOpen(false);
+        setCurrentPage(1);
+    };
+
+    // Hàm lấy chữ cái đầu của tên
+    const getInitials = (name: string) => {
+        if (!name || name === "Đang tải...") return "";
+        return name.trim().charAt(0).toUpperCase();
+    };
+
+    const confirmToggleStatus = async () => {
+        if (!userToToggle) return;
+        setIsToggling(true);
+        try {
+            const numericId = userToToggle.id.replace('#U-', '');
+            const token = localStorage.getItem("token");
+            await axios.put(`http://localhost:8080/api/users/${numericId}/status`, {}, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+            setIsConfirmModalOpen(false);
+            setUserToToggle(null);
+            fetchUsers(); // Tải lại danh sách sau khi đổi trạng thái
+        } catch (error) {
+            console.error("Lỗi khi thay đổi trạng thái người dùng:", error);
+            alert("Có lỗi xảy ra khi thay đổi trạng thái!");
+        } finally {
+            setIsToggling(false);
+        }
+    };
+
+    const handleEditSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!userToEdit) return;
+        setIsEditing(true);
+        try {
+            const numericId = userToEdit.id.replace('#U-', '');
+            const token = localStorage.getItem("token");
+            await axios.put(`http://localhost:8080/api/users/${numericId}`, {
+                fullName: userToEdit.name,
+                role: userToEdit.role,
+                status: userToEdit.status
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setIsEditModalOpen(false);
+            setUserToEdit(null);
+            fetchUsers();
+        } catch (error) {
+            console.error("Lỗi khi cập nhật người dùng:", error);
+            alert("Có lỗi xảy ra khi cập nhật!");
+        } finally {
+            setIsEditing(false);
+        }
     };
 
     const filteredUsers = useMemo(() => {
         return users.filter(user => {
+            const searchMatch = searchTerm === "" || 
+                                user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                user.email.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                user.id.toLowerCase().includes(searchTerm.toLowerCase());
             const roleMatch = currentFilters.role === 'all' || user.role === currentFilters.role;
             const statusMatch = currentFilters.status === 'all' || user.status === currentFilters.status;
-            return roleMatch && statusMatch;
+            return searchMatch && roleMatch && statusMatch;
         });
-    }, [users, currentFilters]);
+    }, [users, currentFilters, searchTerm]);
+
+    // Xử lý phân trang
+    const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+    const currentUsers = filteredUsers.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
 
     const totalUsers = users.length;
     const activeUsers = users.filter((u) => u.status === "ACTIVE").length;
@@ -119,77 +216,77 @@ export default function UserManagement() {
                         <h2 className="text-4xl font-extrabold text-gray-800">Quản Lý Người Dùng</h2>
 
                         <div className="relative">
-                            <button
-                                onClick={() => {
-                                    // When opening the panel, sync the temporary filters with the current active ones
-                                    setTempFilters(currentFilters);
-                                    setIsFilterPanelOpen(true);
-                                }}
-                                className="px-4 py-2 rounded-xl bg-white border text-sm flex items-center gap-2 hover:bg-gray-50 transition"
-                            >
-                                <span className="material-symbols-outlined text-lg text-on-surface-variant">filter_list</span>
-                                Bộ lọc
-                            </button>
+                                <button
+                                    onClick={() => {
+                                        // When opening the panel, sync the temporary filters with the current active ones
+                                        setTempFilters(currentFilters);
+                                        setIsFilterPanelOpen(true);
+                                    }}
+                                    className="h-full px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-gray-700 flex items-center gap-2 hover:bg-gray-50 transition shadow-sm"
+                                >
+                                    <span className="material-symbols-outlined text-[18px]">filter_list</span>
+                                    Bộ lọc
+                                </button>
 
-                            {isFilterPanelOpen && (
-                                <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border z-20 animate-in fade-in slide-in-from-top-2">
-                                    <div className="p-5 border-b">
-                                        <div className="flex justify-between items-center">
-                                            <h4 className="font-bold text-on-surface">Bộ lọc</h4>
-                                            <button onClick={() => setIsFilterPanelOpen(false)} className="p-1 rounded-full text-on-surface-variant hover:text-red-500 hover:bg-red-50 transition">
-                                                <span className="material-symbols-outlined text-xl">close</span>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="p-5 space-y-6">
-                                        {/* Filter by Role */}
-                                        <div>
-                                            <label className="block text-xs font-bold uppercase text-on-surface-variant mb-3">Vai trò</label>
-                                            <div className="space-y-2">
-                                                {(['all', 'ADMIN', 'USER'] as const).map(role => (
-                                                    <label key={role} className="flex items-center gap-2 cursor-pointer text-sm">
-                                                        <input
-                                                            type="radio"
-                                                            name="role"
-                                                            value={role}
-                                                            checked={tempFilters.role === role}
-                                                            onChange={(e) => setTempFilters({ ...tempFilters, role: e.target.value as 'all' | 'ADMIN' | 'USER' })}
-                                                            className="w-4 h-4 text-primary focus:ring-primary focus:ring-offset-0 cursor-pointer"
-                                                        />
-                                                        <span>{role === 'all' ? 'Tất cả' : (role === 'ADMIN' ? 'Quản trị viên' : 'Người dùng')}</span>
-                                                    </label>
-                                                ))}
+                                {isFilterPanelOpen && (
+                                    <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border z-20 animate-in fade-in slide-in-from-top-2">
+                                        <div className="p-5 border-b">
+                                            <div className="flex justify-between items-center">
+                                                <h4 className="font-bold text-on-surface">Bộ lọc</h4>
+                                                <button onClick={() => setIsFilterPanelOpen(false)} className="p-1 rounded-full text-on-surface-variant hover:text-red-500 hover:bg-red-50 transition">
+                                                    <span className="material-symbols-outlined text-xl">close</span>
+                                                </button>
                                             </div>
                                         </div>
 
-                                        {/* Filter by Status */}
-                                        <div>
-                                            <label className="block text-xs font-bold uppercase text-on-surface-variant mb-3">Trạng thái</label>
-                                            <div className="space-y-2">
-                                                {(['all', 'ACTIVE', 'BANNED'] as const).map(status => (
-                                                    <label key={status} className="flex items-center gap-2 cursor-pointer text-sm">
-                                                        <input
-                                                            type="radio"
-                                                            name="status"
-                                                            value={status}
-                                                            checked={tempFilters.status === status}
-                                                            onChange={(e) => setTempFilters({ ...tempFilters, status: e.target.value as 'all' | 'ACTIVE' | 'BANNED' })}
-                                                            className="w-4 h-4 text-primary focus:ring-primary focus:ring-offset-0 cursor-pointer"
-                                                        />
-                                                        <span>{status === 'all' ? 'Tất cả' : (status === 'ACTIVE' ? 'Hoạt động' : 'Bị khóa')}</span>
-                                                    </label>
-                                                ))}
+                                        <div className="p-5 space-y-6">
+                                            {/* Filter by Role */}
+                                            <div>
+                                                <label className="block text-xs font-bold uppercase text-on-surface-variant mb-3">Vai trò</label>
+                                                <div className="space-y-2">
+                                                    {(['all', 'ADMIN', 'USER'] as const).map(role => (
+                                                        <label key={role} className="flex items-center gap-2 cursor-pointer text-sm">
+                                                            <input
+                                                                type="radio"
+                                                                name="role"
+                                                                value={role}
+                                                                checked={tempFilters.role === role}
+                                                                onChange={(e) => setTempFilters({ ...tempFilters, role: e.target.value as 'all' | 'ADMIN' | 'USER' })}
+                                                                className="w-4 h-4 text-primary focus:ring-primary focus:ring-offset-0 cursor-pointer"
+                                                            />
+                                                            <span>{role === 'all' ? 'Tất cả' : (role === 'ADMIN' ? 'Quản trị viên' : 'Người dùng')}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Filter by Status */}
+                                            <div>
+                                                <label className="block text-xs font-bold uppercase text-on-surface-variant mb-3">Trạng thái</label>
+                                                <div className="space-y-2">
+                                                    {(['all', 'ACTIVE', 'BANNED'] as const).map(status => (
+                                                        <label key={status} className="flex items-center gap-2 cursor-pointer text-sm">
+                                                            <input
+                                                                type="radio"
+                                                                name="status"
+                                                                value={status}
+                                                                checked={tempFilters.status === status}
+                                                                onChange={(e) => setTempFilters({ ...tempFilters, status: e.target.value as 'all' | 'ACTIVE' | 'BANNED' })}
+                                                                className="w-4 h-4 text-primary focus:ring-primary focus:ring-offset-0 cursor-pointer"
+                                                            />
+                                                            <span>{status === 'all' ? 'Tất cả' : (status === 'ACTIVE' ? 'Hoạt động' : 'Bị khóa')}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div className="bg-gray-50 p-4 flex justify-end gap-3 rounded-b-2xl border-t">
-                                        <button onClick={handleClearFilters} className="px-4 py-2 text-sm font-semibold rounded-lg border bg-white hover:bg-gray-100 transition">Xóa lọc</button>
-                                        <button onClick={handleApplyFilters} className="px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-white hover:bg-primary-container transition">Áp dụng</button>
+                                        <div className="bg-gray-50 p-4 flex justify-end gap-3 rounded-b-2xl border-t">
+                                            <button onClick={handleClearFilters} className="px-4 py-2 text-sm font-semibold rounded-lg border bg-white hover:bg-gray-100 transition">Xóa lọc</button>
+                                            <button onClick={handleApplyFilters} className="px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-white hover:bg-primary-container transition">Áp dụng</button>
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
                         </div>
                     </div>
 
@@ -254,18 +351,25 @@ export default function UserManagement() {
                                         <tr>
                                             <td colSpan={5} className="p-8 text-center text-on-surface-variant">Chưa có người dùng nào.</td>
                                         </tr>
-                                    ) : filteredUsers.length === 0 ? (
+                                    ) : currentUsers.length === 0 ? (
                                         <tr>
                                             <td colSpan={5} className="p-8 text-center text-on-surface-variant">Không tìm thấy người dùng nào khớp với bộ lọc.</td>
                                         </tr>
                                     ) : (
-                                        filteredUsers.map((u, i) => (
+                                        currentUsers.map((u, i) => (
                                             <tr key={i} className="border-t border-gray-100 hover:bg-gray-50 transition">
                                                 <td className="p-4 flex items-center gap-3">
-                                                    <img
-                                                        src={u.avatar}
-                                                        className="w-10 h-10 rounded-full object-cover"
-                                                    />
+                                                    {u.avatar ? (
+                                                        <img
+                                                            src={u.avatar}
+                                                            className="w-10 h-10 rounded-full object-cover"
+                                                            alt={u.name}
+                                                        />
+                                                    ) : (
+                                                        <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center border border-emerald-200 shadow-sm shrink-0">
+                                                            <span className="font-bold text-[16px]">{getInitials(u.name)}</span>
+                                                        </div>
+                                                    )}
                                                     <div>
                                                         <p className="font-bold">{u.name}</p>
                                                         <p className="text-xs text-on-surface-variant">{u.id}</p>
@@ -275,7 +379,7 @@ export default function UserManagement() {
                                                 <td className="p-4 text-sm">{u.email}</td>
 
                                                 <td className="p-4">
-                                                    <span className="text-xs font-semibold px-3 py-1.5 bg-green-100 text-green-700 rounded-full">
+                                                    <span className={`text-xs font-semibold px-3 py-1.5 rounded-full ${u.roleColor || 'bg-green-100 text-green-700'}`}>
                                                         {u.roleLabel}
                                                     </span>
                                                 </td>
@@ -287,14 +391,21 @@ export default function UserManagement() {
                                                 </td>
 
                                                 <td className="p-4 text-right space-x-2">
-                                                    <button className="group px-2 py-1 text-sm rounded hover:bg-gray-100 transition">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" className="w-[24px] h-[24px] inline-block align-middle text-[#1a1a2e] group-hover:text-header-footer transition-colors duration-200">
-                                                            <path fill="currentColor" d="M256.1 312C322.4 312 376.1 258.3 376.1 192C376.1 125.7 322.4 72 256.1 72C189.8 72 136.1 125.7 136.1 192C136.1 258.3 189.8 312 256.1 312zM226.4 368C127.9 368 48.1 447.8 48.1 546.3C48.1 562.7 61.4 576 77.8 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L383.1 397C355.1 378.7 321.7 368.1 285.7 368.1L226.3 368.1zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
-                                                        </svg>
+                                                    <button
+                                                        onClick={() => { setUserToEdit({ id: u.id, name: u.name, role: u.role, status: u.status }); setIsEditModalOpen(true); }}
+                                                        className="group px-2 py-1 text-sm rounded hover:bg-gray-100 transition"
+                                                        title="Chỉnh sửa"
+                                                    >
+                                                        <span className="material-symbols-outlined text-[20px] align-middle text-gray-500 group-hover:text-primary transition-colors duration-200">
+                                                            edit
+                                                        </span>
                                                     </button>
-                                                    <button className="group px-2 py-1 text-sm rounded hover:bg-red-50 transition" title="Khóa">
-                                                        <span className="material-symbols-outlined text-[24px] align-middle text-red-500 group-hover:text-red-700 transition-colors duration-200">
-                                                            block
+                                                    <button
+                                                        onClick={() => { setUserToToggle({ id: u.id, name: u.name, status: u.status }); setIsConfirmModalOpen(true); }}
+                                                        className={`group px-2 py-1 text-sm rounded transition ${u.status === 'ACTIVE' ? 'hover:bg-red-50' : 'hover:bg-green-50'}`} title={u.status === 'ACTIVE' ? "Khóa" : "Mở khóa"}
+                                                    >
+                                                        <span className={`material-symbols-outlined text-[20px] align-middle transition-colors duration-200 ${u.status === 'ACTIVE' ? 'text-red-500 group-hover:text-red-700' : 'text-green-500 group-hover:text-green-700'}`}>
+                                                            {u.status === 'ACTIVE' ? 'block' : 'lock_open'}
                                                         </span>
                                                     </button>
                                                 </td>
@@ -306,21 +417,127 @@ export default function UserManagement() {
                         </div>
                     </div>
 
-                    {!isLoading && !error && filteredUsers.length > 0 && (
+                    {!isLoading && !error && totalPages > 1 && (
                         // {/* PAGINATION */}
                         <div className="flex justify-center items-center mt-6 text-sm text-on-surface-variant">
 
                             <div className="flex flex-wrap justify-center gap-2">
-                                <button className="px-3 py-1 rounded border">‹</button>
-                                <button className="px-3 py-1 rounded bg-primary text-white">1</button>
-                                <button className="px-3 py-1 rounded border">2</button>
-                                <button className="px-3 py-1 rounded border">3</button>
-                                <button className="px-3 py-1 rounded border">›</button>
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className="px-3 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition"
+                                >
+                                    ‹
+                                </button>
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                    <button
+                                        key={page}
+                                        onClick={() => setCurrentPage(page)}
+                                        className={`px-3 py-1 rounded transition ${currentPage === page ? 'bg-primary text-white font-bold' : 'border hover:bg-gray-50'}`}
+                                    >
+                                        {page}
+                                    </button>
+                                ))}
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="px-3 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition"
+                                >
+                                    ›
+                                </button>
                             </div>
                         </div>
                     )}
                 </main>
             </div>
+
+            {/* MODAL XÁC NHẬN KHÓA/MỞ KHÓA */}
+            {isConfirmModalOpen && userToToggle && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+                        <div className="p-6 text-center">
+                            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${userToToggle.status === 'ACTIVE' ? 'bg-red-100 text-red-500' : 'bg-emerald-100 text-emerald-500'}`}>
+                                <span className="material-symbols-outlined text-3xl">
+                                    {userToToggle.status === 'ACTIVE' ? 'block' : 'lock_open'}
+                                </span>
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-800 mb-2">
+                                Xác nhận {userToToggle.status === 'ACTIVE' ? 'khóa' : 'mở khóa'}
+                            </h3>
+                            <p className="text-gray-600 mb-6">
+                                Bạn có chắc chắn muốn {userToToggle.status === 'ACTIVE' ? 'khóa' : 'mở khóa'} tài khoản của người dùng <strong>{userToToggle.name}</strong> không?
+                            </p>
+
+                            <div className="flex justify-center gap-3">
+                                <button
+                                    onClick={() => setIsConfirmModalOpen(false)}
+                                    disabled={isToggling}
+                                    className="px-6 py-2 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition-colors"
+                                >
+                                    Hủy
+                                </button>
+                                <button
+                                    onClick={confirmToggleStatus}
+                                    disabled={isToggling}
+                                    className={`px-6 py-2 rounded-xl text-white font-bold transition-colors disabled:opacity-50 ${userToToggle.status === 'ACTIVE' ? 'bg-red-500 hover:bg-red-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}
+                                >
+                                    {isToggling ? "Đang xử lý..." : "Xác Nhận"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL CHỈNH SỬA NGƯỜI DÙNG */}
+            {isEditModalOpen && userToEdit && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+                        <div className="p-5 border-b flex justify-between items-center bg-gray-50">
+                            <h3 className="font-bold text-lg text-gray-800" style={{ fontSize: 25 }}>Chỉnh sửa người dùng</h3>
+                            <button onClick={() => setIsEditModalOpen(false)} className="text-gray-400 hover:text-red-500 transition-colors">
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold mb-1 text-gray-700">Tên người dùng</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={userToEdit.name}
+                                    onChange={(e) => setUserToEdit({ ...userToEdit, name: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E]"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold mb-1 text-gray-700">Vai trò</label>
+                                <div className="relative">
+                                    <select
+                                        value={userToEdit.role}
+                                        onChange={(e) => setUserToEdit({ ...userToEdit, role: e.target.value })}
+                                        className="appearance-none w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] bg-white cursor-pointer"
+                                    >
+                                        <option value="USER">Người dùng</option>
+                                        <option value="ADMIN">Quản trị viên</option>
+                                    </select>
+                                    <span className="absolute right-[17px] top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none flex items-center justify-center">
+                                        <span className="material-symbols-outlined text-lg">expand_more</span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="pt-4 flex justify-end gap-3">
+                                <button type="button" onClick={() => setIsEditModalOpen(false)} disabled={isEditing} className="px-5 py-2 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition-colors">
+                                    Hủy
+                                </button>
+                                <button type="submit" disabled={isEditing} className="px-5 py-2 rounded-xl bg-primary text-white font-bold hover:bg-[#2f5146] transition-colors shadow-md">
+                                    {isEditing ? "Đang lưu..." : "Lưu thay đổi"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
