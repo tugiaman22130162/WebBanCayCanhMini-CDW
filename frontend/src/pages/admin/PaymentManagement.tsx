@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import AdminHeader from "../../components/admin/AdminHeader";
 import AdminSidebar from "../../components/admin/AdminSidebar";
+import { useSearchParams } from "react-router-dom";
 
 type PaymentStatus = 'SUCCESS' | 'PENDING' | 'FAILED' | 'REFUNDED';
 type PaymentMethod = 'COD' | 'VNPAY';
@@ -55,7 +56,8 @@ const getMethodIcon = (method: PaymentMethod) => {
 export default function PaymentManagement() {
     const [payments, setPayments] = useState<Payment[]>(initialPayments);
     const [statusFilter, setStatusFilter] = useState<PaymentStatus | 'ALL'>('ALL');
-    const [searchTerm, setSearchTerm] = useState("");
+    const [searchParams] = useSearchParams();
+    const searchTerm = searchParams.get("search") || "";
 
     // State quản lý Modal Chi Tiết
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -139,16 +141,6 @@ export default function PaymentManagement() {
                     {/* THANH CÔNG CỤ TÌM KIẾM / LỌC */}
                     <div className="bg-white p-4 rounded-t-2xl border border-gray-50 border-b-0 flex flex-col lg:flex-row justify-between gap-4 items-center">
                         <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
-                            <div className="relative w-full sm:w-64">
-                                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">search</span>
-                                <input
-                                    type="text"
-                                    placeholder="Tìm mã thanh toán, đơn hàng..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 focus:border-[#006c49] focus:ring-1 focus:ring-[#006c49] outline-none text-sm transition-all"
-                                />
-                            </div>
                             <div className="relative w-full sm:w-auto">
                                 <select
                                     value={statusFilter}

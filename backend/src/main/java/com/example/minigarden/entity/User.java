@@ -55,4 +55,7 @@ public class User {
 
     @Column(name = "reset_token_expiry")
     private LocalDateTime resetTokenExpiry;
+
+    @Column(name = "failed_login_attempts")
+    private Integer failedLoginAttempts;
 }

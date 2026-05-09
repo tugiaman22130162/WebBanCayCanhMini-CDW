@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import AdminHeader from "../../components/admin/AdminHeader";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import OrderDetailModal from "../../components/admin/OrderDetailModal";
+import { useSearchParams } from "react-router-dom";
 
 // Khai báo Type dựa trên Entity Orders của Backend
 type OrderStatus = 'PENDING' | 'CONFIRMED' | 'SHIPPING' | 'DELIVERED' | 'CANCELLED';
@@ -87,6 +88,9 @@ const getStatusColor = (status: OrderStatus) => {
 export default function OrderManagement() {
     const [orders, setOrders] = useState<Order[]>(initialOrders);
     const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>('ALL');
+    
+    const [searchParams] = useSearchParams();
+    const searchTerm = searchParams.get("search") || "";
 
     // State quản lý Modal Chi tiết
     const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
@@ -94,8 +98,13 @@ export default function OrderManagement() {
 
     // Lọc danh sách theo trạng thái
     const filteredOrders = useMemo(() => {
-        if (statusFilter === 'ALL') return orders;
-        return orders.filter(order => order.status === statusFilter);
+        return orders.filter(order => {
+            const matchSearch = searchTerm === "" || 
+                                order.id.toString().includes(searchTerm) || 
+                                order.receiver_name.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchStatus = statusFilter === 'ALL' || order.status === statusFilter;
+            return matchSearch && matchStatus;
+        });
     }, [orders, statusFilter]);
 
     // Thống kê

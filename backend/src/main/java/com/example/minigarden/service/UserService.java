@@ -75,6 +75,7 @@ public class UserService {
                 .role(Role.USER)
                 .status(UserStatus.ACTIVE)
                 .provider(AuthProvider.LOCAL)
+                .failedLoginAttempts(0)
                 .build();
 
         userRepository.save(user);
@@ -91,8 +92,33 @@ public class UserService {
             throw new RuntimeException("Tài khoản dùng Google/Facebook");
         }
 
+        // Kiểm tra trạng thái tài khoản
+        if (user.getStatus() == UserStatus.BANNED) {
+            throw new RuntimeException("Tài khoản đã bị khóa");
+        }
+
         if (!passwordEncoder.matches(req.getPassword(), user.getPassword())) {
+            int attempts = user.getFailedLoginAttempts() == null ? 0 : user.getFailedLoginAttempts();
+            attempts++;
+            user.setFailedLoginAttempts(attempts);
+
+            if (attempts >= 5) {
+                user.setStatus(UserStatus.BANNED);
+                userRepository.save(user);
+                throw new RuntimeException("Tài khoản đã bị khóa do nhập sai mật khẩu quá 5 lần");
+            }
+            userRepository.save(user);
+            
+            if (attempts >= 3) {
+                int remaining = 5 - attempts;
+                throw new RuntimeException("Sai mật khẩu. Bạn chỉ còn " + remaining + " lần nhập nữa trước khi tài khoản bị khóa");
+            }
             throw new RuntimeException("Sai mật khẩu");
+        }
+
+        if (user.getFailedLoginAttempts() != null && user.getFailedLoginAttempts() > 0) {
+            user.setFailedLoginAttempts(0);
+            userRepository.save(user);
         }
 
         String token = jwtService.generateToken(user.getEmail());
@@ -134,7 +160,58 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(newPassword));
         user.setResetToken(null);
         user.setResetTokenExpiry(null);
+        user.setFailedLoginAttempts(0); // Reset số lần sai khi đổi mật khẩu
 
         userRepository.save(user);
+    }
+
+    // Logic khóa / mở khóa User
+    public UserResponse toggleUserStatus(Integer id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+        
+        // Chuyển đổi trạng thái qua lại
+        if (user.getStatus() == UserStatus.ACTIVE) {
+            user.setStatus(UserStatus.BANNED);
+        } else {
+            user.setStatus(UserStatus.ACTIVE);
+            user.setFailedLoginAttempts(0); // Reset số lần sai khi Admin mở khóa
+        }
+        userRepository.save(user);
+
+        return UserResponse.builder()
+                .id(user.getId())
+                .fullName(user.getFullName())
+                .email(user.getEmail())
+                .phoneNumber(user.getPhoneNumber())
+                .address(user.getAddress())
+                .avatar(user.getAvatar())
+                .role(user.getRole())
+                .status(user.getStatus())
+                .build();
+    }
+
+    // Cập nhật thông tin User (Tên, Vai trò, Trạng thái)
+    public UserResponse updateUser(Integer id, UserResponse req) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+
+        // Cập nhật các trường nếu có truyền lên
+        if (req.getFullName() != null) user.setFullName(req.getFullName());
+        if (req.getRole() != null) user.setRole(req.getRole());
+        if (req.getStatus() != null) user.setStatus(req.getStatus());
+
+        userRepository.save(user);
+
+        return UserResponse.builder()
+                .id(user.getId())
+                .fullName(user.getFullName())
+                .email(user.getEmail())
+                .phoneNumber(user.getPhoneNumber())
+                .address(user.getAddress())
+                .avatar(user.getAvatar())
+                .role(user.getRole())
+                .status(user.getStatus())
+                .build();
     }
 }
