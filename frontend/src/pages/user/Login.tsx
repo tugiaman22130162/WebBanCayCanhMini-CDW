@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import Swal from "sweetalert2";
 import { useAuth } from "../../context/AuthContext";
@@ -15,6 +15,9 @@ export default function Login() {
     });
     const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
+    const location = useLocation();
+    const searchParams = new URLSearchParams(location.search);
+    const redirectUrl = searchParams.get("redirect") || "/";
     const { login } = useAuth();
 
     const validateForm = () => {
@@ -76,7 +79,7 @@ export default function Login() {
                     if (userRole === "ADMIN") {
                         navigate("/admin/dashboard");
                     } else {
-                        navigate("/");
+                        navigate(redirectUrl);
                     }
                 });
             } catch (error: any) {

@@ -1,43 +1,39 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import ProductCard from "../user/ProductCard";
 import { useFavorites } from "../../data/useFavorites";
-
-const products = [
-    {
-        id: 1,
-        name: "Sen đá Echeveria laui",
-        category: "Sen đá",
-        price: "50.000đ",
-        image: "./images/sen_da.jpg",
-    },
-    {
-        id: 2,
-        name: "Trầu bà Đế Vương Đỏ",
-        category: "Cây để bàn",
-        price: "450.000đ",
-        image: "./images/cay_trong_nha.jpg",
-    },
-    {
-        id: 3,
-        name: "Terrarium treo",
-        category: "Terrarium",
-        price: "485.000đ",
-        image: "./images/terrarium.jpg",
-
-    },
-    {
-        id: 4,
-        name: "Sen đá Kẹo bọc đường",
-        category: "Sen đá",
-        price: "258.000đ",
-        image: "./images/sen_da_1.webp",
-    },
-];
+import axios from "axios";
+import { Product } from "../../data/products";
 
 export default function NewArrivals() {
     const { isFavorited, toggleFavorite } = useFavorites();
+    const [products, setProducts] = useState<Product[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchNewArrivals = async () => {
+            try {
+                const response = await axios.get("http://localhost:8080/api/products");
+                // Đảo ngược mảng để lấy 4 sản phẩm mới nhất
+                const formattedData: Product[] = response.data.map((item: any) => ({
+                    id: item.id,
+                    name: item.name,
+                    price: item.price || 0,
+                    image: (item.images && item.images.length > 0) ? item.images[0] : "https://images.unsplash.com/photo-1614594975525-e45190c55d40?w=400&h=400&fit=crop",
+                    category: item.categoryName || item.category?.name || item.category || "Chưa phân loại",
+                })).reverse().slice(0, 4);
+                
+                setProducts(formattedData);
+            } catch (error) {
+                console.error("Lỗi khi lấy sản phẩm mới:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchNewArrivals();
+    }, []);
 
     return (
         <section className="mt-[30px] py-10 px-8 bg-surface-container-lowest">
@@ -67,21 +63,27 @@ export default function NewArrivals() {
                 </div>
 
                 {/* GRID */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                    {products.map((product) => {
-                        const isLiked = isFavorited(product);
+                {isLoading ? (
+                    <div className="flex justify-center items-center py-10">
+                        <span className="material-symbols-outlined animate-spin text-4xl text-primary">autorenew</span>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                        {products.map((product) => {
+                            const isLiked = isFavorited(product);
 
-                        return (
-                            <div key={product.id} className="mt-[-30px]">
-                                <ProductCard
-                                    product={product}
-                                    isFavorited={isLiked}
-                                    onToggleFavorite={toggleFavorite}
-                                />
-                            </div>
-                        );
-                    })}
-                </div>
+                            return (
+                                <div key={product.id} className="mt-[-30px]">
+                                    <ProductCard
+                                        product={product}
+                                        isFavorited={isLiked}
+                                        onToggleFavorite={toggleFavorite}
+                                    />
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
         </section>
     );
