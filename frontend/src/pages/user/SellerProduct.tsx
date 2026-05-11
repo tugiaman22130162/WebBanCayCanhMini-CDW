@@ -1,4 +1,6 @@
 import React from "react";
+import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import ProductCard from "../../components/user/ProductCard";
 import Header from "../../components/user/Header";
 import Footer from "../../components/user/Footer";
@@ -46,6 +48,17 @@ const SellerProduct: React.FC = () => {
             {/* HEADER */}
             <header className="bg-white pt-28 pb-8 px-6 border-b border-gray-100">
                 <div className="max-w-7xl mx-auto">
+                    {/* Breadcrumbs */}
+                    <motion.nav 
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                        className="flex text-sm text-gray-500 mb-8"
+                    >
+                        <Link to="/" className="hover:text-primary transition-colors">Trang chủ</Link>
+                        <span className="mx-2">/</span>
+                        <span className="text-gray-800 font-semibold truncate">Sản phẩm bán chạy</span>
+                    </motion.nav>
                     <h2 className="text-4xl font-bold text-on-surface mb-2">Sản phẩm bán chạy</h2>
                     <p className="text-on-surface-variant max-w-2xl">
                         Tuyển chọn những sản phẩm được yêu thích và bán chạy nhất tại MiniGarden.

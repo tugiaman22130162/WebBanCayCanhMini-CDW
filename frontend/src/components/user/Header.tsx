@@ -1,11 +1,23 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useFavorites } from "../../data/useFavorites";
+import axios from "axios";
 
 export default function Header() {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [isAnimating, setIsAnimating] = useState(false);
     const profileRef = useRef<HTMLDivElement>(null);
+    const animationTimer = useRef<any>(null);
     const { isLoggedIn, user, logout } = useAuth();
+    const { favorites } = useFavorites();
+    const navigate = useNavigate();
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [showSearchResults, setShowSearchResults] = useState(false);
+    const [hasMoreResults, setHasMoreResults] = useState(false);
+    const searchRef = useRef<HTMLDivElement>(null);
 
     // Đóng dropdown khi click ra ngoài vùng profile
     useEffect(() => {
@@ -18,6 +30,58 @@ export default function Header() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // Đóng dropdown tìm kiếm khi click ra ngoài vùng tìm kiếm
+    useEffect(() => {
+        const handleClickOutsideSearch = (event: MouseEvent) => {
+            if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+                setShowSearchResults(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutsideSearch);
+        return () => document.removeEventListener("mousedown", handleClickOutsideSearch);
+    }, []);
+
+    // Kích hoạt hiệu ứng đập ngay lập tức khi nhận được sự kiện thêm sản phẩm yêu thích
+    useEffect(() => {
+        const handleFavoriteToggle = (e: Event) => {
+            const { isAdd } = (e as CustomEvent).detail;
+            if (isAdd) {
+                setIsAnimating(true);
+                if (animationTimer.current) clearTimeout(animationTimer.current);
+                animationTimer.current = setTimeout(() => setIsAnimating(false), 1000);
+            }
+        };
+        window.addEventListener('localFavoriteToggle', handleFavoriteToggle);
+        return () => window.removeEventListener('localFavoriteToggle', handleFavoriteToggle);
+    }, []);
+
+    // Gọi API để lấy kết quả tìm kiếm gợi ý (Debounce 300ms)
+    useEffect(() => {
+        const fetchSearchResults = async () => {
+            if (!searchQuery.trim()) {
+                setSearchResults([]);
+                setHasMoreResults(false);
+                return;
+            }
+            setIsSearching(true);
+            try {
+                const response = await axios.get("http://localhost:8080/api/products");
+                const filtered = response.data.filter((p: any) => 
+                    p.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
+                );
+                setSearchResults(filtered.slice(0, 5)); // Chỉ hiển thị tối đa 5 kết quả gợi ý
+                setHasMoreResults(filtered.length > 5);
+            } catch (error) {
+                console.error("Lỗi tìm kiếm:", error);
+            } finally {
+                setIsSearching(false);
+            }
+        };
+
+        const timer = setTimeout(fetchSearchResults, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
     // logout
     const handleLogout = () => {
         setIsProfileOpen(false);
@@ -28,6 +92,29 @@ export default function Header() {
     const getInitials = (name: string) => {
         if (!name || name === "Đang tải...") return "";
         return name.trim().charAt(0).toUpperCase();
+    };
+
+    // Xử lý khi ấn Enter ở ô tìm kiếm
+    const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Enter") {
+            if (searchQuery.trim()) {
+                navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+                setShowSearchResults(false);
+            } else {
+                navigate(`/products`);
+            }
+        }
+    };
+
+    // Hàm bôi đậm từ khóa tìm kiếm trong kết quả gợi ý
+    const highlightMatch = (text: string, query: string) => {
+        if (!query.trim()) return text;
+        // Escape các ký tự đặc biệt trong query để tránh lỗi Regex
+        const escapeRegex = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`(${escapeRegex})`, 'gi');
+        return text.split(regex).map((part, i) =>
+            regex.test(part) ? <span key={i} className="text-primary bg-emerald-50 px-0.5 rounded">{part}</span> : part
+        );
     };
 
     return (
@@ -45,15 +132,84 @@ export default function Header() {
                 {/* Right Section */}
                 <div className="flex items-center gap-6">
                     {/* Search Bar */}
-                    <div className="relative w-[300px] hidden md:block">
+                    <div className="relative w-[300px] hidden md:block" ref={searchRef}>
                         <input
                             type="text"
                             placeholder="Tìm kiếm sản phẩm..."
+                            value={searchQuery}
+                            onChange={(e) => {
+                                setSearchQuery(e.target.value);
+                                setShowSearchResults(true);
+                            }}
+                            onFocus={() => {
+                                if (searchQuery.trim()) setShowSearchResults(true);
+                            }}
+                            onKeyDown={handleSearch}
                             className="w-full bg-white/10 text-white placeholder-white/60 text-sm rounded-full py-2.5 pl-5 pr-10 border border-white/20 focus:outline-none focus:border-white/50 focus:bg-white/20 transition-all"
                         />
-                        <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-white/60 pointer-events-none">
-                            search
-                        </span>
+                        <button 
+                            onClick={() => {
+                                if (searchQuery.trim()) navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+                                else navigate(`/products`);
+                                setShowSearchResults(false);
+                            }}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors"
+                        >
+                            <span className="material-symbols-outlined">search</span>
+                        </button>
+
+                        {/* Dropdown hiển thị kết quả tìm kiếm */}
+                        {showSearchResults && searchQuery.trim() !== "" && (
+                            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
+                                {isSearching ? (
+                                    <div className="p-4 text-center text-gray-500 text-sm flex items-center justify-center gap-2">
+                                        <span className="material-symbols-outlined animate-spin text-[18px]">autorenew</span>
+                                        Đang tìm kiếm...
+                                    </div>
+                                ) : searchResults.length > 0 ? (
+                                    <div className="max-h-[350px] overflow-y-auto">
+                                        {searchResults.map((product) => (
+                                            <Link 
+                                                key={product.id} 
+                                                to={`/products/${product.id}`}
+                                                onClick={() => {
+                                                    setShowSearchResults(false);
+                                                    setSearchQuery("");
+                                                }}
+                                                className="flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
+                                            >
+                                                <img 
+                                                    src={(product.images && product.images.length > 0) ? (typeof product.images[0] === 'string' ? product.images[0] : product.images[0].image_url || product.images[0].imageUrl) : "https://images.unsplash.com/photo-1614594975525-e45190c55d40?w=100&h=100&fit=crop"} 
+                                                    alt={product.name} 
+                                                    className="w-12 h-12 rounded-lg object-cover border border-gray-100"
+                                                />
+                                                <div className="flex-1 min-w-0 text-left">
+                                                    <p className="text-sm font-bold text-gray-800 truncate">{highlightMatch(product.name, searchQuery)}</p>
+                                                    <p className="text-sm text-emerald-600 font-bold mt-0.5">
+                                                        {product.price ? product.price.toLocaleString("vi-VN") + "đ" : "0đ"}
+                                                    </p>
+                                                </div>
+                                            </Link>
+                                        ))}
+                                        {hasMoreResults && (
+                                            <button 
+                                                onClick={() => {
+                                                    navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+                                                    setShowSearchResults(false);
+                                                }}
+                                                className="w-full p-3 text-sm text-center font-bold text-primary hover:bg-emerald-50 transition-colors bg-gray-50"
+                                            >
+                                                Xem thêm các kết quả khác
+                                            </button>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="p-4 text-center text-gray-500 text-sm">
+                                        Không tìm thấy sản phẩm "{searchQuery}"
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Icons */}
@@ -68,8 +224,23 @@ export default function Header() {
                             notifications
                         </button>
 
-                        <Link to="/favorites" className="material-symbols-outlined text-white hover:text-emerald-300 transition-all active:scale-95 block">
-                            favorite
+                        <Link to="/favorites" className="relative block group">
+                            <span 
+                                className={`material-symbols-outlined transition-all duration-300 block ${
+                                    isAnimating 
+                                        ? 'scale-125 text-red-500 fill-current drop-shadow-md' 
+                                        : 'text-white group-hover:text-emerald-300 active:scale-95'
+                                }`}
+                                style={{ fontVariationSettings: favorites.length > 0 ? "'FILL' 1" : "'FILL' 0" }}
+                            >
+                                favorite
+                            </span>
+                            {/* Lớp phủ nhịp đập (Ping) tỏa ra */}
+                            {isAnimating && (
+                                <span className="absolute inset-0 material-symbols-outlined text-red-500 animate-ping opacity-75 pointer-events-none" style={{ fontVariationSettings: "'FILL' 1" }}>
+                                    favorite
+                                </span>
+                            )}
                         </Link>
 
                         <Link to="/cart" className="material-symbols-outlined text-white hover:text-emerald-300 transition-all active:scale-95 block">
