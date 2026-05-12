@@ -18,7 +18,7 @@ export default function Header() {
     const [showSearchResults, setShowSearchResults] = useState(false);
     const [hasMoreResults, setHasMoreResults] = useState(false);
     const searchRef = useRef<HTMLDivElement>(null);
-
+    const [cartCount, setCartCount] = useState(0);
     // Đóng dropdown khi click ra ngoài vùng profile
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -81,6 +81,42 @@ export default function Header() {
         const timer = setTimeout(fetchSearchResults, 300);
         return () => clearTimeout(timer);
     }, [searchQuery]);
+    
+    // Hàm lấy số lượng giỏ hàng
+    const fetchCartCount = async () => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            setCartCount(0);
+            return;
+        }
+        try {
+            let userId;
+            const userStr = localStorage.getItem("user");
+            if (userStr) {
+                userId = JSON.parse(userStr).id;
+            }
+            if (!userId) {
+                const userRes = await axios.get("http://localhost:8080/api/users/me", {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                userId = userRes.data.id;
+                localStorage.setItem("user", JSON.stringify(userRes.data));
+            }
+            const res = await axios.get(`http://localhost:8080/api/cart/${userId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const count = res.data.items?.reduce((total: number, item: any) => total + item.quantity, 0) || 0;
+            setCartCount(count);
+        } catch (e) {
+            console.error("Lỗi lấy số lượng giỏ hàng", e);
+        }
+    };
+
+    useEffect(() => {
+        fetchCartCount();
+        window.addEventListener("cartUpdated", fetchCartCount);
+        return () => window.removeEventListener("cartUpdated", fetchCartCount);
+    }, []);
 
     // logout
     const handleLogout = () => {
@@ -243,10 +279,16 @@ export default function Header() {
                             )}
                         </Link>
 
-                        <Link to="/cart" className="material-symbols-outlined text-white hover:text-emerald-300 transition-all active:scale-95 block">
-                            shopping_cart
-                        </Link>
-
+                        <div className="relative flex items-center justify-center transition-all duration-300" id="cart-icon">
+                            <Link to="/cart" className="material-symbols-outlined text-white hover:text-red-500 transition-all active:scale-95 block">
+                                shopping_cart
+                            </Link>
+                            {cartCount > 0 && (
+                                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm pointer-events-none">
+                                    {cartCount > 99 ? '99+' : cartCount}
+                                </span>
+                            )}
+                        </div>
                         {/* PROFILE DROPDOWN */}
                         <div className="relative" ref={profileRef}>
                             <button

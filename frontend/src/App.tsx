@@ -30,6 +30,7 @@ import ShippingPolicy from "./pages/user/ShippingPolicy"
 import NewsDetail from "./pages/user/NewsDetail"
 import AdminProfile from "./pages/admin/AdminProfile"
 import { AuthProvider } from "../src/context/AuthContext"
+import OAuth2Success from "./pages/user/OAuth2Success"
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -69,6 +70,7 @@ export default function App() {
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/shipping" element={<ShippingPolicy />} />
           <Route path="/news/:id" element={<NewsDetail />} />
+          <Route path="/oauth2/success" element={<OAuth2Success />} />
 
           {/* ADMIN */}
           <Route path="/admin/users" element={<UserManagement />} />

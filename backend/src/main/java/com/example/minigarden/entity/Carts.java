@@ -22,21 +22,25 @@ public class Carts {
 
     // Lấy từ JWT
     @Column(name = "user_id", nullable = false)
-    private Integer user_id;
+    private Integer userId;
 
-    private BigDecimal total_price;
+    @Column(name = "total_price")
+    private BigDecimal totalPrice;
 
-    private LocalDateTime created_at;
-    private LocalDateTime updated_at;
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        created_at = LocalDateTime.now();
+        createdAt = LocalDateTime.now();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updated_at = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
     }
 
     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
