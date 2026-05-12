@@ -108,7 +108,7 @@ export default function Login() {
             {/* Ảnh nền phủ giới hạn ở size Full HD (1920x1080) */}
             <div className="absolute inset-0 z-0 flex items-center justify-center">
                 <img
-                    src="/images/bg_login.png"
+                    src="/images/bg_forgot.png"
                     alt="Background login"
                     className="w-full h-full max-w-[1920px] max-h-[1080px] object-cover object-center shadow-2xl"
                 />
