@@ -137,8 +137,8 @@ export default function Register() {
             {/* Ảnh nền phủ giới hạn ở size Full HD (1920x1080) */}
             <div className="absolute inset-0 z-0 flex items-center justify-center">
                 <img
-                    src="//images/bg_forgot.png"
-                    alt="Background register"
+                    src="/images/bg_forgot.png"
+                    alt="Background forgot password"
                     className="w-full h-full max-w-[1920px] max-h-[1080px] object-cover object-center shadow-2xl"
                 />
                 {/* Lớp phủ tối mờ để tạo chiều sâu và nổi bật form */}
@@ -271,7 +271,7 @@ export default function Register() {
                     </div>
 
                     <div className="flex gap-4 mt-6 justify-center">
-                        <a href="#login-google" className="w-14 h-14 flex items-center justify-center bg-white rounded-full border border-gray-200 shadow-sm hover:shadow-md hover:border-[#006c49] hover:-translate-y-0.5 focus:border-[#006c49] focus:ring-1 focus:ring-[#006c49] outline-none transition-all duration-200">
+                        <a href="http://localhost:8080/oauth2/authorization/google" className="w-14 h-14 flex items-center justify-center bg-white rounded-full border border-gray-200 shadow-sm hover:shadow-md hover:border-[#006c49] hover:-translate-y-0.5 focus:border-[#006c49] focus:ring-1 focus:ring-[#006c49] outline-none transition-all duration-200">
                             <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-6 h-6" />
                         </a>
                         <a href="#login-facebook" className="w-14 h-14 flex items-center justify-center bg-white rounded-full border border-gray-200 shadow-sm hover:shadow-md hover:border-[#006c49] hover:-translate-y-0.5 focus:border-[#006c49] focus:ring-1 focus:ring-[#006c49] outline-none transition-all duration-200">
