@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import Swal from "sweetalert2";
 
@@ -19,6 +19,9 @@ export default function Register() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const navigate = useNavigate();
+    const location = useLocation();
+    const searchParams = new URLSearchParams(location.search);
+    const redirectUrl = searchParams.get("redirect");
 
     // Hiệu ứng (Debounce) kiểm tra email ngay khi người dùng ngừng gõ
     useEffect(() => {
@@ -110,7 +113,7 @@ export default function Register() {
                         title: 'text-sm font-bold text-gray-700',
                     }
                 }).then(() => {
-                    navigate("/login");
+                    navigate(redirectUrl ? `/login?redirect=${encodeURIComponent(redirectUrl)}` : "/login");
                 });
             } catch (error: any) {
                 Swal.fire({

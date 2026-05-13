@@ -284,7 +284,7 @@ export default function Header() {
                                 shopping_cart
                             </Link>
                             {cartCount > 0 && (
-                                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm pointer-events-none">
+                                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold min-w-[20px] h-[20px] flex items-center justify-center px-1 rounded-full shadow-sm pointer-events-none">
                                     {cartCount > 99 ? '99+' : cartCount}
                                 </span>
                             )}

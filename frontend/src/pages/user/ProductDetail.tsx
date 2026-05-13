@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import MainLayout from "../../layouts/MainLayout";
 import ProductCard from "../../components/user/ProductCard";
 import { useFavorites } from "../../data/useFavorites";
@@ -42,6 +42,7 @@ const mockReviews = [
 export default function ProductDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { isFavorited, toggleFavorite } = useFavorites();
 
     const [product, setProduct] = useState<any>(null);
@@ -212,14 +213,23 @@ export default function ProductDetail() {
         const token = localStorage.getItem("token");
         if (!token) {
             Swal.fire({
-                toast: true,
-                position: 'top-end',
+                title: 'Chưa đăng nhập',
+                text: 'Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!',
                 icon: 'warning',
-                title: 'Vui lòng đăng nhập để thêm sản phẩm!',
-                showConfirmButton: false,
-                timer: 2000
+                showCancelButton: true,
+                showCloseButton: true,
+                confirmButtonText: 'Đăng nhập',
+                cancelButtonText: 'Hủy',
+                customClass: {
+                    confirmButton: 'bg-primary text-white px-6 py-2.5 rounded-xl font-bold mx-3 hover:bg-[#2f5146] transition-colors shadow-sm',
+                    cancelButton: 'bg-gray-200 text-gray-700 px-6 py-2.5 rounded-xl font-bold mx-3 hover:bg-gray-300 transition-colors shadow-sm'
+                },
+                buttonsStyling: false
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    navigate(`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`);
+                }
             });
-            navigate("/login");
             return;
         }
 
@@ -463,7 +473,7 @@ export default function ProductDetail() {
                                 </div>
                             </div>
 
-                            <div className="mt-8 space-y-6">
+                            <div className="mt-auto space-y-6">
                                 <div className="flex items-center gap-4">
                                     <span className="font-bold text-gray-700">Số lượng:</span>
                                     <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden h-12">
@@ -502,7 +512,7 @@ export default function ProductDetail() {
                                     </div>
                                     <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
                                         <span className="material-symbols-outlined text-primary text-[20px]">published_with_changes</span>
-                                        Bảo hành 1 đổi 1 (3 ngày)
+                                        Bảo hành 1 đổi 1 (7 ngày)
                                     </div>
                                     <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
                                         <span className="material-symbols-outlined text-primary text-[20px]">support_agent</span>

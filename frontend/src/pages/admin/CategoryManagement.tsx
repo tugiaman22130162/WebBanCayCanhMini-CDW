@@ -258,6 +258,17 @@ export default function CategoryManagement() {
         setIsModalOpen(true);
     };
 
+    // Tính toán xem có sự thay đổi dữ liệu nào không
+    const hasChanges = useMemo(() => {
+        if (modalMode === 'ADD') {
+            return (currentCategory.name?.trim() || '') !== '';
+        }
+        return currentCategory.name !== originalCategory.name ||
+            (currentCategory.description || "") !== (originalCategory.description || "") ||
+            currentCategory.image !== originalCategory.image ||
+            imageFile !== null;
+    }, [currentCategory, originalCategory, imageFile, modalMode]);
+
     const handleSaveCategory = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -349,6 +360,19 @@ export default function CategoryManagement() {
                         
                         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
 
+                            <input 
+                                type="file" 
+                                ref={fileInputRef}
+                                onChange={handleImportExcel}
+                                accept=".xlsx, .xls"
+                                className="hidden" 
+                            />
+                            <button onClick={() => fileInputRef.current?.click()} className="px-4 py-2.5 flex items-center gap-2 rounded-xl bg-white border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors shadow-sm">
+                                <span className="material-symbols-outlined text-[18px]">upload</span> Nhập
+                            </button>
+                            <button onClick={handleExport} className="px-4 py-2.5 flex items-center gap-2 rounded-xl bg-white border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors shadow-sm">
+                                <span className="material-symbols-outlined text-[18px]">download</span> Xuất
+                            </button>
                             {/* Nút Bộ Lọc */}
                             <div className="relative">
                                 <button 
@@ -442,27 +466,8 @@ export default function CategoryManagement() {
                         </div>
                     </div>
 
-                    {/* TOOLBAR */}
-                    <div className="bg-white p-4 rounded-t-2xl border border-gray-100 border-b-0 flex justify-end gap-4 items-center">
-                        <div className="flex flex-wrap gap-3 w-full lg:w-auto justify-end">
-                            <input 
-                                type="file" 
-                                ref={fileInputRef}
-                                onChange={handleImportExcel}
-                                accept=".xlsx, .xls"
-                                className="hidden" 
-                            />
-                            <button onClick={() => fileInputRef.current?.click()} className="px-4 py-2.5 flex items-center gap-2 rounded-xl bg-white border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors shadow-sm">
-                                <span className="material-symbols-outlined text-[18px]">upload</span> Nhập
-                            </button>
-                            <button onClick={handleExport} className="px-4 py-2.5 flex items-center gap-2 rounded-xl bg-white border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors shadow-sm">
-                                <span className="material-symbols-outlined text-[18px]">download</span> Xuất
-                            </button>
-                        </div>
-                    </div>
-
                     {/* TABLE */}
-                    <div className="bg-white rounded-b-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full min-w-[800px]">
                                 <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold">
@@ -625,7 +630,7 @@ export default function CategoryManagement() {
                                 <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="px-6 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-bold hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors">
                                     Hủy
                                 </button>
-                                <button type="submit" disabled={isSubmitting} className="px-8 py-2.5 rounded-xl bg-primary text-white font-bold hover:bg-[#2f5146] disabled:bg-gray-400 transition-colors flex items-center gap-2 shadow-lg shadow-primary/30">
+                                <button type="submit" disabled={isSubmitting || !hasChanges} className="px-8 py-2.5 rounded-xl bg-primary text-white font-bold hover:bg-[#2f5146] disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2 shadow-lg shadow-primary/30">
                                     {isSubmitting ? (
                                         <>
                                             <span className="material-symbols-outlined animate-spin text-lg">autorenew</span>

@@ -116,11 +116,12 @@ export default function Cart() {
             text: "Bạn có chắc chắn muốn xóa sản phẩm này khỏi giỏ hàng?",
             icon: 'warning',
             showCancelButton: true,
+            showCloseButton: true,
             confirmButtonText: 'Xóa khỏi giỏ',
             cancelButtonText: 'Hủy',
             customClass: {
-                confirmButton: 'bg-red-500 text-white px-6 py-2.5 rounded-xl font-bold ml-3 hover:bg-red-600 transition-colors shadow-sm',
-                cancelButton: 'bg-primary text-white px-6 py-2.5 rounded-xl font-bold hover:bg-[#2f5146] transition-colors shadow-sm'
+                confirmButton: 'bg-red-500 text-white px-6 py-2.5 rounded-xl font-bold mx-3 hover:bg-red-600 transition-colors shadow-sm',
+                cancelButton: 'bg-primary text-white px-6 py-2.5 rounded-xl font-bold mx-3 hover:bg-[#2f5146] transition-colors shadow-sm'
             },
             buttonsStyling: false
         });
@@ -189,10 +190,10 @@ export default function Cart() {
         <div className="flex flex-col min-h-screen bg-[#F8F9F5] relative">
             <Header />
             <div className="flex-1 pt-[100px] pb-[150px] font-body relative">
-                <div className="max-w-[1000px] mx-auto px-4 sm:px-6">
-                    <Link to="/products" className="inline-flex items-center gap-2 text-primary font-bold group mb-6 hover:underline">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <Link to="/products" className="inline-flex items-center gap-2 text-primary font-bold group mb-6">
                         <span className="material-symbols-outlined transition-transform group-hover:-translate-x-1">arrow_back</span>
-                        Tiếp tục mua sắm
+                        <span className="group-hover:underline">Tiếp tục mua sắm</span>
                     </Link>
 
                     <h1 className="text-3xl font-black text-gray-800 mb-8">Giỏ hàng của bạn</h1>
@@ -244,7 +245,7 @@ export default function Cart() {
                                                 <span className="material-symbols-outlined font-bold text-[18px]">add</span>
                                             </button>
                                         </div>
-                                        <button onClick={() => removeItem(item.id)} className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50" title="Xóa sản phẩm">
+                                    <button onClick={() => removeItem(item.id)} className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors rounded-full shrink-0" title="Xóa sản phẩm">
                                             <span className="material-symbols-outlined">delete</span>
                                         </button>
                                     </div>
@@ -256,7 +257,7 @@ export default function Cart() {
 
                 {/* Sticky Footer: Thanh thanh toán dính chặt dưới đáy */}
                 <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)] z-40">
-                    <div className="max-w-[1000px] mx-auto px-4 py-4 sm:px-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4">
                         <div className="flex items-center gap-4 w-full sm:w-auto">
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <input 
@@ -275,11 +276,12 @@ export default function Cart() {
                                             text: "Bạn có chắc muốn xóa các sản phẩm này khỏi giỏ hàng?",
                                             icon: 'warning',
                                             showCancelButton: true,
+                                            showCloseButton: true,
                                             confirmButtonText: 'Xóa',
                                             cancelButtonText: 'Hủy',
                                             customClass: {
-                                                confirmButton: 'bg-red-500 text-white px-6 py-2.5 rounded-xl font-bold ml-3 hover:bg-red-600 transition-colors shadow-sm',
-                                                cancelButton: 'bg-primary text-white px-6 py-2.5 rounded-xl font-bold hover:bg-[#2f5146] transition-colors shadow-sm'
+                                                confirmButton: 'bg-red-500 text-white px-6 py-2.5 rounded-xl font-bold mx-3 hover:bg-red-600 transition-colors shadow-sm',
+                                                cancelButton: 'bg-primary text-white px-6 py-2.5 rounded-xl font-bold mx-3 hover:bg-[#2f5146] transition-colors shadow-sm'
                                             },
                                             buttonsStyling: false
                                         }).then(async (result) => {

@@ -1,7 +1,7 @@
 import React, { useRef } from "react";
 import { motion } from "framer-motion";
 import type { Product } from "../../data/products";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import Swal from "sweetalert2";
 
@@ -20,6 +20,7 @@ const ProductCard: React.FC<Props> = ({
 }) => {
     //thêm sản phẩm vào giỏ hàng
     const navigate = useNavigate();
+    const location = useLocation();
     const imageRef = useRef<HTMLImageElement>(null);
 
     const handleToggleFavorite = () => {
@@ -33,14 +34,23 @@ const ProductCard: React.FC<Props> = ({
         const token = localStorage.getItem("token");
         if (!token) {
             Swal.fire({
-                toast: true,
-                position: 'top-end',
+                title: 'Chưa đăng nhập',
+                text: 'Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!',
                 icon: 'warning',
-                title: 'Vui lòng đăng nhập để thêm sản phẩm!',
-                showConfirmButton: false,
-                timer: 2000
+                showCancelButton: true,
+                showCloseButton: true,
+                confirmButtonText: 'Đăng nhập',
+                cancelButtonText: 'Hủy',
+                customClass: {
+                    confirmButton: 'bg-primary text-white px-6 py-2.5 rounded-xl font-bold mx-3 hover:bg-[#2f5146] transition-colors shadow-sm',
+                    cancelButton: 'bg-gray-200 text-gray-700 px-6 py-2.5 rounded-xl font-bold mx-3 hover:bg-gray-300 transition-colors shadow-sm'
+                },
+                buttonsStyling: false
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    navigate(`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`);
+                }
             });
-            navigate("/login");
             return;
         }
 

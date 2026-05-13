@@ -1,12 +1,17 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Swal from "sweetalert2";
 
 export default function OAuth2Success() {
     const navigate = useNavigate();
     const location = useLocation();
+    const hasProcessed = useRef(false);
 
     useEffect(() => {
+        // Ngăn chặn useEffect bị gọi 2 lần trong React Strict Mode
+        if (hasProcessed.current) return;
+        hasProcessed.current = true;
+
         // Lấy token từ URL (ví dụ: ?token=eyJhY2...)
         const params = new URLSearchParams(location.search);
         const token = params.get("token");
@@ -15,6 +20,10 @@ export default function OAuth2Success() {
             // Lưu token vào localStorage để sử dụng cho các API sau này
             localStorage.setItem("token", token);
             
+            // Đọc URL chuyển hướng đã lưu từ trước và xóa ngay lập tức
+            const redirectUrl = localStorage.getItem("redirectAfterLogin") || "/";
+            localStorage.removeItem("redirectAfterLogin"); 
+
             Swal.fire({
                 toast: true,
                 position: 'bottom',
@@ -29,7 +38,7 @@ export default function OAuth2Success() {
                     title: 'text-sm font-bold text-gray-700',
                 }
             }).then(() => {
-                navigate("/"); // Chuyển hướng về trang chủ
+                navigate(redirectUrl);
             });
         } else {
             navigate("/login");
