@@ -90,7 +90,7 @@ export default function ForgotPassword() {
             </div>
 
             {/* Container: Form quên mật khẩu nổi lên giữa màn hình */}
-            <div className="relative z-10 w-full max-w-lg bg-white px-8 py-12 md:px-10 md:py-16 min-h-[450px] flex flex-col justify-center rounded-[24px] shadow-2xl">
+            <div className="relative z-10 w-full max-w-lg bg-white px-8 py-12 md:px-10 md:py-16 flex flex-col justify-center rounded-[24px] shadow-2xl -mt-16 md:-mt-24">
                     <Link to="/login" className="absolute top-8 left-8 md:top-10 md:left-10 text-gray-400 hover:text-primary transition-colors group" title="Quay lại đăng nhập">
                         <span className="material-symbols-outlined text-primary text-[28px] group-hover:-translate-x-1 transition-transform">arrow_back</span>
                     </Link>
@@ -98,7 +98,7 @@ export default function ForgotPassword() {
                     <h1 className="text-4xl font-bold text-center text-primary mb-3">
                         Quên Mật Khẩu?
                     </h1>
-                    <p className="text-center text-[#65645F] mb-12 text-sm px-4">
+                    <p className="text-center text-[#65645F] mb-8 text-sm px-4">
                         Nhập email của bạn để nhận liên kết khôi phục mật khẩu.
                     </p>
 
@@ -128,7 +128,7 @@ export default function ForgotPassword() {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className={`w-full flex items-center justify-center gap-2 py-4 mt-12 bg-gradient-to-br from-primary to-primary-container text-on-primary font-semibold rounded-full shadow-md transition-all ${isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-lg hover:scale-[1.02]'}`}>                                               
+                            className={`w-full flex items-center justify-center gap-2 py-4 mt-8 bg-gradient-to-br from-primary to-primary-container text-on-primary font-semibold rounded-full shadow-md transition-all ${isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-lg hover:scale-[1.02]'}`}>                                               
                             {isLoading ? <span className="material-symbols-outlined animate-spin">autorenew</span> : null}
                             {isLoading ? 'Đang gửi...' : 'Gửi yêu cầu'}
                         </button>

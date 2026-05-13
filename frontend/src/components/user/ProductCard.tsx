@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useRef } from "react";
 import { motion } from "framer-motion";
 import type { Product } from "../../data/products";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import axios from "axios";
+import Swal from "sweetalert2";
 
 type Props = {
     product: Product;
@@ -16,9 +18,103 @@ const ProductCard: React.FC<Props> = ({
     showFavoriteButton = true,
     onToggleFavorite,
 }) => {
+    //thêm sản phẩm vào giỏ hàng
+    const navigate = useNavigate();
+    const location = useLocation();
+    const imageRef = useRef<HTMLImageElement>(null);
+
     const handleToggleFavorite = () => {
         if (onToggleFavorite) {
             onToggleFavorite(product);
+        }
+    };
+     // Xử lý thêm vào giỏ hàng khi click vào nút "Thêm vào giỏ"
+    const handleAddToCart = async (e: React.MouseEvent) => {
+        e.preventDefault(); // Ngăn chặn sự kiện click lan truyền ra ngoài
+        const token = localStorage.getItem("token");
+        if (!token) {
+            Swal.fire({
+                title: 'Chưa đăng nhập',
+                text: 'Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!',
+                icon: 'warning',
+                showCancelButton: true,
+                showCloseButton: true,
+                confirmButtonText: 'Đăng nhập',
+                cancelButtonText: 'Hủy',
+                customClass: {
+                    confirmButton: 'bg-primary text-white px-6 py-2.5 rounded-xl font-bold mx-3 hover:bg-[#2f5146] transition-colors shadow-sm',
+                    cancelButton: 'bg-gray-200 text-gray-700 px-6 py-2.5 rounded-xl font-bold mx-3 hover:bg-gray-300 transition-colors shadow-sm'
+                },
+                buttonsStyling: false
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    navigate(`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`);
+                }
+            });
+            return;
+        }
+
+        try {
+            let userId;
+            const userStr = localStorage.getItem("user");
+            if (userStr) {
+                userId = JSON.parse(userStr).id;
+            } 
+            if (!userId) {
+                const userRes = await axios.get("http://localhost:8080/api/users/me", {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                userId = userRes.data.id;
+                localStorage.setItem("user", JSON.stringify(userRes.data));
+            }
+
+            const response = await axios.post("http://localhost:8080/api/cart/add", {
+                userId: userId,
+                productId: product.id,
+                quantity: 1 // Click ở ngoài thẻ chỉ thêm 1 sản phẩm
+            }, { headers: { Authorization: `Bearer ${token}` } });
+            //hiệu ứng bay vào giỏ hàng
+            if (response.status >= 200 && response.status < 300) {
+                if (imageRef.current) {
+                    const cartIcon = document.getElementById("cart-icon");
+                    if (cartIcon) {
+                        const imgRect = imageRef.current.getBoundingClientRect();
+                        const cartRect = cartIcon.getBoundingClientRect();
+                        const flyingImg = document.createElement("img");
+                        flyingImg.src = imageRef.current.src; // Lấy trực tiếp src từ ảnh đã render để tránh lỗi đường dẫn
+                        flyingImg.style.position = "fixed";
+                        flyingImg.style.top = `${imgRect.top}px`;
+                        flyingImg.style.left = `${imgRect.left}px`;
+                        flyingImg.style.width = `${imgRect.width}px`;
+                        flyingImg.style.height = `${imgRect.height}px`;
+                        flyingImg.style.objectFit = "cover";
+                        flyingImg.style.borderRadius = "16px";
+                        flyingImg.style.zIndex = "9999";
+                        flyingImg.style.transition = "all 0.8s cubic-bezier(0.25, 0.8, 0.25, 1)";
+                        flyingImg.style.pointerEvents = "none";
+                        document.body.appendChild(flyingImg);
+                        
+                        // Dùng setTimeout để đảm bảo frame CSS ban đầu kịp cập nhật
+                        setTimeout(() => {
+                            flyingImg.style.top = `${cartRect.top}px`;
+                            flyingImg.style.left = `${cartRect.left}px`;
+                            flyingImg.style.width = "20px";
+                            flyingImg.style.height = "20px";
+                            flyingImg.style.opacity = "0.2";
+                        }, 10);
+
+                        flyingImg.addEventListener("transitionend", () => {
+                            flyingImg.remove();
+                            cartIcon.classList.add("scale-125");
+                            setTimeout(() => cartIcon.classList.remove("scale-125"), 300);
+                        });
+                    }
+                }
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `Đã thêm ${product.name} vào giỏ!`, showConfirmButton: false, timer: 2000 });
+                window.dispatchEvent(new Event("cartUpdated"));
+            }
+        } catch (error) {
+            Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Không thể thêm vào giỏ hàng!', showConfirmButton: false, timer: 2000 });
         }
     };
 
@@ -46,6 +142,7 @@ const ProductCard: React.FC<Props> = ({
                 {/* lay id tu database de tao link den trang chi tiet san pham */}
                 <Link to={`/products/${product.id}`} className="block w-full h-full">
                     <motion.img
+                        ref={imageRef}
                         src={product.image}
                         alt={product.name}
                         className="w-full h-full object-cover"
@@ -88,7 +185,7 @@ const ProductCard: React.FC<Props> = ({
                     </span>
                 </div>
 
-                <button className="w-full mt-auto pt-3 pb-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary-container hover:scale-[1.02] active:scale-95 transition-all">
+                <button onClick={handleAddToCart} className="w-full mt-auto pt-3 pb-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary-container hover:scale-[1.02] active:scale-95 transition-all">
                     Thêm vào giỏ
                 </button>
             </div>

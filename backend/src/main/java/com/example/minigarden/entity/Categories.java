@@ -3,6 +3,9 @@ package com.example.minigarden.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.text.Normalizer;
+import java.util.regex.Pattern;
+
 @Entity
 @Table(name = "categories")
 @Getter
@@ -26,6 +29,21 @@ public class Categories {
     @Column(unique = true, length = 100)
     private String slug;
 
-    @Column(length = 255)
+    @Column(columnDefinition = "LONGTEXT")
     private String image_url;
+
+    @PrePersist
+    @PreUpdate
+    public void generateSlug() {
+        if (this.name != null && !this.name.trim().isEmpty()) {
+            // Đổi 'đ' thành 'd' trước vì Normalizer không xử lý được chữ Đ/đ của tiếng Việt
+            String temp = this.name.toLowerCase().replace("đ", "d");
+            String normalized = Normalizer.normalize(temp, Normalizer.Form.NFD);
+            Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
+            this.slug = pattern.matcher(normalized).replaceAll("")
+                    .replaceAll("[^a-z0-9]+", "-") // Chữ, số thì giữ nguyên, còn lại biến thành dấu gạch ngang
+                    .replaceAll("-+", "-") // Xóa nhiều dấu gạch ngang liền nhau
+                    .replaceAll("^-|-$", ""); // Xóa dấu gạch ngang ở đầu và cuối chuỗi
+        }
+    }
 }

@@ -13,4 +13,7 @@ public interface ProductRepository extends JpaRepository<Products, Integer> {
 
     @Query("SELECT DISTINCT p FROM Products p LEFT JOIN FETCH p.category LEFT JOIN FETCH p.images WHERE p.status = true")
     List<Products> findAllForList();
+
+    //đếm số lượng sản phẩm theo category
+     int countByStatusTrue();
 }
