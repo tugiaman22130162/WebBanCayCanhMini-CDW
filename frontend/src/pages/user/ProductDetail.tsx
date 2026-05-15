@@ -392,7 +392,7 @@ export default function ProductDetail() {
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5 }}
-                        className="flex text-sm text-gray-500 mb-8-[1rem]"
+                        className="flex text-sm text-gray-500 mb-8"
                     >
                         <Link to="/" className="hover:text-primary transition-colors">Trang chủ</Link>
                         <span className="mx-2">/</span>
