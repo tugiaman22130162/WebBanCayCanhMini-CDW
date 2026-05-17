@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import MainLayout from "../../layouts/MainLayout";
 import Sidebar from "../../components/user/Sidebar";
 import OrderHistory from "../../components/user/OrderHistory";
@@ -29,6 +29,7 @@ const Toast = Swal.mixin({
 export default function Profile() {
     const { tab } = useParams<{ tab: string }>();
     const navigate = useNavigate();
+    const location = useLocation();
 
     const [activeTab, setActiveTab] = useState<'info' | 'orders' | 'history' | 'reviews' | 'password'>(
         (tab as 'info' | 'orders' | 'history' | 'reviews' | 'password') || 'info'
@@ -63,9 +64,9 @@ export default function Profile() {
     // Chuyển hướng nếu chưa đăng nhập
     useEffect(() => {
         if (!isLoading && !isLoggedIn) {
-            navigate("/login");
+            navigate(`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`);
         }
-    }, [isLoading, isLoggedIn, navigate]);
+    }, [isLoading, isLoggedIn, navigate, location.pathname, location.search]);
 
     // Hàm lấy chữ cái đầu của tên
     const getInitials = (name: string) => {
@@ -83,13 +84,76 @@ export default function Profile() {
         initial: getInitials(authUser.fullName)
     } : { name: "", email: "", phone: "", address: "", avatar: "", initial: "" };
 
-    // Mock data đơn hàng
-    const orders = [
-        { id: "MG-1001", date: "20/04/2026", estimatedDelivery: "23/04/2026 - 25/04/2026", total: 450000, status: "Đang giao", statusColor: "text-blue-600 bg-blue-50", promoCode: "MINIGARDEN10", discount: 50000, items: [{ name: "Terrarium Forest Mini", quantity: 1, price: 300000, image: "/images/terrarium.png" }, { name: "Chậu Gốm Sứ Trắng", quantity: 1, price: 150000, image: "https://images.unsplash.com/photo-1614594975525-e45190c55d40?w=100&h=100&fit=crop" }] },
-        { id: "MG-1002", date: "15/04/2026", estimatedDelivery: "18/04/2026", total: 1250000, status: "Đã giao", statusColor: "text-emerald-600 bg-emerald-50", promoCode: "FREESHIP", discount: 30000, items: [{ name: "Sen đá Echeveria Laui", quantity: 5, price: 250000, image: "/images/sen_da.webp" }] },
-        { id: "MG-1003", date: "10/04/2026", estimatedDelivery: "-", total: 320000, status: "Đã hủy", statusColor: "text-red-600 bg-red-50", items: [{ name: "Cây để bàn Mix", quantity: 1, price: 320000, image: "/images/cay_de_ban.webp" }] },
-        { id: "MG-1004", date: "26/04/2026", estimatedDelivery: "29/04/2026 - 01/05/2026", total: 150000, status: "Chờ xác nhận", statusColor: "text-yellow-600 bg-yellow-50", items: [{ name: "Đất nền mùn", quantity: 2, price: 75000, image: "https://images.unsplash.com/photo-1585314062340-f1a5a7c9328d?w=100&h=100&fit=crop" }] },
-    ];
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case 'PENDING': return 'Chờ xác nhận';
+            case 'CONFIRMED': return 'Đã xác nhận';
+            case 'SHIPPING': return 'Đang giao';
+            case 'DELIVERED': return 'Đã giao';
+            case 'CANCELLED': return 'Đã hủy';
+            default: return status;
+        }
+    };
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'PENDING': return 'text-yellow-600 bg-yellow-50';
+            case 'CONFIRMED': return 'text-blue-600 bg-blue-50';
+            case 'SHIPPING': return 'text-purple-600 bg-purple-50';
+            case 'DELIVERED': return 'text-emerald-600 bg-emerald-50';
+            case 'CANCELLED': return 'text-red-600 bg-red-50';
+            default: return 'text-gray-600 bg-gray-50';
+        }
+    };
+
+    const [orders, setOrders] = useState<any[]>([]);
+
+    useEffect(() => {
+        const fetchMyOrders = async () => {
+            if (!token) return;
+            try {
+                const response = await axios.get("http://localhost:8080/api/orders/my-orders", {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const formattedOrders = response.data.map((order: any) => ({
+                    id: order.orderCode || order.id,
+                    realId: order.id,
+                    date: new Date(order.createdAt).toLocaleDateString('vi-VN'),
+                    estimatedDelivery: order.estimatedDeliveryTimeFrom && order.estimatedDeliveryTimeTo 
+                        ? `${new Date(order.estimatedDeliveryTimeFrom).toLocaleDateString('vi-VN')} - ${new Date(order.estimatedDeliveryTimeTo).toLocaleDateString('vi-VN')}` 
+                        : "-",
+                    total: order.totalPrice,
+                    status: getStatusLabel(order.status),
+                    statusColor: getStatusColor(order.status),
+                    promoCode: order.promotions?.length > 0 ? order.promotions[0].promotionCode : null,
+                    discount: order.discountAmount || 0,
+                    shippingFee: order.shippingFee || 0,
+                    receiverName: order.receiverName,
+                    phone: order.phone,
+                    address: order.address,
+                    note: order.note,
+                    items: (order.items || []).map((item: any) => {
+                        let imageUrl = "https://images.unsplash.com/photo-1614594975525-e45190c55d40?w=100&h=100&fit=crop";
+                        if (item.product?.images && item.product.images.length > 0) {
+                            imageUrl = item.product.images[0].image_url || item.product.images[0].imageUrl || item.product.images[0];
+                        }
+                        return {
+                            name: item.product_name,
+                            quantity: item.quantity,
+                            price: item.price,
+                            image: imageUrl
+                        };
+                    })
+                }));
+                setOrders(formattedOrders);
+            } catch (error) {
+                console.error("Lỗi khi tải đơn hàng:", error);
+            }
+        };
+        if (isLoggedIn) {
+            fetchMyOrders();
+        }
+    }, [isLoggedIn, token]);
 
     // Mock data đánh giá
     const userReviews = [
@@ -177,7 +241,7 @@ export default function Profile() {
     // Tính toán tạm tính, giảm giá và tổng tiền cho Popup
     const selectedOrderSubtotal = selectedOrder?.items?.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0) || 0;
     const selectedOrderDiscount = selectedOrder?.discount || 0;
-    const selectedOrderFinalTotal = Math.max(0, selectedOrderSubtotal - selectedOrderDiscount);
+    const selectedOrderFinalTotal = selectedOrder?.total || 0; // Sử dụng trực tiếp total vì nó đã là số tiền cuối cùng
 
     // Hàm xử lý tải ảnh và đánh giá
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -199,6 +263,35 @@ export default function Profile() {
         setReviewText("");
         setImagePreviews([]);
         setRating(5);
+    };
+    //hủy đơn hàng
+    const handleCancelOrder = async (orderRealId: number) => {
+        const result = await Swal.fire({
+            title: 'Hủy đơn hàng?',
+            text: "Bạn có chắc chắn muốn hủy đơn hàng này không?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Hủy đơn',
+            cancelButtonText: 'Đóng',
+            customClass: {
+                confirmButton: 'bg-red-500 text-white px-6 py-2.5 rounded-xl font-bold mx-3 hover:bg-red-600 transition-colors shadow-sm',
+                cancelButton: 'bg-gray-200 text-gray-700 px-6 py-2.5 rounded-xl font-bold mx-3 hover:bg-gray-300 transition-colors shadow-sm'
+            },
+            buttonsStyling: false
+        });
+
+        if (result.isConfirmed) {
+            try {
+                await axios.put(`http://localhost:8080/api/orders/${orderRealId}/cancel`, {}, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                Toast.fire({ icon: 'success', title: 'Hủy đơn hàng thành công!' });
+                setIsOrderModalOpen(false);
+                setOrders(prev => prev.map(o => o.realId === orderRealId ? { ...o, status: 'Đã hủy', statusColor: 'text-red-600 bg-red-50' } : o));
+            } catch (error: any) {
+                Toast.fire({ icon: 'error', title: error.response?.data?.message || 'Lỗi khi hủy đơn hàng' });
+            }
+        }
     };
 
     // Hiển thị vòng xoay loading khi đang kiểm tra thông tin auth
@@ -330,7 +423,7 @@ export default function Profile() {
                                                         <tr key={i} className="hover:bg-gray-50/80 transition-colors">
                                                             <td className="p-4 font-bold text-[#406D5E]">{order.id}</td>
                                                             <td className="p-4 text-sm text-gray-600 font-medium">{order.date}</td>
-                                                            <td className="p-4 text-right font-bold text-gray-800">{Math.max(0, order.total - (order.discount || 0)).toLocaleString('vi-VN')}đ</td>
+                                                            <td className="p-4 text-right font-bold text-gray-800">{order.total.toLocaleString('vi-VN')}đ</td>
                                                             <td className="p-4 text-center">
                                                                 <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${order.statusColor}`}>
                                                                     {order.status}
@@ -504,6 +597,20 @@ export default function Profile() {
                                 </div>
                             </div>
 
+                            {/* Thông tin giao hàng */}
+                            <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm mt-4">
+                                <h4 className="font-bold text-gray-800 border-b pb-3 mb-4 flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-primary text-[20px]">local_shipping</span>
+                                    Thông tin giao hàng
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div><p className="text-xs text-gray-500 uppercase font-bold mb-1">Người nhận</p><p className="font-semibold text-gray-800">{selectedOrder.receiverName}</p></div>
+                                    <div><p className="text-xs text-gray-500 uppercase font-bold mb-1">Số điện thoại</p><p className="font-semibold text-gray-800">{selectedOrder.phone}</p></div>
+                                    <div className="md:col-span-2"><p className="text-xs text-gray-500 uppercase font-bold mb-1">Địa chỉ giao hàng</p><p className="font-semibold text-gray-800">{selectedOrder.address}</p></div>
+                                    {selectedOrder.note && <div className="md:col-span-2"><p className="text-xs text-gray-500 uppercase font-bold mb-1">Ghi chú</p><p className="font-semibold text-gray-800 bg-yellow-50 p-3 rounded-lg border border-yellow-100 text-sm">{selectedOrder.note}</p></div>}
+                                </div>
+                            </div>
+
                             <div>
                                 <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
                                     <span className="material-symbols-outlined text-primary text-[20px]">shopping_basket</span>
@@ -552,6 +659,11 @@ export default function Profile() {
                                         <span>Tạm tính:</span>
                                         <span className="font-semibold">{selectedOrderSubtotal.toLocaleString('vi-VN')}đ</span>
                                     </div>
+                                    {/* Phí vận chuyển */}
+                                    <div className="flex justify-between w-full sm:w-1/2 text-gray-600 text-sm">
+                                        <span>Phí vận chuyển:</span>
+                                        <span className="font-semibold">{selectedOrder.shippingFee ? selectedOrder.shippingFee.toLocaleString('vi-VN') + 'đ' : '0đ'}</span>
+                                    </div>
                                     {selectedOrder.promoCode && (
                                         <div className="flex justify-between w-full sm:w-1/2 text-emerald-600 text-sm">
                                             <span>Giảm giá:</span>
@@ -568,7 +680,7 @@ export default function Profile() {
                         <div className="p-5 border-t bg-gray-50 flex justify-end gap-3">
                             {selectedOrder.status === 'Chờ xác nhận' && (
                                 <button
-                                    onClick={() => { alert('Đã gửi yêu cầu hủy đơn hàng!'); setIsOrderModalOpen(false); }}
+                                    onClick={() => handleCancelOrder(selectedOrder.realId)}
                                     className="px-6 py-2 rounded-xl bg-red-50 text-red-600 font-bold hover:bg-red-100 transition-colors shadow-sm"
                                 >
                                     Hủy đơn hàng

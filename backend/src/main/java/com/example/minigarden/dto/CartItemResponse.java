@@ -4,8 +4,9 @@ import lombok.Data;
 
 @Data
 public class CartItemResponse {
-    private Integer id; // Đây là ID của bản ghi CartItem (chứ không phải Product Id)
+    private Integer id;
     private Integer productId;
+    private Integer categoryId;
     private String name;
     private Double price;
     private String image;

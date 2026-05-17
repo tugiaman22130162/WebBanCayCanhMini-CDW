@@ -193,7 +193,7 @@ export default function Cart() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <Link to="/products" className="inline-flex items-center gap-2 text-primary font-bold group mb-6">
                         <span className="material-symbols-outlined transition-transform group-hover:-translate-x-1">arrow_back</span>
-                        <span className="group-hover:underline">Tiếp tục mua sắm</span>
+                        <span>Tiếp tục mua sắm</span>
                     </Link>
 
                     <h1 className="text-3xl font-black text-gray-800 mb-8">Giỏ hàng của bạn</h1>
@@ -316,8 +316,7 @@ export default function Cart() {
                                         Swal.fire("Chưa chọn sản phẩm", "Vui lòng chọn ít nhất 1 sản phẩm để thanh toán nhé!", "warning");
                                         return;
                                     }
-                                    // Có thể truyền selectedItems sang trang checkout ở đây
-                                    navigate('/checkout');
+                                    navigate('/checkout', { state: { selectedItems } });
                                 }} 
                                 className={`px-6 sm:px-8 py-3 rounded-xl font-bold transition-all shadow-md whitespace-nowrap ${selectedItems.length > 0 ? 'bg-primary text-white hover:bg-[#2f5146] hover:scale-[1.02] active:scale-95' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                                 disabled={selectedItems.length === 0}

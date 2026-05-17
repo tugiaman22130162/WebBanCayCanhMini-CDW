@@ -1,5 +1,6 @@
 package com.example.minigarden.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -12,7 +13,7 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class OrderItems {
+public class OrderItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,7 +22,8 @@ public class OrderItems {
     // Liên kết order
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
-    private Orders order;
+    @JsonIgnore
+    private Order order;
 
     // Sản phẩm
     @ManyToOne(fetch = FetchType.LAZY)

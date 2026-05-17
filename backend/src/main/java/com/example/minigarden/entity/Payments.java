@@ -22,7 +22,7 @@ public class Payments {
     // Liên kết order
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
-    private Orders order;
+    private Order order;
 
     // Số tiền thanh toán
     @Column(nullable = false, precision = 12, scale = 2)

@@ -38,7 +38,7 @@ public class Products {
     private Integer quantity;
 
     // Hình ảnh
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<ProductImages> images;
 
     // Loại cây
