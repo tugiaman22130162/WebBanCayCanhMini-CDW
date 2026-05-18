@@ -16,8 +16,8 @@ import com.example.minigarden.repository.PromotionCategoryRepository;
 import com.example.minigarden.repository.PromotionProductRepository;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -293,7 +293,7 @@ public class PromotionService {
             
             PromotionCategory promoCat = PromotionCategory.builder()
                     .promotion(savedPromotion).category(category).build();
-            promotionCategoryRepository.save(promoCat);
+            promotionCategoryRepository.save(Objects.requireNonNull(promoCat));
             System.out.println("=> Đã chèn thành công vào bảng PromotionCategory!");
             
         } else if (request.getType() == PromotionType.PRODUCT) {
@@ -302,7 +302,7 @@ public class PromotionService {
             
             PromotionProduct promoProd = PromotionProduct.builder()
                     .promotion(savedPromotion).product(product).build();
-            promotionProductRepository.save(promoProd);
+            promotionProductRepository.save(Objects.requireNonNull(promoProd));
             System.out.println("=> Đã chèn thành công vào bảng PromotionProduct!");
         }
     }

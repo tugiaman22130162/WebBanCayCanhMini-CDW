@@ -336,9 +336,14 @@ export default function Checkout() {
             });
 
             // Nếu khách chọn thanh toán VNPAY, lấy URL từ backend trả về và chuyển hướng sang cổng thanh toán
-            if (paymentMethod === "vnpay" && response.data.paymentUrl) {
-                window.location.href = response.data.paymentUrl;
-                return;
+            if (paymentMethod.toLowerCase() === "vnpay") {
+                if (response.data.paymentUrl) {
+                    window.dispatchEvent(new Event("cartUpdated"));
+                    window.location.href = response.data.paymentUrl;
+                    return;
+                } else {
+                    throw new Error("Không tạo được liên kết thanh toán VNPay từ máy chủ. Vui lòng thử lại sau.");
+                }
             }
 
             // Báo cho Navbar (Header) biết để cập nhật lại số lượng icon giỏ hàng

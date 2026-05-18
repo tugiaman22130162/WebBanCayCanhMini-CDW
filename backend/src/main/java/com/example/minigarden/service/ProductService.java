@@ -11,6 +11,8 @@ import com.example.minigarden.entity.CareInstructions;
 import com.example.minigarden.repository.CategoryRepository;
 import com.example.minigarden.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -53,8 +56,28 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
+    public List<ProductResponse> getBestSellingProducts(int limit) {
+        Pageable topN = PageRequest.of(0, limit);
+        List<Products> bestSelling = productRepository.findBestSellingProducts(topN);
+
+        return bestSelling.stream().map(product -> {
+            List<String> imageUrls = product.getImages() != null
+                    ? product.getImages().stream().map(ProductImages::getImage_url).collect(Collectors.toList())
+                    : new ArrayList<>();
+
+            return ProductResponse.builder()
+                    .id(product.getId())
+                    .name(product.getName())
+                    .price(product.getPrice() != null ? product.getPrice().doubleValue() : null)
+                    .categoryName(product.getCategory() != null ? product.getCategory().getName() : null)
+                    .images(imageUrls)
+                    .build();
+        }).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public ProductResponse getProductById(Integer id) {
-        Products product = productRepository.findById(id)
+        Products product = productRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại với ID: " + id));
 
         List<String> imageUrls = product.getImages() != null
@@ -91,7 +114,7 @@ public class ProductService {
 
     @Transactional
     public Products updateProduct(Integer id, Product dto, List<MultipartFile> images) {
-        Products product = productRepository.findById(id)
+        Products product = productRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại với ID: " + id));
 
         if (!product.getName().equals(dto.getName()) && productRepository.existsByName(dto.getName())) {
@@ -103,7 +126,7 @@ public class ProductService {
         product.setPrice(dto.getPrice() != null ? BigDecimal.valueOf(dto.getPrice()) : BigDecimal.ZERO);
         product.setQuantity(dto.getQuantity() != null ? dto.getQuantity() : 0);
 
-        Categories category = categoryRepository.findById(dto.getCategoryId())
+        Categories category = categoryRepository.findById(Objects.requireNonNull(dto.getCategoryId()))
                 .orElseThrow(() -> new RuntimeException("Category không tồn tại với ID: " + dto.getCategoryId()));
         product.setCategory(category);
 
@@ -198,7 +221,7 @@ public class ProductService {
         product.setPrice(dto.getPrice() != null ? BigDecimal.valueOf(dto.getPrice()) : BigDecimal.ZERO);
         product.setQuantity(dto.getQuantity() != null ? dto.getQuantity() : 0);
 
-        Categories category = categoryRepository.findById(dto.getCategoryId())
+        Categories category = categoryRepository.findById(Objects.requireNonNull(dto.getCategoryId()))
                 .orElseThrow(() -> new RuntimeException("Category không tồn tại với ID: " + dto.getCategoryId()));
         product.setCategory(category);
 
@@ -265,7 +288,7 @@ public class ProductService {
 
     @Transactional
     public void deleteProduct(Integer id) {
-        Products product = productRepository.findById(id)
+        Products product = productRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại với ID: " + id));
         product.setStatus(false);
         productRepository.save(product);

@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface OrderRepository extends JpaRepository<Order, Integer> {
 
@@ -15,4 +16,6 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
     List<Order> searchOrders(@Param("keyword") String keyword);
 
     List<Order> findByUserIdOrderByCreatedAtDesc(Integer userId);
+
+    Optional<Order> findByOrderCode(String orderCode);
 }

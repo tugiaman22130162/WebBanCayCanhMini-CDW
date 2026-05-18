@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -81,7 +82,7 @@ public class ShippingService {
 
         ResponseEntity<String> response = restTemplate.exchange(
                 url,
-                HttpMethod.POST,
+                Objects.requireNonNull(HttpMethod.POST),
                 requestEntity,
                 String.class);
 

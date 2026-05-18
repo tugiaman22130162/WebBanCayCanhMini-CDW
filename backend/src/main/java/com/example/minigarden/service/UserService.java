@@ -13,6 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import com.example.minigarden.entity.AuthProvider;
@@ -78,7 +79,7 @@ public class UserService {
                 .failedLoginAttempts(0)
                 .build();
 
-        userRepository.save(user);
+        userRepository.save(Objects.requireNonNull(user));
     }
 
     // login
@@ -104,10 +105,10 @@ public class UserService {
 
             if (attempts >= 5) {
                 user.setStatus(UserStatus.BANNED);
-                userRepository.save(user);
+                userRepository.save(Objects.requireNonNull(user));
                 throw new RuntimeException("Tài khoản đã bị khóa do nhập sai mật khẩu quá 5 lần");
             }
-            userRepository.save(user);
+            userRepository.save(Objects.requireNonNull(user));
             
             if (attempts >= 3) {
                 int remaining = 5 - attempts;
@@ -118,7 +119,7 @@ public class UserService {
 
         if (user.getFailedLoginAttempts() != null && user.getFailedLoginAttempts() > 0) {
             user.setFailedLoginAttempts(0);
-            userRepository.save(user);
+            userRepository.save(Objects.requireNonNull(user));
         }
 
         String token = jwtService.generateToken(user.getEmail());
@@ -141,7 +142,7 @@ public class UserService {
         user.setResetToken(token);
         //thời gian hết hạn cho token là 15 phút
         user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(15));
-        userRepository.save(user);
+        userRepository.save(Objects.requireNonNull(user));
 
         emailService.sendResetPasswordEmail(user.getEmail(), token);
         return "Vui lòng kiểm tra email của bạn để đặt lại mật khẩu.";
@@ -162,12 +163,12 @@ public class UserService {
         user.setResetTokenExpiry(null);
         user.setFailedLoginAttempts(0); // Reset số lần sai khi đổi mật khẩu
 
-        userRepository.save(user);
+        userRepository.save(Objects.requireNonNull(user));
     }
 
     // Logic khóa / mở khóa User
     public UserResponse toggleUserStatus(Integer id) {
-        User user = userRepository.findById(id)
+        User user = userRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
         
         // Chuyển đổi trạng thái qua lại
@@ -177,7 +178,7 @@ public class UserService {
             user.setStatus(UserStatus.ACTIVE);
             user.setFailedLoginAttempts(0); // Reset số lần sai khi Admin mở khóa
         }
-        userRepository.save(user);
+        userRepository.save(Objects.requireNonNull(user));
 
         return UserResponse.builder()
                 .id(user.getId())
@@ -193,7 +194,7 @@ public class UserService {
 
     // Cập nhật thông tin User (Tên, Vai trò, Trạng thái)
     public UserResponse updateUser(Integer id, UserResponse req) {
-        User user = userRepository.findById(id)
+        User user = userRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         // Cập nhật các trường nếu có truyền lên
@@ -201,7 +202,7 @@ public class UserService {
         if (req.getRole() != null) user.setRole(req.getRole());
         if (req.getStatus() != null) user.setStatus(req.getStatus());
 
-        userRepository.save(user);
+        userRepository.save(Objects.requireNonNull(user));
 
         return UserResponse.builder()
                 .id(user.getId())

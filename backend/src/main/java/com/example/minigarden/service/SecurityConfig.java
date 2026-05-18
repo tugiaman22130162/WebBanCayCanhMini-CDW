@@ -3,7 +3,6 @@ package com.example.minigarden.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -32,7 +31,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/login/**", "/oauth2/**", "/error", "/api/chatbot/**", "/api/shipping/**", "/api/ghn/**").permitAll()
+                        .requestMatchers("/api/auth/**", "/login/**", "/oauth2/**", "/error", "/api/chatbot/**", "/api/shipping/**", "/api/ghn/**", "/api/vnpay/**").permitAll()
                         .requestMatchers( "/api/products/**", "/api/categories/**",
                                 "/api/terrarium/components")
                         .permitAll()

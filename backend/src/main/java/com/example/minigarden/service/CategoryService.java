@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Objects;
 
 @Service
 public class CategoryService {
@@ -34,7 +35,7 @@ public class CategoryService {
     }
 
     public Optional<Categories> getCategoryById(Integer id) {
-        return categoryRepository.findById(id);
+        return categoryRepository.findById(Objects.requireNonNull(id));
     }
 
     //thêm danh mục
@@ -43,12 +44,12 @@ public class CategoryService {
             CloudinaryService.UploadedImage uploadedImage = cloudinaryService.uploadListingImage(image);
             category.setImage_url(uploadedImage.secureUrl());
         }
-        return categoryRepository.save(category);
+        return categoryRepository.save(Objects.requireNonNull(category));
     }
 
     //cập nhật danh mục
     public Optional<Categories> updateCategory(Integer id, Categories categoryDetails, MultipartFile image) {
-        return categoryRepository.findById(id).map(category -> {
+        return categoryRepository.findById(Objects.requireNonNull(id)).map(category -> {
             category.setName(categoryDetails.getName());
             category.setDescription(categoryDetails.getDescription());
             
@@ -60,14 +61,14 @@ public class CategoryService {
                 category.setImage_url(categoryDetails.getImage_url());
             }
             // Bỏ qua setSlug() vì @PreUpdate ở Entity đã tự động lo phần này
-            return categoryRepository.save(category);
+            return categoryRepository.save(Objects.requireNonNull(category));
         });
     }
 
     //xóa danh mục
     public boolean deleteCategory(Integer id) {
-        if (!categoryRepository.existsById(id)) return false;
-        categoryRepository.deleteById(id);
+        if (!categoryRepository.existsById(Objects.requireNonNull(id))) return false;
+        categoryRepository.deleteById(Objects.requireNonNull(id));
         return true;
     }
 
