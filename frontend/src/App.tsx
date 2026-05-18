@@ -7,7 +7,7 @@ import Login from "./pages/user/Login"
 import ForgotPassword from "./pages/user/ForgotPassword"
 import ResetPassword from "./pages/user/ResetPassword"
 import ProductFavorite from "./pages/user/ProductFavorite"
-import SellerProduct from "./pages/user/SellerProduct"
+import SellerProductList from "./pages/user/SellerProductList"
 import NewsArrivalProduct from "./pages/user/NewsArrivalProduct"
 import UserManagement from "./pages/admin/UserManagement"
 import ProductManagement from "./pages/admin/ProductManagement"
@@ -55,7 +55,7 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/favorites" element={<ProductFavorite />} />
-          <Route path="/best-sellers" element={<SellerProduct />} />
+          <Route path="/best-sellers" element={<SellerProductList />} />
           <Route path="/new-arrivals" element={<NewsArrivalProduct />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />

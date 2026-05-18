@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import ProductCard from "./ProductCard";
+import { motion } from "framer-motion";
+import ProductCard from "../../components/user/ProductCard";
+import Header from "../../components/user/Header";
+import Footer from "../../components/user/Footer";
 import { useFavorites } from "../../data/useFavorites";
-import axios from "axios";
 import { Product } from "../../data/products";
+import axios from "axios";
 
-export default function SellerProducts() {
+const SellerProduct: React.FC = () => {
     const { isFavorited, toggleFavorite } = useFavorites();
     const [products, setProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -14,7 +16,8 @@ export default function SellerProducts() {
     useEffect(() => {
         const fetchBestSellers = async () => {
             try {
-                const response = await axios.get("http://localhost:8080/api/products/best-sellers");
+                // Lấy tối đa 20 sản phẩm bán chạy cho trang này
+                const response = await axios.get("http://localhost:8080/api/products/best-sellers?limit=20");
                 const formattedData: Product[] = response.data.map((item: any) => ({
                     id: item.id,
                     name: item.name,
@@ -34,45 +37,38 @@ export default function SellerProducts() {
     }, []);
 
     return (
-        <section className="mt-[30px] py-10 px-8 bg-surface-container-lowest">
-            <div className="max-w-7xl mx-auto">
-                {/* HEADER */}
-                <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, amount: 0.3 }}
-                    transition={{ duration: 0.6 }}
-                    className="flex justify-between items-end mb-16"
-                >
-                    <div>
-                        <h2 className="text-4xl font-bold tracking-tight mb-4">
-                            Sản phẩm bán chạy
-                        </h2>
-                        <p className="text-gray-600">
-                            Tuyển chọn những sản phẩm được yêu thích nhất tại MiniGarden
-                        </p>
-                    </div>
+        <div className="min-h-screen bg-background text-on-surface">
+            <Header />
 
-                    <Link
-                        to="/best-sellers"
-                        className="px-6 py-2 rounded-full font-semibold text-white 
-bg-gradient-to-r from-emerald-500 to-emerald-600
-hover:from-emerald-600 hover:to-emerald-700
-shadow-md hover:shadow-lg hover:shadow-emerald-300/40
-active:scale-95
-transition-all duration-300 flex items-center gap-2 group"
+            {/* HEADER */}
+            <header className="bg-white pt-28 pb-8 px-6 border-b border-gray-100">
+                <div className="max-w-7xl mx-auto">
+                    {/* Breadcrumbs */}
+                    <motion.nav 
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                        className="flex text-sm text-gray-500 mb-8"
                     >
-                        Xem tất cả
-                    </Link>
-                </motion.div>
+                        <Link to="/" className="hover:text-primary transition-colors">Trang chủ</Link>
+                        <span className="mx-2">/</span>
+                        <span className="text-gray-800 font-semibold truncate">Sản phẩm bán chạy</span>
+                    </motion.nav>
+                    <h2 className="text-4xl font-bold text-on-surface mb-2">Sản phẩm bán chạy</h2>
+                    <p className="text-on-surface-variant max-w-2xl">
+                        Tuyển chọn những sản phẩm được yêu thích và bán chạy nhất tại MiniGarden.
+                    </p>
+                </div>
+            </header>
 
-                {/* GRID */}
+            {/* GRID */}
+            <section className="px-6 py-12 max-w-7xl mx-auto">
                 {isLoading ? (
-                    <div className="flex justify-center items-center py-10">
+                    <div className="flex justify-center items-center py-20">
                         <span className="material-symbols-outlined animate-spin text-4xl text-primary">autorenew</span>
                     </div>
                 ) : products.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                         {products.map((product, index) => {
                             const isLiked = isFavorited(product);
                             return (
@@ -94,9 +90,14 @@ transition-all duration-300 flex items-center gap-2 group"
                         })}
                     </div>
                 ) : (
-                    <div className="text-center py-10 text-gray-500">Chưa có dữ liệu sản phẩm bán chạy.</div>
+                    <div className="text-center py-20 text-gray-500">
+                        Chưa có dữ liệu sản phẩm bán chạy.
+                    </div>
                 )}
-            </div>
-        </section>
+            </section>
+            <Footer />
+        </div>
     );
-}
+};
+
+export default SellerProduct;

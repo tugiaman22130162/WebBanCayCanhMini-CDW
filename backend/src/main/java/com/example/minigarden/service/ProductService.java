@@ -11,6 +11,8 @@ import com.example.minigarden.entity.CareInstructions;
 import com.example.minigarden.repository.CategoryRepository;
 import com.example.minigarden.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -47,6 +49,26 @@ public class ProductService {
                     .price(product.getPrice() != null ? product.getPrice().doubleValue() : null)
                     .quantity(product.getQuantity())
                     .categoryId(product.getCategory() != null ? product.getCategory().getId() : null)
+                    .categoryName(product.getCategory() != null ? product.getCategory().getName() : null)
+                    .images(imageUrls)
+                    .build();
+        }).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProductResponse> getBestSellingProducts(int limit) {
+        Pageable topN = PageRequest.of(0, limit);
+        List<Products> bestSelling = productRepository.findBestSellingProducts(topN);
+
+        return bestSelling.stream().map(product -> {
+            List<String> imageUrls = product.getImages() != null
+                    ? product.getImages().stream().map(ProductImages::getImage_url).collect(Collectors.toList())
+                    : new ArrayList<>();
+
+            return ProductResponse.builder()
+                    .id(product.getId())
+                    .name(product.getName())
+                    .price(product.getPrice() != null ? product.getPrice().doubleValue() : null)
                     .categoryName(product.getCategory() != null ? product.getCategory().getName() : null)
                     .images(imageUrls)
                     .build();
