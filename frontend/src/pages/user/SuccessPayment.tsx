@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import MainLayout from "../../layouts/MainLayout";
 import axios from "axios";
 
 export default function SuccessPayment() {
     const location = useLocation();
+    const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const [order, setOrder] = useState<any>(null);
 
@@ -25,17 +26,22 @@ export default function SuccessPayment() {
 
         if (location.state && location.state.order) {
             setOrder(location.state.order);
-        } else if (searchParams.get("vnp_TxnRef") && searchParams.get("vnp_ResponseCode") === "00") {
-            const orderCode = searchParams.get("vnp_TxnRef");
-            if (orderCode) fetchOrder(orderCode);
-            setOrder({
-                orderCode: orderCode,
-                paymentMethod: 'vnpay',
-                totalPrice: Number(searchParams.get("vnp_Amount") || 0) / 100,
-            });
+        } else if (searchParams.get("vnp_TxnRef")) {
+            const responseCode = searchParams.get("vnp_ResponseCode");
+            if (responseCode === "00") {
+                const orderCode = searchParams.get("vnp_TxnRef");
+                if (orderCode) fetchOrder(orderCode);
+                setOrder({
+                    orderCode: orderCode,
+                    paymentMethod: 'vnpay',
+                    totalPrice: Number(searchParams.get("vnp_Amount") || 0) / 100,
+                });
+            } else {
+                navigate("/cancel");
+            }
         }
         window.scrollTo(0, 0);
-    }, [location, searchParams]);
+    }, [location, searchParams, navigate]);
 
     return (
         <MainLayout>

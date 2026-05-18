@@ -24,6 +24,7 @@ public class OrderService {
     private final AddressRepository addressRepository;
     private final CartItemRepository cartItemRepository;
     private final PromotionRepository promotionRepository;
+    private final PaymentRepository paymentRepository;
 
     public Order createOrder(Integer userId, OrderRequest request) {
 
@@ -184,6 +185,15 @@ public class OrderService {
             promotionRepository.save(promotion);
         }
 
+        // Lưu dữ liệu vào bảng Payments
+        Payments payment = Payments.builder()
+                .order(savedOrder)
+                .amount(total)
+                .method("VNPAY".equalsIgnoreCase(request.getPaymentMethod()) ? PaymentMethod.VNPAY : PaymentMethod.COD)
+                .status(PaymentStatus.PENDING)
+                .build();
+        paymentRepository.save(Objects.requireNonNull(payment));
+
         return savedOrder;
     }
 
@@ -284,5 +294,35 @@ public class OrderService {
 
         order.setStatus(newStatus);
         return orderRepository.save(order);
+    }
+
+    // Xóa đơn hàng và hoàn lại số lượng nếu thanh toán VNPay thất bại / hủy bỏ
+    @Transactional
+    public void deleteFailedOrder(String orderCode) {
+        orderRepository.findByOrderCode(orderCode).ifPresent(order -> {
+            if (order.getStatus() == OrderStatus.PENDING && order.getPaidAt() == null) {
+                // Hoàn lại số lượng sản phẩm
+                if (order.getItems() != null) {
+                    for (OrderItem item : order.getItems()) {
+                        Products product = item.getProduct();
+                        if (product != null) {
+                            product.setQuantity((product.getQuantity() != null ? product.getQuantity() : 0) + (item.getQuantity() != null ? item.getQuantity() : 0));
+                            productRepository.save(product);
+                        }
+                    }
+                }
+                // Hoàn lại mã khuyến mãi
+                if (order.getPromotions() != null) {
+                    for (OrderPromotion orderPromotion : order.getPromotions()) {
+                        promotionRepository.findByName(orderPromotion.getPromotionCode()).ifPresent(promotion -> {
+                            promotion.setQuantity((promotion.getQuantity() != null ? promotion.getQuantity() : 0) + 1);
+                            promotionRepository.save(promotion);
+                        });
+                    }
+                }
+                // Xóa đơn hàng (Cascade sẽ tự động xóa bảng payments và order_items liên quan)
+                orderRepository.delete(order);
+            }
+        });
     }
 }

@@ -12,6 +12,8 @@ import java.security.Principal;
 import java.util.Map;
 import java.util.List;
 import org.springframework.transaction.annotation.Transactional;
+import com.example.minigarden.service.VNPayService;
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -21,11 +23,13 @@ public class OrderController {
 
     private final OrderService orderService;
     private final UserRepository userRepository;
+    private final VNPayService vnPayService;
 
     //tạo đơn hàng mới
     @PostMapping
     public ResponseEntity<?> createOrder(
             @RequestBody OrderRequest request,
+            HttpServletRequest httpServletRequest,
             Principal principal
     ) {
         try {
@@ -36,7 +40,16 @@ public class OrderController {
                     .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
 
             Order order = orderService.createOrder(user.getId(), request);
-            return ResponseEntity.ok(mapOrderToDto(order));
+
+            Map<String, Object> response = mapOrderToDto(order);
+
+            // Kiểm tra nếu phương thức thanh toán là VNPAY
+            if ("VNPAY".equalsIgnoreCase(request.getPaymentMethod())) {
+                String paymentUrl = vnPayService.createPaymentUrl(order.getTotalPrice().longValue(), order.getOrderCode(), httpServletRequest);
+                response.put("paymentUrl", paymentUrl);
+            }
+            
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Lỗi khi tạo đơn hàng"));

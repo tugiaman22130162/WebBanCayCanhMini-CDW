@@ -1,6 +1,5 @@
 package com.example.minigarden.controller;
 
-import com.example.minigarden.service.ShippingService;
 import com.example.minigarden.config.GhnConfig;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
@@ -9,6 +8,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/ghn") 
@@ -16,7 +16,6 @@ import java.util.HashMap;
 @RequiredArgsConstructor
 public class ShippingController {
 
-    private final ShippingService shippingService;
     private final GhnConfig ghnConfig;
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -27,7 +26,7 @@ public class ShippingController {
         headers.set("Token", ghnConfig.getToken());
         HttpEntity<String> entity = new HttpEntity<>(headers);
         ResponseEntity<Object> response = restTemplate.exchange(
-                "https://online-gateway.ghn.vn/shiip/public-api/master-data/province", HttpMethod.GET, entity,
+                "https://online-gateway.ghn.vn/shiip/public-api/master-data/province", Objects.requireNonNull(HttpMethod.GET), entity,
                 Object.class);
         return ResponseEntity.ok(response.getBody());
     }
@@ -40,7 +39,7 @@ public class ShippingController {
         HttpEntity<String> entity = new HttpEntity<>(headers);
         ResponseEntity<Object> response = restTemplate.exchange(
                 "https://online-gateway.ghn.vn/shiip/public-api/master-data/district?province_id=" + provinceId,
-                HttpMethod.GET, entity, Object.class);
+                Objects.requireNonNull(HttpMethod.GET), entity, Object.class);
         return ResponseEntity.ok(response.getBody());
     }
 
@@ -52,7 +51,7 @@ public class ShippingController {
         HttpEntity<String> entity = new HttpEntity<>(headers);
         ResponseEntity<Object> response = restTemplate.exchange(
                 "https://online-gateway.ghn.vn/shiip/public-api/master-data/ward?district_id=" + districtId,
-                HttpMethod.GET, entity, Object.class);
+                Objects.requireNonNull(HttpMethod.GET), entity, Object.class);
         return ResponseEntity.ok(response.getBody());
     }
 
@@ -71,12 +70,12 @@ public class ShippingController {
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
             ResponseEntity<Object> response = restTemplate.exchange(
-                    "https://online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/fee", HttpMethod.POST, entity,
+                    "https://online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/fee", Objects.requireNonNull(HttpMethod.POST), entity,
                     Object.class);
             return ResponseEntity.ok(response.getBody());
         } catch (org.springframework.web.client.HttpStatusCodeException e) {
             return ResponseEntity.status(e.getStatusCode())
-                    .contentType(MediaType.APPLICATION_JSON)
+                    .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                     .body(e.getResponseBodyAsString());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
@@ -111,7 +110,7 @@ public class ShippingController {
 
             ResponseEntity<Object> response = restTemplate.exchange(
                     "https://online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/leadtime",
-                    HttpMethod.POST,
+                    Objects.requireNonNull(HttpMethod.POST),
                     entity,
                     Object.class);
             System.out.println("LEADTIME BODY = " + body);
@@ -120,7 +119,7 @@ public class ShippingController {
 
         } catch (org.springframework.web.client.HttpStatusCodeException e) {
             return ResponseEntity.status(e.getStatusCode())
-                    .contentType(MediaType.APPLICATION_JSON)
+                    .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                     .body(e.getResponseBodyAsString());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
@@ -146,7 +145,7 @@ public class ShippingController {
 
             ResponseEntity<Object> response = restTemplate.exchange(
                     "https://online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/available-services",
-                    HttpMethod.POST,
+                    Objects.requireNonNull(HttpMethod.POST),
                     entity,
                     Object.class);
 
@@ -154,7 +153,7 @@ public class ShippingController {
 
         } catch (org.springframework.web.client.HttpStatusCodeException e) {
             return ResponseEntity.status(e.getStatusCode())
-                    .contentType(MediaType.APPLICATION_JSON)
+                    .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                     .body(e.getResponseBodyAsString());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
