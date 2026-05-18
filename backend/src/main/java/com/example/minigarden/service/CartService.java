@@ -106,6 +106,11 @@ public class CartService {
                 }
                 res.setQuantity(item.getQuantity());
                 
+                // THÊM CATEGORY ID ĐỂ XÉT ĐIỀU KIỆN KHUYẾN MÃI DANH MỤC
+                if (item.getProduct().getCategory() != null) {
+                    res.setCategoryId(item.getProduct().getCategory().getId());
+                }
+
                 itemResponses.add(res);
                 total += res.getPrice() * res.getQuantity();
             }

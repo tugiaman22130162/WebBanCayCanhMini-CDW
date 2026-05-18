@@ -86,6 +86,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Hàm xử lý đăng xuất
     const logout = () => {
         localStorage.removeItem('token');
+        localStorage.removeItem('user');
         setToken(null);
         setUser(null);
         setIsLoggedIn(false);

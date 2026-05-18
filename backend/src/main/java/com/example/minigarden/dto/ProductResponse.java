@@ -18,4 +18,8 @@ public class ProductResponse {
     private String categoryName;
     private List<String> images;
     private ProductDetailResponse details;
+
+    private Double discountValue;
+    private String discountType;
+    private String promotionName;
 }

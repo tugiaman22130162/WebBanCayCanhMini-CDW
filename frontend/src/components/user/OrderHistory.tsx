@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useMemo } from "react";
 
 interface OrderHistoryProps {
     orders: any[];
@@ -6,12 +6,49 @@ interface OrderHistoryProps {
 }
 
 export default function OrderHistory({ orders, onViewDetails }: OrderHistoryProps) {
-    // Chỉ lấy những đơn hàng đã hoàn tất vòng đời (Đã giao hoặc Đã hủy)
-    const historyOrders = orders.filter(o => o.status === 'Đã giao' || o.status === 'Đã hủy');
+    const [searchTerm, setSearchTerm] = useState("");
+
+    // Lấy những đơn hàng đã hoàn tất vòng đời (Đã giao hoặc Đã hủy) và lọc theo từ khóa tìm kiếm
+    const historyOrders = useMemo(() => {
+        return orders.filter(o => {
+            const isCompletedOrCanceled = o.status === 'Đã giao' || o.status === 'Đã hủy';
+            if (!isCompletedOrCanceled) return false;
+
+            if (searchTerm.trim() === "") return true;
+
+            const term = searchTerm.toLowerCase();
+            const matchId = String(o.id).toLowerCase().includes(term);
+            const matchProductName = o.items?.some((item: any) => 
+                item.name?.toLowerCase().includes(term)
+            );
+
+            return matchId || matchProductName;
+        });
+    }, [orders, searchTerm]);
 
     return (
         <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b border-gray-100 pb-4">Lịch Sử Mua Hàng</h2>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b border-gray-100 pb-4 gap-4">
+                <h2 className="text-2xl font-bold text-gray-800 whitespace-nowrap">Lịch Sử Mua Hàng</h2>
+                <div className="relative w-full sm:flex-1 sm:max-w-3xl sm:ml-4">
+                    <input 
+                        type="text" 
+                        placeholder="Tìm theo mã đơn, tên sản phẩm..." 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-10 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors bg-gray-50 focus:bg-white"
+                    />
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none">search</span>
+                    {searchTerm && (
+                        <button
+                            onClick={() => setSearchTerm("")}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors flex items-center justify-center outline-none"
+                        >
+                            <span className="material-symbols-outlined text-lg">close</span>
+                        </button>
+                    )}
+                </div>
+            </div>
             <div className="overflow-x-auto rounded-xl border border-gray-100">
                 <table className="w-full min-w-[600px]">
                     <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold border-b border-gray-100">
@@ -29,7 +66,7 @@ export default function OrderHistory({ orders, onViewDetails }: OrderHistoryProp
                                 <tr key={i} className="hover:bg-gray-50/80 transition-colors">
                                     <td className="p-4 font-bold text-[#406D5E]">{order.id}</td>
                                     <td className="p-4 text-sm text-gray-600 font-medium">{order.date}</td>
-                                    <td className="p-4 text-right font-bold text-gray-800">{Math.max(0, order.total - (order.discount || 0)).toLocaleString('vi-VN')}đ</td>
+                                    <td className="p-4 text-right font-bold text-gray-800">{order.total.toLocaleString('vi-VN')}đ</td>
                                     <td className="p-4 text-center">
                                         <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${order.statusColor}`}>
                                             {order.status}
