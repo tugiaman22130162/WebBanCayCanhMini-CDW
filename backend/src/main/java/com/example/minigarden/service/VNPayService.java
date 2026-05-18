@@ -23,7 +23,7 @@ public class VNPayService {
         vnp_Params.put("vnp_TmnCode", VNPayConfig.vnp_TmnCode);
         vnp_Params.put("vnp_Amount", String.valueOf(amountInVND));
         vnp_Params.put("vnp_CurrCode", "VND");
-        vnp_Params.put("vnp_BankCode", "NCB"); 
+        vnp_Params.put("vnp_BankCode", "VNBANK"); 
         vnp_Params.put("vnp_TxnRef", orderCode); 
         vnp_Params.put("vnp_OrderInfo", "Thanh toan don hang " + orderCode);
         vnp_Params.put("vnp_OrderType", "other");
