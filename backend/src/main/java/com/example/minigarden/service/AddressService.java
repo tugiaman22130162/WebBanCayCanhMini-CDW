@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Objects;
 import java.util.List;
 
 @Service
@@ -60,7 +61,7 @@ public class AddressService {
             address.setDistrictId(request.getDistrictId());
             address.setWardCode(request.getWardCode());
 
-        return addressRepository.save(address);
+        return addressRepository.save(Objects.requireNonNull(address));
     }
 
     @Transactional
@@ -93,19 +94,19 @@ public class AddressService {
             address.setIsDefault(request.getIsDefault());
         }
 
-        return addressRepository.save(address);
+        return addressRepository.save(Objects.requireNonNull(address));
     }
 
     @Transactional
     public void delete(Integer id, Integer userId) {
         Address address = getById(id, userId);
-        addressRepository.delete(address);
+        addressRepository.delete(Objects.requireNonNull(address));
     }
 
     private void resetDefaultAddress(Integer userId) {
         addressRepository.findByUserIdAndIsDefaultTrue(userId).ifPresent(oldDefault -> {
             oldDefault.setIsDefault(false);
-            addressRepository.save(oldDefault);
+            addressRepository.save(Objects.requireNonNull(oldDefault));
         });
     }
 }

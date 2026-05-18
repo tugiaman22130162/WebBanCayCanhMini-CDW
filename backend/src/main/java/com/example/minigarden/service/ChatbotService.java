@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 public class ChatbotService {
@@ -48,7 +49,7 @@ public class ChatbotService {
         try {
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     urlWithKey,
-                    HttpMethod.POST,
+                    Objects.requireNonNull(HttpMethod.POST),
                     entity,
                     new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {
                     });

@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -54,7 +55,7 @@ public class ProductFavoriteService {
             return; // Sản phẩm đã nằm trong danh sách yêu thích
         }
 
-        Products product = productRepository.findById(productId)
+        Products product = productRepository.findById(Objects.requireNonNull(productId))
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
         ProductFavorites favorite = ProductFavorites.builder()
@@ -62,7 +63,7 @@ public class ProductFavoriteService {
                 .product(product)
                 .build();
 
-        productFavoritesRepository.save(favorite);
+        productFavoritesRepository.save(Objects.requireNonNull(favorite));
     }
 
     @Transactional
@@ -73,6 +74,6 @@ public class ProductFavoriteService {
         ProductFavorites favorite = productFavoritesRepository.findByUserIdAndProductId(user.getId(), productId)
                 .orElseThrow(() -> new RuntimeException("Favorite not found"));
 
-        productFavoritesRepository.delete(favorite);
+        productFavoritesRepository.delete(Objects.requireNonNull(favorite));
     }
 }

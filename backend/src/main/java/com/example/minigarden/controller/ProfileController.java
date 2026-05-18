@@ -13,6 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.security.Principal;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/users")
@@ -58,7 +59,7 @@ public class ProfileController {
             
             // Cập nhật URL ảnh mới vào User
             user.setAvatar(uploadedImage.secureUrl());
-            userRepository.save(user);
+            userRepository.save(Objects.requireNonNull(user));
 
             return ResponseEntity.ok(Map.of(
                     "message", "Cập nhật ảnh đại diện thành công",
@@ -97,7 +98,7 @@ public class ProfileController {
                 user.setIsDefault(1); // Đánh dấu là địa chỉ mặc định
             }
 
-            userRepository.save(user);
+            userRepository.save(Objects.requireNonNull(user));
 
             return ResponseEntity.ok(Map.of("message", "Cập nhật thông tin thành công"));
         } catch (Exception e) {
@@ -135,7 +136,7 @@ public class ProfileController {
 
             // Cập nhật mật khẩu mới (nhớ mã hóa trước khi lưu)
             user.setPassword(passwordEncoder.encode(newPassword));
-            userRepository.save(user);
+            userRepository.save(Objects.requireNonNull(user));
 
             return ResponseEntity.ok(Map.of("message", "Cập nhật mật khẩu thành công"));
         } catch (Exception e) {

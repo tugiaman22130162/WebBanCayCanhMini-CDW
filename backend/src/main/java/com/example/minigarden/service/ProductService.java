@@ -18,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -54,7 +55,7 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public ProductResponse getProductById(Integer id) {
-        Products product = productRepository.findById(id)
+        Products product = productRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại với ID: " + id));
 
         List<String> imageUrls = product.getImages() != null
@@ -91,7 +92,7 @@ public class ProductService {
 
     @Transactional
     public Products updateProduct(Integer id, Product dto, List<MultipartFile> images) {
-        Products product = productRepository.findById(id)
+        Products product = productRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại với ID: " + id));
 
         if (!product.getName().equals(dto.getName()) && productRepository.existsByName(dto.getName())) {
@@ -103,7 +104,7 @@ public class ProductService {
         product.setPrice(dto.getPrice() != null ? BigDecimal.valueOf(dto.getPrice()) : BigDecimal.ZERO);
         product.setQuantity(dto.getQuantity() != null ? dto.getQuantity() : 0);
 
-        Categories category = categoryRepository.findById(dto.getCategoryId())
+        Categories category = categoryRepository.findById(Objects.requireNonNull(dto.getCategoryId()))
                 .orElseThrow(() -> new RuntimeException("Category không tồn tại với ID: " + dto.getCategoryId()));
         product.setCategory(category);
 
@@ -198,7 +199,7 @@ public class ProductService {
         product.setPrice(dto.getPrice() != null ? BigDecimal.valueOf(dto.getPrice()) : BigDecimal.ZERO);
         product.setQuantity(dto.getQuantity() != null ? dto.getQuantity() : 0);
 
-        Categories category = categoryRepository.findById(dto.getCategoryId())
+        Categories category = categoryRepository.findById(Objects.requireNonNull(dto.getCategoryId()))
                 .orElseThrow(() -> new RuntimeException("Category không tồn tại với ID: " + dto.getCategoryId()));
         product.setCategory(category);
 
@@ -265,7 +266,7 @@ public class ProductService {
 
     @Transactional
     public void deleteProduct(Integer id) {
-        Products product = productRepository.findById(id)
+        Products product = productRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại với ID: " + id));
         product.setStatus(false);
         productRepository.save(product);

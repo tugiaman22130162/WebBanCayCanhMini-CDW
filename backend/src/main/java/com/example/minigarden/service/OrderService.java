@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -27,7 +28,7 @@ public class OrderService {
     public Order createOrder(Integer userId, OrderRequest request) {
 
         //Lấy địa chỉ
-        Address address = addressRepository.findById(request.getAddressId())
+        Address address = addressRepository.findById(Objects.requireNonNull(request.getAddressId()))
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy địa chỉ"));
 
         //Danh sách order item
@@ -38,7 +39,7 @@ public class OrderService {
         //Duyệt sản phẩm
         for (OrderItemRequest itemRequest : request.getItems()) {
 
-            Products product = productRepository.findById(itemRequest.getProductId())
+            Products product = productRepository.findById(Objects.requireNonNull(itemRequest.getProductId()))
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm"));
 
             //Kiểm tra tồn kho
@@ -174,7 +175,7 @@ public class OrderService {
         Order savedOrder = orderRepository.save(order);
         
         if (request.getCartItemId() != null && !request.getCartItemId().isEmpty()) {
-            cartItemRepository.deleteAllById(request.getCartItemId());
+            cartItemRepository.deleteAllById(Objects.requireNonNull(request.getCartItemId()));
         }
         
         // Trừ số lượng mã khuyến mãi (nếu có áp dụng)
@@ -195,7 +196,7 @@ public class OrderService {
     // Lấy chi tiết đơn hàng
     @Transactional(readOnly = true)
     public Order getOrderById(Integer id) {
-        return orderRepository.findById(id)
+        return orderRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng với ID: " + id));
     }
 
@@ -217,7 +218,7 @@ public class OrderService {
     // Hủy đơn hàng (User)
     @Transactional
     public Order cancelOrder(Integer orderId, Integer userId) {
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findById(Objects.requireNonNull(orderId))
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng với ID: " + orderId));
 
         if (!order.getUserId().equals(userId)) {
@@ -257,7 +258,7 @@ public class OrderService {
     // Cập nhật trạng thái đơn hàng (Admin)
     @Transactional
     public Order updateOrderStatus(Integer orderId, OrderStatus newStatus) {
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findById(Objects.requireNonNull(orderId))
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng với ID: " + orderId));
 
         // Nếu admin Hủy đơn hàng và trạng thái cũ chưa phải CANCELLED thì cũng cần Rollback

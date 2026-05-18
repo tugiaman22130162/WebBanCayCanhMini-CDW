@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Objects;
 
 @Service
 
@@ -124,7 +125,7 @@ public class CartService {
     // 2. Cập nhật số lượng (delta truyền vào là 1 hoặc -1)
     @Transactional
     public void updateCartItemQuantity(Integer cartItemId, int delta) {
-        cartItemRepository.findById(cartItemId).ifPresent(item -> {
+        cartItemRepository.findById(Objects.requireNonNull(cartItemId)).ifPresent(item -> {
             int newQuantity = item.getQuantity() + delta;
             if (newQuantity <= 0) {
                 cartItemRepository.delete(item); // Số lượng <= 0 thì tự động xóa khỏi giỏ
@@ -138,6 +139,6 @@ public class CartService {
     // 3. Xóa hoàn toàn một sản phẩm khỏi giỏ
     @Transactional
     public void removeCartItem(Integer cartItemId) {
-        cartItemRepository.deleteById(cartItemId);
+        cartItemRepository.deleteById(Objects.requireNonNull(cartItemId));
     }
 }

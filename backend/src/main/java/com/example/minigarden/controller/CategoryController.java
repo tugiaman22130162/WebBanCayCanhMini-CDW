@@ -16,6 +16,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/categories")
@@ -77,7 +78,7 @@ public class CategoryController {
                 .ok()
                 .headers(headers)
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                .body(new InputStreamResource(in));
+                .body(new InputStreamResource(Objects.requireNonNull(in)));
     }
 
     // API Nhập Excel

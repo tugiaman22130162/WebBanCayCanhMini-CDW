@@ -1,7 +1,6 @@
 package com.example.minigarden.repository;
 
 import com.example.minigarden.entity.PromotionCategory;
-import com.example.minigarden.entity.PromotionProduct;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
