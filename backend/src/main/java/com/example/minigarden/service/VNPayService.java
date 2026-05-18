@@ -4,10 +4,12 @@ import com.example.minigarden.config.VNPayConfig;
 import org.springframework.stereotype.Service;
 import jakarta.servlet.http.HttpServletRequest;
 
+import java.text.Normalizer;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.regex.Pattern;
 
 @Service
 public class VNPayService {
@@ -25,7 +27,7 @@ public class VNPayService {
         vnp_Params.put("vnp_CurrCode", "VND");
         vnp_Params.put("vnp_BankCode", "VNBANK"); 
         vnp_Params.put("vnp_TxnRef", orderCode); 
-        vnp_Params.put("vnp_OrderInfo", "Thanh toan don hang " + orderCode);
+        vnp_Params.put("vnp_OrderInfo", removeAccent("Thanh toan don hang " + orderCode));
         vnp_Params.put("vnp_OrderType", "other");
         vnp_Params.put("vnp_Locale", "vn");
         vnp_Params.put("vnp_ReturnUrl", VNPayConfig.vnp_ReturnUrl);
@@ -82,5 +84,12 @@ public class VNPayService {
         queryUrl += "&vnp_SecureHash=" + vnp_SecureHash;
         
         return VNPayConfig.vnp_PayUrl + "?" + queryUrl;
+    }
+
+    // Hàm hỗ trợ loại bỏ dấu tiếng Việt
+    private String removeAccent(String s) {
+        String temp = Normalizer.normalize(s, Normalizer.Form.NFD);
+        Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
+        return pattern.matcher(temp).replaceAll("").replaceAll("đ", "d").replaceAll("Đ", "D");
     }
 }

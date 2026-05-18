@@ -10,33 +10,45 @@ export default function SuccessPayment() {
     const [order, setOrder] = useState<any>(null);
 
     useEffect(() => {
-        const fetchOrder = async (orderCode: string) => {
+        // Hàm này được gọi sau khi VNPAY redirect về, để xác thực và lấy thông tin đơn hàng
+        const verifyVnpayPayment = async () => {
             try {
-                const token = localStorage.getItem("token");
-                const response = await axios.get(`http://localhost:8080/api/orders?keyword=${orderCode}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                if (response.data && response.data.length > 0) {
-                    setOrder(response.data[0]);
+                // Gọi API về backend để xác thực chữ ký và cập nhật trạng thái thanh toán
+                const verifyRes = await axios.get(`http://localhost:8080/api/vnpay/payment-return?${searchParams.toString()}`);
+
+                // Nếu xác thực thành công, backend sẽ trả về orderCode
+                const orderCode = verifyRes.data.orderCode;
+                if (orderCode) {
+                    // Lấy thông tin chi tiết đơn hàng để hiển thị
+                    const token = localStorage.getItem("token");
+                    const orderRes = await axios.get(`http://localhost:8080/api/orders?keyword=${orderCode}`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    if (orderRes.data && orderRes.data.length > 0) {
+                        setOrder(orderRes.data[0]);
+                    }
+                } else {
+                    // Nếu backend không trả về orderCode, có lỗi xảy ra
+                    throw new Error("Xác thực VNPAY không thành công.");
                 }
             } catch (error) {
-                console.error("Lỗi lấy thông tin đơn hàng:", error);
+                console.error("Lỗi xác thực hoặc lấy thông tin đơn hàng VNPAY:", error);
+                navigate("/cancel"); // Chuyển đến trang thanh toán thất bại
             }
         };
 
-        if (location.state && location.state.order) {
+        // Xử lý khi trang được tải
+        if (location.state?.order) {
+            // Trường hợp 1: Thanh toán COD, dữ liệu order được truyền qua state
             setOrder(location.state.order);
         } else if (searchParams.get("vnp_TxnRef")) {
+            // Trường hợp 2: Thanh toán VNPAY, redirect từ VNPAY về với các query params
             const responseCode = searchParams.get("vnp_ResponseCode");
             if (responseCode === "00") {
-                const orderCode = searchParams.get("vnp_TxnRef");
-                if (orderCode) fetchOrder(orderCode);
-                setOrder({
-                    orderCode: orderCode,
-                    paymentMethod: 'vnpay',
-                    totalPrice: Number(searchParams.get("vnp_Amount") || 0) / 100,
-                });
+                // Thanh toán thành công, gọi hàm xác thực
+                verifyVnpayPayment();
             } else {
+                // Thanh toán thất bại, chuyển hướng đến trang hủy
                 navigate("/cancel");
             }
         }

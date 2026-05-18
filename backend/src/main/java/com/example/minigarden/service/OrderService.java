@@ -186,10 +186,14 @@ public class OrderService {
         }
 
         // Lưu dữ liệu vào bảng Payments
+        PaymentMethod paymentMethod = "VNPAY".equalsIgnoreCase(request.getPaymentMethod()) ? PaymentMethod.VNPAY : PaymentMethod.COD;
+        // Trạng thái ban đầu của mọi thanh toán là PENDING.
+        // - Với COD, nó sẽ giữ nguyên cho đến khi giao hàng.
+        // - Với VNPAY, nó sẽ được cập nhật thành SUCCESS sau khi có xác nhận từ VNPAY.
         Payments payment = Payments.builder()
                 .order(savedOrder)
                 .amount(total)
-                .method("VNPAY".equalsIgnoreCase(request.getPaymentMethod()) ? PaymentMethod.VNPAY : PaymentMethod.COD)
+                .method(paymentMethod)
                 .status(PaymentStatus.PENDING)
                 .build();
         paymentRepository.save(Objects.requireNonNull(payment));
