@@ -1,5 +1,14 @@
 package com.example.minigarden.service;
 
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.example.minigarden.dto.PromotionRequest;
@@ -14,12 +23,22 @@ import com.example.minigarden.entity.Categories;
 import com.example.minigarden.entity.Products;
 import com.example.minigarden.repository.PromotionCategoryRepository;
 import com.example.minigarden.repository.PromotionProductRepository;
+
+import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import java.time.format.DateTimeFormatter;
+
 
 @Service
 public class PromotionService {
@@ -304,6 +323,260 @@ public class PromotionService {
                     .promotion(savedPromotion).product(product).build();
             promotionProductRepository.save(Objects.requireNonNull(promoProd));
             System.out.println("=> Đã chèn thành công vào bảng PromotionProduct!");
+        }
+    }
+
+    // Export danh sách khuyến mãi ra file Excel
+    @Transactional(readOnly = true)
+    public ByteArrayInputStream exportPromotionsToExcel() throws IOException {
+        List<Promotion> promotions = promotionRepository.findAll();
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("DANH SÁCH KHUYẾN MÃI");
+
+            // Style cho Tiêu đề lớn (Title)
+            Font titleFont = workbook.createFont();
+            titleFont.setBold(true);
+            titleFont.setFontHeightInPoints((short) 18);
+            titleFont.setColor(IndexedColors.DARK_GREEN.getIndex());
+
+            CellStyle titleStyle = workbook.createCellStyle();
+            titleStyle.setFont(titleFont);
+            titleStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            // Tạo Title Row ở dòng 0 và gộp 4 cột lại cho đẹp
+            Row titleRow = sheet.createRow(0);
+            Cell titleCell = titleRow.createCell(0);
+            titleCell.setCellValue("DANH SÁCH KHUYẾN MÃI");
+            titleCell.setCellStyle(titleStyle);
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(0, 0, 0, 11));
+
+            // Style cho Header (Tiêu đề cột)
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerFont.setColor(IndexedColors.WHITE.getIndex());
+
+            CellStyle headerCellStyle = workbook.createCellStyle();
+            headerCellStyle.setFont(headerFont);
+            headerCellStyle.setFillForegroundColor(IndexedColors.DARK_GREEN.getIndex()); // Màu xanh chủ đạo
+            headerCellStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerCellStyle.setBorderBottom(BorderStyle.THIN);
+            headerCellStyle.setBorderTop(BorderStyle.THIN);
+            headerCellStyle.setBorderRight(BorderStyle.THIN);
+            headerCellStyle.setBorderLeft(BorderStyle.THIN);
+            headerCellStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            // Tạo Header Row (Bị dời xuống dòng 1)
+            Row headerRow = sheet.createRow(1);
+            String[] columns = {"ID", "Mã Khuyến Mãi", "Mô Tả", "Loại KM", "Áp Dụng Cho", "Loại Giảm Giá", "Mức Giảm", "Đơn Tối Thiểu", "Trạng Thái", "Ngày Bắt Đầu", "Ngày Kết Thúc", "Số Lượng"};
+            for (int col = 0; col < columns.length; col++) {
+                Cell cell = headerRow.createCell(col);
+                cell.setCellValue(columns[col]);
+                cell.setCellStyle(headerCellStyle);
+            }
+
+            // Style cho Data
+            CellStyle dataCellStyle = workbook.createCellStyle();
+            dataCellStyle.setBorderBottom(BorderStyle.DASHED);
+            dataCellStyle.setBorderTop(BorderStyle.DASHED);
+            dataCellStyle.setBorderRight(BorderStyle.DASHED);
+            dataCellStyle.setBorderLeft(BorderStyle.DASHED);
+
+            // Đổ dữ liệu vào Excel (Bắt đầu từ dòng 2)
+            int rowIdx = 2;
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+            for (Promotion promotion : promotions) {
+                Row row = sheet.createRow(rowIdx++);
+                
+                // Xác định đối tượng áp dụng
+                String targetName = "Toàn cửa hàng / Vận chuyển";
+                if (promotion.getType() == PromotionType.CATEGORY) {
+                    List<PromotionCategory> pcList = promotionCategoryRepository.findByPromotionId(promotion.getId());
+                    if (pcList != null && !pcList.isEmpty() && pcList.get(0).getCategory() != null) {
+                        targetName = "Danh mục: " + pcList.get(0).getCategory().getName();
+                    }
+                } else if (promotion.getType() == PromotionType.PRODUCT) {
+                    List<PromotionProduct> ppList = promotionProductRepository.findByPromotionId(promotion.getId());
+                    if (ppList != null && !ppList.isEmpty() && ppList.get(0).getProduct() != null) {
+                        targetName = "Sản phẩm: " + ppList.get(0).getProduct().getName();
+                    }
+                }
+
+                int colIdx = 0;
+                Cell cell0 = row.createCell(colIdx++);
+                cell0.setCellValue(promotion.getId());
+                cell0.setCellStyle(dataCellStyle);
+
+                Cell cell1 = row.createCell(colIdx++);
+                cell1.setCellValue(promotion.getName() != null ? promotion.getName() : "");
+                cell1.setCellStyle(dataCellStyle);
+
+                Cell cell2 = row.createCell(colIdx++);
+                cell2.setCellValue(promotion.getDescription() != null ? promotion.getDescription() : "");
+                cell2.setCellStyle(dataCellStyle);
+
+                Cell cell3 = row.createCell(colIdx++);
+                cell3.setCellValue(promotion.getType() != null ? promotion.getType().name() : "");
+                cell3.setCellStyle(dataCellStyle);
+                
+                Cell cell4 = row.createCell(colIdx++);
+                cell4.setCellValue(targetName);
+                cell4.setCellStyle(dataCellStyle);
+                
+                Cell cell5 = row.createCell(colIdx++);
+                cell5.setCellValue(promotion.getDiscountType() != null ? promotion.getDiscountType().name() : "");
+                cell5.setCellStyle(dataCellStyle);
+                
+                Cell cell6 = row.createCell(colIdx++);
+                cell6.setCellValue(promotion.getDiscountValue() != null ? promotion.getDiscountValue().toString() : "0");
+                cell6.setCellStyle(dataCellStyle);
+                
+                Cell cell7 = row.createCell(colIdx++);
+                cell7.setCellValue(promotion.getMinOrderValue() != null ? promotion.getMinOrderValue().toString() : "0");
+                cell7.setCellStyle(dataCellStyle);
+                
+                Cell cell8 = row.createCell(colIdx++);
+                cell8.setCellValue(Boolean.TRUE.equals(promotion.getIsActive()) ? "Hoạt động" : "Ngừng HĐ");
+                cell8.setCellStyle(dataCellStyle);
+                
+                Cell cell9 = row.createCell(colIdx++);
+                cell9.setCellValue(promotion.getStartDate() != null ? promotion.getStartDate().format(formatter) : "");
+                cell9.setCellStyle(dataCellStyle);
+
+                Cell cell10 = row.createCell(colIdx++);
+                cell10.setCellValue(promotion.getEndDate() != null ? promotion.getEndDate().format(formatter) : "");
+                cell10.setCellStyle(dataCellStyle);
+                
+                Cell cell11 = row.createCell(colIdx++);
+                Object qty = promotion.getQuantity();
+                cell11.setCellValue(qty != null ? ((Number) qty).doubleValue() : 0);
+                cell11.setCellStyle(dataCellStyle);
+            }
+
+            // Tự động căn chỉnh độ rộng cột
+            for (int i = 0; i < columns.length; i++) {
+                sheet.setColumnWidth(i, 6000); // 6000 tương đương khoảng 23 ký tự
+            }
+            sheet.setColumnWidth(2, 8000); // Cho cột mô tả rộng hơn
+            sheet.setColumnWidth(4, 8000); // Cho cột đối tượng áp dụng rộng hơn
+            sheet.setColumnWidth(9, 5000); // Cột ngày tháng
+            sheet.setColumnWidth(10, 5000);
+
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        }
+    }
+
+    // Import danh sách Khuyến mãi từ file Excel
+    @Transactional
+    public void importPromotionsFromExcel(MultipartFile file) throws IOException {
+        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+            Sheet sheet = workbook.getSheetAt(0);
+            List<Promotion> promotions = new ArrayList<>();
+            
+            // Đọc từ dòng 2 (bỏ qua Title và Header)
+            for (int i = 2; i <= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+
+                Promotion promotion = new Promotion();
+                
+                // Cột 1: Mã Khuyến Mãi (Tên)
+                Cell nameCell = row.getCell(1);
+                String name = "";
+                if (nameCell != null) {
+                    try { name = nameCell.getStringCellValue().trim(); } 
+                    catch (Exception e) { 
+                        try { name = String.valueOf((int) nameCell.getNumericCellValue()); } catch (Exception ex) {} 
+                    }
+                }
+                if (name.isEmpty() || promotionRepository.findByName(name).isPresent()) continue; // Bỏ qua nếu rỗng hoặc đã tồn tại
+                promotion.setName(name);
+
+                // Cột 2: Mô tả
+                Cell descCell = row.getCell(2);
+                if (descCell != null) {
+                    try { promotion.setDescription(descCell.getStringCellValue()); } catch (Exception ignored) {}
+                }
+
+                // Cột 3: Loại Khuyến Mãi
+                Cell typeCell = row.getCell(3);
+                if (typeCell != null) {
+                    try { promotion.setType(PromotionType.valueOf(typeCell.getStringCellValue().trim().toUpperCase())); }
+                    catch (Exception e) { promotion.setType(PromotionType.SHOP); }
+                }
+
+                // Cột 5: Loại Giảm Giá
+                Cell discTypeCell = row.getCell(5);
+                if (discTypeCell != null) {
+                    try { promotion.setDiscountType(DiscountType.valueOf(discTypeCell.getStringCellValue().trim().toUpperCase())); }
+                    catch (Exception e) { promotion.setDiscountType(DiscountType.FIXED_AMOUNT); }
+                }
+
+                // Cột 6: Mức giảm
+                Cell discValCell = row.getCell(6);
+                if (discValCell != null) {
+                    try { promotion.setDiscountValue(BigDecimal.valueOf(discValCell.getNumericCellValue())); }
+                    catch (Exception e) {
+                        try { promotion.setDiscountValue(new BigDecimal(discValCell.getStringCellValue().trim())); }
+                        catch (Exception ex) { promotion.setDiscountValue(BigDecimal.ZERO); }
+                    }
+                } else promotion.setDiscountValue(BigDecimal.ZERO);
+
+                // Cột 7: Đơn tối thiểu
+                Cell minOrderCell = row.getCell(7);
+                if (minOrderCell != null) {
+                    try { promotion.setMinOrderValue(BigDecimal.valueOf(minOrderCell.getNumericCellValue())); }
+                    catch (Exception e) {
+                        try { promotion.setMinOrderValue(new BigDecimal(minOrderCell.getStringCellValue().trim())); }
+                        catch (Exception ex) { promotion.setMinOrderValue(BigDecimal.ZERO); }
+                    }
+                } else promotion.setMinOrderValue(BigDecimal.ZERO);
+
+                // Cột 8: Trạng thái
+                Cell statusCell = row.getCell(8);
+                if (statusCell != null) {
+                    try { promotion.setIsActive("Hoạt động".equalsIgnoreCase(statusCell.getStringCellValue().trim())); }
+                    catch (Exception e) { promotion.setIsActive(true); }
+                } else promotion.setIsActive(true);
+
+                // Cột 9: Ngày Bắt Đầu
+                Cell startDateCell = row.getCell(9);
+                if (startDateCell != null) {
+                    try {
+                        java.util.Date date = startDateCell.getDateCellValue();
+                        if (date != null) promotion.setStartDate(date.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime());
+                    } catch (Exception e) {
+                        try { promotion.setStartDate(java.time.LocalDateTime.parse(startDateCell.getStringCellValue().trim(), DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))); } catch (Exception ignored) {}
+                    }
+                }
+
+                // Cột 10: Ngày Kết Thúc
+                Cell endDateCell = row.getCell(10);
+                if (endDateCell != null) {
+                    try {
+                        java.util.Date date = endDateCell.getDateCellValue();
+                        if (date != null) promotion.setEndDate(date.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime());
+                    } catch (Exception e) {
+                        try { promotion.setEndDate(java.time.LocalDateTime.parse(endDateCell.getStringCellValue().trim(), DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))); } catch (Exception ignored) {}
+                    }
+                }
+
+                // Cột 11: Số lượng
+                Cell qtyCell = row.getCell(11);
+                if (qtyCell != null) {
+                    try { promotion.setQuantity((int) qtyCell.getNumericCellValue()); }
+                    catch (Exception e) {
+                        try { promotion.setQuantity(Integer.parseInt(qtyCell.getStringCellValue().trim())); }
+                        catch (Exception ex) { promotion.setQuantity(0); }
+                    }
+                } else promotion.setQuantity(0);
+
+                promotion.setCreatedAt(java.time.LocalDateTime.now());
+                promotions.add(promotion);
+            }
+            
+            promotionRepository.saveAll(promotions);
         }
     }
 }

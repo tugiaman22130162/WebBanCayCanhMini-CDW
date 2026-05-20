@@ -68,6 +68,8 @@ export default function Checkout() {
     const [isCalculatingFee, setIsCalculatingFee] = useState(false);
     const [addresses, setAddresses] = useState<any[]>([]);
     const [note, setNote] = useState("");
+    const [estimatedDateFrom, setEstimatedDateFrom] = useState<Date | null>(null);
+    const [estimatedDateTo, setEstimatedDateTo] = useState<Date | null>(null);
     const [activeDistrictId, setActiveDistrictId] = useState<number | null>(null);
 
 
@@ -191,6 +193,8 @@ export default function Checkout() {
             // reset UI trước khi gọi API
             setApiShippingFee(null);
             setEstimatedDelivery("Đang tính...");
+        setEstimatedDateFrom(null);
+        setEstimatedDateTo(null);
 
             try {
                 const totalWeight = cartItems.reduce(
@@ -255,28 +259,66 @@ export default function Checkout() {
                 const fallbackDate = new Date(today);
                 fallbackDate.setDate(today.getDate() + 3);
 
-                if (
-                    timeRes.data.code === 200 &&
-                    timeRes.data.data?.leadtime &&
-                    timeRes.data.data.leadtime > 0
-                ) {
-                    const leadtimeDate = new Date(
-                        timeRes.data.data.leadtime * 1000
-                    );
-
-                    if (leadtimeDate.getFullYear() >= today.getFullYear()) {
-                        setEstimatedDelivery(
-                            `${formatDate(today)} - ${formatDate(leadtimeDate)}`
-                        );
+                if (timeRes.data.code === 200 && timeRes.data.data) {
+                    const leadtimeData = timeRes.data.data;
+                    
+                    // Ưu tiên sử dụng khoảng thời gian từ GHN trả về nếu có
+                    if (leadtimeData.leadtime_order?.from_estimate_date && leadtimeData.leadtime_order?.to_estimate_date) {
+                        const fromDate = new Date(leadtimeData.leadtime_order.from_estimate_date);
+                        let toDate = new Date(leadtimeData.leadtime_order.to_estimate_date);
+                        
+                        const fromStr = formatDate(fromDate);
+                        let toStr = formatDate(toDate);
+                        
+                        if (fromStr === toStr) {
+                            toDate.setDate(toDate.getDate() + 1);
+                            toStr = formatDate(toDate);
+                        }
+                        
+                        setEstimatedDelivery(`${fromStr} - ${toStr}`);
+                        setEstimatedDateFrom(fromDate);
+                        setEstimatedDateTo(toDate);
+                    } 
+                    // Fallback tính từ leadtime timestamp
+                    else if (leadtimeData.leadtime && leadtimeData.leadtime > 0) {
+                        const leadtimeDate = new Date(leadtimeData.leadtime * 1000);
+                        if (leadtimeDate.getTime() >= today.getTime()) {
+                            // Tạo ngày bắt đầu giao (thường là sát ngày leadtime)
+                            let fromDate = new Date(leadtimeDate);
+                            fromDate.setDate(leadtimeDate.getDate() - 1);
+                            
+                            if(fromDate.getTime() < today.getTime()) {
+                                fromDate = new Date(today);
+                            }
+                            
+                            let toDate = new Date(leadtimeDate);
+                            const fromStr = formatDate(fromDate);
+                            let toStr = formatDate(toDate);
+                            
+                            if (fromStr === toStr) {
+                                toDate.setDate(toDate.getDate() + 1);
+                                toStr = formatDate(toDate);
+                            }
+                            
+                            setEstimatedDelivery(`${fromStr} - ${toStr}`);
+                            setEstimatedDateFrom(fromDate);
+                            setEstimatedDateTo(toDate);
+                        } else {
+                            setEstimatedDelivery(`${formatDate(today)} - ${formatDate(fallbackDate)}`);
+                            setEstimatedDateFrom(today);
+                            setEstimatedDateTo(fallbackDate);
+                        }
                     } else {
-                        setEstimatedDelivery(
-                            `${formatDate(today)} - ${formatDate(fallbackDate)}`
-                        );
+                        setEstimatedDelivery(`${formatDate(today)} - ${formatDate(fallbackDate)}`);
+                        setEstimatedDateFrom(today);
+                        setEstimatedDateTo(fallbackDate);
                     }
                 } else {
                     setEstimatedDelivery(
                         `${formatDate(today)} - ${formatDate(fallbackDate)}`
                     );
+                    setEstimatedDateFrom(today);
+                    setEstimatedDateTo(fallbackDate);
                 }
             } catch (error: any) {
                 console.error(
@@ -314,6 +356,10 @@ export default function Checkout() {
 
         const validCartItemIds = cartItems.filter(item => item.id !== 'buy-now').map(item => item.id);
 
+        const promotionCodes = [];
+        if (productPromoCode) promotionCodes.push(productPromoCode);
+        if (shippingPromoCode) promotionCodes.push(shippingPromoCode);
+
         // Gom toàn bộ thông tin đơn hàng
         const orderPayload = {
             items: cartItems.map(item => ({
@@ -323,10 +369,12 @@ export default function Checkout() {
             cartItemId: validCartItemIds.length > 0 ? validCartItemIds : null,
             addressId: Number(shippingAddress),
             shippingFee: apiShippingFee,
-            discountAmount: productDiscount + shippingDiscount,
+            discountAmount: productDiscount,
             paymentMethod: paymentMethod.toUpperCase(),
-            promotionCode: productPromoCode || shippingPromoCode || null,
-            note: note.trim()
+            promotionCode: promotionCodes.length > 0 ? promotionCodes.join(',') : null,
+            note: note.trim(),
+            estimatedDeliveryTimeFrom: estimatedDateFrom ? estimatedDateFrom.toISOString() : null,
+            estimatedDeliveryTimeTo: estimatedDateTo ? estimatedDateTo.toISOString() : null
         };
 
         try {
@@ -336,14 +384,9 @@ export default function Checkout() {
             });
 
             // Nếu khách chọn thanh toán VNPAY, lấy URL từ backend trả về và chuyển hướng sang cổng thanh toán
-            if (paymentMethod.toLowerCase() === "vnpay") {
-                if (response.data.paymentUrl) {
-                    window.dispatchEvent(new Event("cartUpdated"));
-                    window.location.href = response.data.paymentUrl;
-                    return;
-                } else {
-                    throw new Error("Không tạo được liên kết thanh toán VNPay từ máy chủ. Vui lòng thử lại sau.");
-                }
+            if (paymentMethod === "vnpay" && response.data.paymentUrl) {
+                window.location.href = response.data.paymentUrl;
+                return;
             }
 
             // Báo cho Navbar (Header) biết để cập nhật lại số lượng icon giỏ hàng

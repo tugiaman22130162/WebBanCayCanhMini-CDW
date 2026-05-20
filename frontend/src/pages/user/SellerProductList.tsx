@@ -23,7 +23,8 @@ const SellerProduct: React.FC = () => {
                     name: item.name,
                     price: item.price || 0,
                     image: (item.images && item.images.length > 0) ? item.images[0] : "https://images.unsplash.com/photo-1614594975525-e45190c55d40?w=400&h=400&fit=crop",
-                    category: item.categoryName || "Chưa phân loại",
+                    category: item.categoryName || item.category_name || item.category?.name || item.category || "Chưa phân loại",
+                    categoryId: item.categoryId || item.category_id || item.category?.id || null,
                 }));
                 setProducts(formattedData);
             } catch (error) {
@@ -78,7 +79,6 @@ const SellerProduct: React.FC = () => {
                                     whileInView={{ opacity: 1, y: 0 }}
                                     viewport={{ once: true, amount: 0.2 }}
                                     transition={{ duration: 0.6, delay: index * 0.1 }}
-                                    className="mt-[-30px]"
                                 >
                                     <ProductCard
                                         product={product}

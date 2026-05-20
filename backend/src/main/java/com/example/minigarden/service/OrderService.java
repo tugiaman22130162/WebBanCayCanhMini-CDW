@@ -75,39 +75,59 @@ public class OrderService {
         BigDecimal shippingFee = request.getShippingFee() != null ? request.getShippingFee() : BigDecimal.ZERO;
 
         //Giảm giá
-        BigDecimal discount = request.getDiscountAmount() != null ? request.getDiscountAmount() : BigDecimal.ZERO;
+        BigDecimal productDiscount = request.getDiscountAmount() != null ? request.getDiscountAmount() : BigDecimal.ZERO;
 
         // Tìm mã khuyến mãi nếu có
-        Promotion promotion = null;
+        List<Promotion> appliedPromotions = new ArrayList<>();
+        List<OrderPromotion> orderPromotions = new ArrayList<>();
+        BigDecimal totalShippingDiscount = BigDecimal.ZERO;
+        
         if (request.getPromotionCode() != null && !request.getPromotionCode().trim().isEmpty()) {
-            promotion = promotionRepository.findByName(request.getPromotionCode()).orElse(null);
-            
-            // Xử lý nếu mã là miễn phí vận chuyển
-            if (promotion != null && promotion.getType() == PromotionType.SHIPPING) {
-                BigDecimal shippingDiscount = BigDecimal.ZERO;
-                if (promotion.getDiscountType() == DiscountType.FREE) {
-                    shippingDiscount = shippingFee;
-                } else if (promotion.getDiscountType() == DiscountType.PERCENTAGE) {
-                    shippingDiscount = shippingFee.multiply(promotion.getDiscountValue()).divide(new BigDecimal(100));
-                    if (promotion.getMaxDiscount() != null && promotion.getMaxDiscount().compareTo(BigDecimal.ZERO) > 0) {
-                        if (shippingDiscount.compareTo(promotion.getMaxDiscount()) > 0) {
-                            shippingDiscount = promotion.getMaxDiscount();
-                        }
-                    }
-                } else if (promotion.getDiscountType() == DiscountType.FIXED_AMOUNT) {
-                    shippingDiscount = promotion.getDiscountValue();
-                }
-
-                if (shippingDiscount.compareTo(shippingFee) > 0) {
-                    shippingDiscount = shippingFee;
-                }
-
-                shippingFee = shippingFee.subtract(shippingDiscount);
+            String[] codes = request.getPromotionCode().split(",");
+            for (String code : codes) {
+                Promotion promotion = promotionRepository.findByName(code.trim()).orElse(null);
                 
-                // Trừ tiền ship ra khỏi discount tổng của Frontend để không bị trừ đúp
-                discount = discount.subtract(shippingDiscount);
-                if (discount.compareTo(BigDecimal.ZERO) < 0) {
-                    discount = BigDecimal.ZERO;
+                if (promotion != null) {
+                    appliedPromotions.add(promotion);
+                    BigDecimal currentPromoDiscount = BigDecimal.ZERO;
+                    
+                    // Xử lý nếu mã là miễn phí vận chuyển
+                    if (promotion.getType() == PromotionType.SHIPPING) {
+                        BigDecimal shippingDiscount = BigDecimal.ZERO;
+                        if (promotion.getDiscountType() == DiscountType.FREE) {
+                            shippingDiscount = shippingFee;
+                        } else if (promotion.getDiscountType() == DiscountType.PERCENTAGE) {
+                            shippingDiscount = shippingFee.multiply(promotion.getDiscountValue()).divide(new BigDecimal(100));
+                            if (promotion.getMaxDiscount() != null && promotion.getMaxDiscount().compareTo(BigDecimal.ZERO) > 0) {
+                                if (shippingDiscount.compareTo(promotion.getMaxDiscount()) > 0) {
+                                    shippingDiscount = promotion.getMaxDiscount();
+                                }
+                            }
+                        } else if (promotion.getDiscountType() == DiscountType.FIXED_AMOUNT) {
+                            shippingDiscount = promotion.getDiscountValue();
+                        }
+
+                        if (shippingDiscount.compareTo(shippingFee) > 0) {
+                            shippingDiscount = shippingFee;
+                        }
+
+                        currentPromoDiscount = shippingDiscount;
+                        totalShippingDiscount = totalShippingDiscount.add(shippingDiscount);
+                    }
+                    
+                    OrderPromotion orderPromotion = OrderPromotion.builder()
+                            .promotionCode(promotion.getName())
+                            .discountAmount(currentPromoDiscount)
+                            .build();
+                    orderPromotions.add(orderPromotion);
+                }
+            }
+            
+            // Cập nhật lại discountAmount cho các mã không phải SHIPPING
+            for (OrderPromotion op : orderPromotions) {
+                Promotion promo = appliedPromotions.stream().filter(p -> p.getName().equals(op.getPromotionCode())).findFirst().orElse(null);
+                if (promo != null && promo.getType() != PromotionType.SHIPPING) {
+                    op.setDiscountAmount(productDiscount);
                 }
             }
         }
@@ -115,26 +135,34 @@ public class OrderService {
         //Tổng tiền
         BigDecimal total = subtotal
                 .add(shippingFee)
-                .subtract(discount);
+                .subtract(productDiscount)
+                .subtract(totalShippingDiscount);
                 
         if (total.compareTo(BigDecimal.ZERO) < 0) {
             total = BigDecimal.ZERO;
         }
 
         // Tính toán Thời gian giao hàng dự kiến
-        LocalDateTime deliveryFrom;
-        LocalDateTime deliveryTo;
+        LocalDateTime defaultDeliveryFrom;
+        LocalDateTime defaultDeliveryTo;
         String province = address.getProvince() != null ? address.getProvince().toLowerCase() : "";
         
         // Nếu ở TP.HCM giao trong 1-2 ngày, tỉnh khác 3-5 ngày (Chuẩn theo ShippingPolicy), 
         // nếu leadtime của GHN trả về nhanh hơn thì sẽ lấy thời gian của GHN,
         // còn nếu GHN trả về lâu hơn thì sẽ lấy thời gian dự kiến này để đảm bảo không bị hứa giao quá sớm
         if (province.contains("hồ chí minh") || province.contains("ho chi minh")) {
-            deliveryFrom = LocalDateTime.now().plusDays(1);
-            deliveryTo = LocalDateTime.now().plusDays(2);
+            defaultDeliveryFrom = LocalDateTime.now().plusDays(1);
+            defaultDeliveryTo = LocalDateTime.now().plusDays(2);
         } else {
-            deliveryFrom = LocalDateTime.now().plusDays(3);
-            deliveryTo = LocalDateTime.now().plusDays(5);
+            defaultDeliveryFrom = LocalDateTime.now().plusDays(3);
+            defaultDeliveryTo = LocalDateTime.now().plusDays(5);
+        }
+        
+        LocalDateTime deliveryFrom = request.getEstimatedDeliveryTimeFrom() != null ? request.getEstimatedDeliveryTimeFrom() : defaultDeliveryFrom;
+        LocalDateTime deliveryTo = request.getEstimatedDeliveryTimeTo() != null ? request.getEstimatedDeliveryTimeTo() : defaultDeliveryTo;
+        if (deliveryTo.isAfter(defaultDeliveryTo)) {
+            deliveryFrom = defaultDeliveryFrom;
+            deliveryTo = defaultDeliveryTo;
         }
 
         //Tạo order
@@ -147,7 +175,7 @@ public class OrderService {
                 .paymentMethod(request.getPaymentMethod())
                 .note(request.getNote())
                 .shippingFee(shippingFee)
-                .discountAmount(discount)
+                .discountAmount(productDiscount)
                 .totalPrice(total)
                 .estimatedDeliveryTimeFrom(deliveryFrom)
                 .estimatedDeliveryTimeTo(deliveryTo)
@@ -162,14 +190,10 @@ public class OrderService {
         order.setItems(orderItems);
 
         // Tạo OrderPromotion nếu đơn hàng có dùng mã khuyến mãi
-        if (promotion != null) {
-            OrderPromotion orderPromotion = OrderPromotion.builder()
-                    .order(order)
-                    .promotionCode(promotion.getName())
-                    .discountAmount(request.getDiscountAmount() != null ? request.getDiscountAmount() : BigDecimal.ZERO)
-                    .build();
-            List<OrderPromotion> orderPromotions = new ArrayList<>();
-            orderPromotions.add(orderPromotion);
+        if (!orderPromotions.isEmpty()) {
+            for (OrderPromotion op : orderPromotions) {
+                op.setOrder(order);
+            }
             order.setPromotions(orderPromotions);
         }
 
@@ -180,9 +204,13 @@ public class OrderService {
         }
         
         // Trừ số lượng mã khuyến mãi (nếu có áp dụng)
-        if (promotion != null && promotion.getQuantity() != null && promotion.getQuantity() > 0) {
-            promotion.setQuantity(promotion.getQuantity() - 1);
-            promotionRepository.save(promotion);
+        if (!appliedPromotions.isEmpty()) {
+            for (Promotion p : appliedPromotions) {
+                if (p.getQuantity() != null && p.getQuantity() > 0) {
+                    p.setQuantity(p.getQuantity() - 1);
+                    promotionRepository.save(p);
+                }
+            }
         }
 
         // Lưu dữ liệu vào bảng Payments
@@ -329,4 +357,6 @@ public class OrderService {
             }
         });
     }
+
+    //
 }

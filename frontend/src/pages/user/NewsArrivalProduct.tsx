@@ -23,6 +23,7 @@ const NewsArrivalProduct: React.FC = () => {
                     price: item.price || 0,
                     image: (item.images && item.images.length > 0) ? item.images[0] : "https://images.unsplash.com/photo-1614594975525-e45190c55d40?w=400&h=400&fit=crop",
                     category: item.categoryName || item.category?.name || item.category || "Chưa phân loại",
+                    categoryId: item.categoryId || item.category?.id || null,
                 })).reverse(); // Đảo ngược để hiển thị mới nhất trước
                 
                 setProducts(formattedData);

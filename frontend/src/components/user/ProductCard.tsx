@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import type { Product } from "../../data/products";
 import { Link, useNavigate, useLocation } from "react-router-dom";
@@ -12,6 +12,10 @@ type Props = {
     onToggleFavorite?: (product: Product) => void;
 };
 
+// Cache dùng chung cho tất cả ProductCard để chỉ gọi API 1 lần duy nhất
+let cachedPromotions: any[] | null = null;
+let fetchPromotionsPromise: Promise<any[]> | null = null;
+
 const ProductCard: React.FC<Props> = ({
     product,
     isFavorited,
@@ -22,6 +26,31 @@ const ProductCard: React.FC<Props> = ({
     const navigate = useNavigate();
     const location = useLocation();
     const imageRef = useRef<HTMLImageElement>(null);
+
+    const [promotions, setPromotions] = useState<any[]>(cachedPromotions || []);
+
+    // Lấy danh sách khuyến mãi chung
+    useEffect(() => {
+        if (!cachedPromotions) {
+            if (!fetchPromotionsPromise) {
+                const token = localStorage.getItem("token");
+                const headers = token ? { Authorization: `Bearer ${token}` } : {};
+                fetchPromotionsPromise = axios.get("http://localhost:8080/api/promotions", { headers })
+                    .then(res => {
+                        const activePromos = res.data.filter((p: any) => p.isActive);
+                        cachedPromotions = activePromos;
+                        return activePromos;
+                    })
+                    .catch(() => {
+                        fetchPromotionsPromise = null; // Cho phép gọi lại nếu lỗi
+                        return [];
+                    });
+            }
+            if (fetchPromotionsPromise) {
+                fetchPromotionsPromise.then(activePromos => setPromotions(activePromos));
+            }
+        }
+    }, []);
 
     const handleToggleFavorite = () => {
         if (onToggleFavorite) {
@@ -118,20 +147,68 @@ const ProductCard: React.FC<Props> = ({
         }
     };
 
-    // Demo tính toán phần trăm giảm giá (Cố định 20%)
-    const mockDiscountPercent = 10;
+    // Lọc ra các mã KHUYẾN MÃI áp dụng cho Sản phẩm này hoặc Danh mục của nó
+    const applicablePromos = useMemo(() => {
+        return promotions.filter(promo => {
+            if (!product) return false;
+            if (promo.endDate && new Date(promo.endDate) < new Date()) return false;
+           
+            if (promo.type === 'SHOP') return false; // Chỉ áp dụng cho Danh mục và Sản phẩm cụ thể
+            if (promo.type === 'SHIPPING') return false; // Không lấy mã vận chuyển
+            if (promo.type === 'PRODUCT' && promo.targetId != null && String(promo.targetId) === String(product.id)) return true;
+            if (promo.type === 'CATEGORY' && ((promo.targetId != null && String(promo.targetId) === String((product as any).categoryId)) || (promo.targetName != null && promo.targetName === product.category))) return true;
+            return false;
+        });
+    }, [promotions, product]);
 
-    // Giá gốc (lấy trực tiếp từ database)
+    const productPrice = Number(product?.price) || 0;
+
+    // Tính toán giá hiển thị (afterPricePromotion) và % giảm lớn nhất
+    const { afterPricePromotion, maxDiscountPercent } = useMemo(() => {
+        if (!product || applicablePromos.length === 0) return { afterPricePromotion: productPrice, maxDiscountPercent: 0 };
+        
+        let maxDiscountAmount = 0;
+        let bestPercent = 0;
+        
+        applicablePromos.forEach(promo => {
+            if (promo.type === 'SHIPPING') return; // Không dùng mã vận chuyển để tính giảm giá trực tiếp vào thẻ sản phẩm
+
+            let discountAmount = 0;
+            let currentPercent = 0;
+            
+            if (promo.discountType === 'PERCENTAGE') {
+                discountAmount = productPrice * (promo.discountValue / 100);
+                currentPercent = promo.discountValue;
+                if (promo.maxDiscountValue > 0 && discountAmount > promo.maxDiscountValue) {
+                    discountAmount = promo.maxDiscountValue;
+                    currentPercent = Math.round((discountAmount / productPrice) * 100);
+                }
+            } else if (promo.discountType === 'FIXED_AMOUNT') {
+                discountAmount = promo.discountValue;
+                currentPercent = Math.round((discountAmount / productPrice) * 100);
+            }
+            
+            if (discountAmount > maxDiscountAmount) {
+                maxDiscountAmount = discountAmount;
+                bestPercent = currentPercent;
+            }
+        });
+        
+        if (maxDiscountAmount > productPrice) maxDiscountAmount = productPrice;
+        
+        return {
+            afterPricePromotion: productPrice - maxDiscountAmount,
+            maxDiscountPercent: bestPercent
+        };
+    }, [product, applicablePromos]);
+
+    // Giá gốc (chỉ hiển thị nếu có giảm giá)
     const originalPriceString =
-        typeof product.price === "number"
-            ? product.price.toLocaleString("vi-VN") + "đ"
+        afterPricePromotion < productPrice
+            ? productPrice.toLocaleString("vi-VN") + "đ"
             : null;
 
-    // Giá sau khi giảm (giá bán thực tế)
-    const priceString =
-        typeof product.price === "number"
-            ? (product.price * (1 - mockDiscountPercent / 100)).toLocaleString("vi-VN") + "đ"
-            : product.price;
+    const priceString = afterPricePromotion.toLocaleString("vi-VN") + "đ";
 
     return (
         <motion.div
@@ -175,14 +252,16 @@ const ProductCard: React.FC<Props> = ({
                     <h4 className="text-lg font-bold break-words hover:text-primary transition-colors">{product.name}</h4>
                 </Link>
                 
-                <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-emerald-600 font-bold">{priceString}</p>
+                <div className="flex items-end gap-2 flex-wrap mb-1">
+                    <p className="text-xl font-black text-primary leading-none">{priceString}</p>
                     {originalPriceString && (
-                        <p className="text-sm text-gray-400 line-through">{originalPriceString}</p>
+                        <p className="text-sm text-gray-400 line-through mb-0.5">{originalPriceString}</p>
                     )}
-                    <span className="text-[10px] font-bold px-2 py-0.5 bg-red-50 border border-red-200 text-red-600 rounded-full">
-                        -{mockDiscountPercent}%
-                    </span>
+                    {maxDiscountPercent > 0 && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-red-50 border border-red-200 text-red-600 rounded-full">
+                            -{maxDiscountPercent}%
+                        </span>
+                    )}
                 </div>
 
                 <button onClick={handleAddToCart} className="w-full mt-auto pt-3 pb-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary-container hover:scale-[1.02] active:scale-95 transition-all">
