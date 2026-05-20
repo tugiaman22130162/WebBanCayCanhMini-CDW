@@ -11,6 +11,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -47,6 +53,29 @@ public class PromotionController {
     public ResponseEntity<?> deletePromotion(@PathVariable Integer id) {
         promotionService.delete(id);
         return ResponseEntity.ok(Map.of("message", "Xóa thành công"));
+    }
+
+    @GetMapping("/export")
+    public ResponseEntity<InputStreamResource> exportExcel() throws IOException {
+        ByteArrayInputStream in = promotionService.exportPromotionsToExcel();
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Disposition", "attachment; filename=Danh_Sach_Khuyen_Mai.xlsx");
+
+        return ResponseEntity
+                .ok()
+                .headers(headers)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(new InputStreamResource(in));
+    }
+
+    @PostMapping("/import")
+    public ResponseEntity<?> importExcel(@RequestParam("file") MultipartFile file) {
+        try {
+            promotionService.importPromotionsFromExcel(file);
+            return ResponseEntity.ok(Map.of("message", "Nhập dữ liệu thành công!"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Lỗi khi nhập dữ liệu: " + e.getMessage()));
+        }
     }
 
     @SuppressWarnings("unchecked")

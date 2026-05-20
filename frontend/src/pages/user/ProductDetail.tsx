@@ -173,18 +173,22 @@ export default function ProductDetail() {
         // Bỏ qua nếu mã đã hết hạn
         if (promo.endDate && new Date(promo.endDate) < new Date()) return false;
         
-        if (promo.type === 'PRODUCT' && promo.targetId === product.id) return true;
-        if (promo.type === 'CATEGORY' && promo.targetId === product.categoryId) return true;
+        if (promo.type === 'SHOP') return false; // Không lấy mã Toàn Shop
+        if (promo.type === 'SHIPPING') return false; // Không lấy mã Vận chuyển
+        if (promo.type === 'PRODUCT' && promo.targetId != null && String(promo.targetId) === String(product.id)) return true;
+        if (promo.type === 'CATEGORY' && ((promo.targetId != null && String(promo.targetId) === String(product.categoryId)) || (promo.targetName != null && promo.targetName === product.category))) return true;
         
         return false;
     });
 
-    // Tính toán giá hiển thị (PriceAfterPromotion) dựa trên mã giảm lớn nhất
-    const priceAfterPromotion = useMemo(() => {
+    // Tính toán giá hiển thị (afterPricePromotion) dựa trên mã giảm lớn nhất
+    const afterPricePromotion = useMemo(() => {
         if (!product || applicablePromos.length === 0) return product?.price || 0;
         
         let maxDiscountAmount = 0;
         applicablePromos.forEach(promo => {
+            if (promo.type === 'SHIPPING') return; // Không dùng mã vận chuyển để tính giảm giá trực tiếp vào sản phẩm
+
             let discountAmount = 0;
             if (promo.discountType === 'PERCENTAGE') {
                 discountAmount = product.price * (promo.discountValue / 100);
@@ -194,8 +198,6 @@ export default function ProductDetail() {
                 }
             } else if (promo.discountType === 'FIXED_AMOUNT') {
                 discountAmount = promo.discountValue;
-            } else if (promo.discountType === 'FREE') {
-                discountAmount = product.price;
             }
             if (discountAmount > maxDiscountAmount) {
                 maxDiscountAmount = discountAmount;
@@ -296,9 +298,9 @@ export default function ProductDetail() {
                             </div>
 
                             <div className="flex items-end gap-3 mb-6">
-                                {priceAfterPromotion < product.price ? (
+                                {afterPricePromotion < product.price ? (
                                     <>
-                                        <span className="text-3xl md:text-4xl font-black text-primary">{priceAfterPromotion.toLocaleString('vi-VN')}đ</span>
+                                        <span className="text-3xl md:text-4xl font-black text-primary">{afterPricePromotion.toLocaleString('vi-VN')}đ</span>
                                         <span className="text-lg text-gray-400 line-through mb-1">{product.price.toLocaleString('vi-VN')}đ</span>
                                     </>
                                 ) : (
@@ -311,19 +313,23 @@ export default function ProductDetail() {
                                 <div className="mb-6">
                                     <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-1">
                                         <span className="material-symbols-outlined text-[18px] text-red-500">local_activity</span>
-                                        Mã giảm giá cho sản phẩm này
+                                        Mã ưu đãi áp dụng
                                     </h4>
                                     <div className="flex flex-wrap gap-3">
                                         {applicablePromos.map(promo => (
-                                            <div key={promo.id} className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl relative overflow-hidden group shadow-sm">
+                                            <div key={promo.id} className={`flex items-center gap-2 px-3 py-2 ${promo.type === 'SHIPPING' ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200'} rounded-xl relative overflow-hidden group shadow-sm`}>
                                                 {/* Hiệu ứng khoét lỗ 2 bên làm hình vé (ticket) */}
-                                                <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full border-r border-red-200"></div>
-                                                <div className="absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full border-l border-red-200"></div>
+                                                <div className={`absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full border-r ${promo.type === 'SHIPPING' ? 'border-blue-200' : 'border-red-200'}`}></div>
+                                                <div className={`absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full border-l ${promo.type === 'SHIPPING' ? 'border-blue-200' : 'border-red-200'}`}></div>
                                                 
-                                                <span className="text-sm font-black text-red-600 pl-2">
-                                                    Giảm {promo.discountType === 'PERCENTAGE' ? `${promo.discountValue}%` : promo.discountType === 'FIXED_AMOUNT' ? `${promo.discountValue.toLocaleString('vi-VN')}đ` : 'Miễn phí'}
+                                                <span className={`text-sm font-black ${promo.type === 'SHIPPING' ? 'text-blue-600' : 'text-red-600'} pl-2`}>
+                                                    {promo.type === 'SHIPPING' ? (
+                                                        promo.discountType === 'FREE' ? 'Freeship' : `Giảm ship ${promo.discountType === 'PERCENTAGE' ? `${promo.discountValue}%` : `${promo.discountValue.toLocaleString('vi-VN')}đ`}`
+                                                    ) : (
+                                                        `Giảm ${promo.discountType === 'PERCENTAGE' ? `${promo.discountValue}%` : promo.discountType === 'FIXED_AMOUNT' ? `${promo.discountValue.toLocaleString('vi-VN')}đ` : 'Miễn phí'}`
+                                                    )}
                                                 </span>
-                                                <span className="text-xs font-bold text-red-500 bg-white px-2 py-1 rounded-md border border-red-100 pr-2 tracking-wide">
+                                                <span className={`text-xs font-bold ${promo.type === 'SHIPPING' ? 'text-blue-500 border-blue-100' : 'text-red-500 border-red-100'} bg-white px-2 py-1 rounded-md border pr-2 tracking-wide`}>
                                                     Mã: {promo.name}
                                                 </span>
                                             </div>

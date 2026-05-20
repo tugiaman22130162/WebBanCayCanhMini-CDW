@@ -2,6 +2,7 @@ package com.example.minigarden.dto;
 
 import lombok.Data;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -26,4 +27,8 @@ public class OrderRequest {
     private List<OrderItemRequest> items;
     
     private List<Integer> cartItemId;
+
+    private LocalDateTime estimatedDeliveryTimeFrom;
+
+    private LocalDateTime estimatedDeliveryTimeTo;
 }

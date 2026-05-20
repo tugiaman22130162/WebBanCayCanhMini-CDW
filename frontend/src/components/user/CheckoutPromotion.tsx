@@ -190,15 +190,18 @@ export default function CheckoutPromotion({
                                         {shippingPromos.map((promo: any) => {
                                             const invalidReason = promo.invalidReason;
                                             const isDisabled = promo.isDisabled;
+                                            const isApplied = promo.name === shippingPromoCode;
                                             return (
-                                                <div key={promo.id} className={`border rounded-xl p-3 flex items-center gap-3 transition-colors ${isDisabled ? 'border-gray-100 bg-gray-50 opacity-70' : 'border-gray-200 hover:border-blue-300 cursor-pointer'}`} onClick={() => !isDisabled && handleApplyPromo(promo.name)}>
+                                                <div key={promo.id} className={`border rounded-xl p-3 flex items-center gap-3 transition-colors ${isDisabled ? 'border-gray-100 bg-gray-50 opacity-70' : isApplied ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300 cursor-pointer'}`} onClick={() => !isDisabled && !isApplied && handleApplyPromo(promo.name)}>
                                                     <div className={`p-2 rounded-lg ${isDisabled ? 'bg-gray-200' : 'bg-blue-100'}`}><span className={`material-symbols-outlined ${isDisabled ? 'text-gray-400' : 'text-blue-600'}`}>local_shipping</span></div>
                                                     <div className="flex-1">
                                                         <p className={`font-bold text-sm uppercase ${isDisabled ? 'text-gray-500' : 'text-gray-800'}`}>{promo.name}</p>
                                                         <p className="text-xs text-gray-500">{promo.description}</p>
                                                         {isDisabled && <p className="text-[10px] text-red-500 font-medium mt-0.5">{invalidReason}</p>}
                                                     </div>
-                                                    <button disabled={isDisabled} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${isDisabled ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-[#406D5E] text-white hover:bg-[#2f5146]'}`}>Áp dụng</button>
+                                                    <button disabled={isDisabled || isApplied} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${isDisabled ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : isApplied ? 'bg-gray-200 text-gray-500 cursor-default' : 'bg-[#406D5E] text-white hover:bg-[#2f5146]'}`}>
+                                                        {isApplied ? 'Đã áp dụng' : 'Áp dụng'}
+                                                    </button>
                                                 </div>
                                             );
                                         })}
@@ -216,15 +219,18 @@ export default function CheckoutPromotion({
                                         {productPromos.map((promo: any) => {
                                             const invalidReason = promo.invalidReason;
                                             const isDisabled = promo.isDisabled;
+                                            const isApplied = promo.name === productPromoCode;
                                             return (
-                                                <div key={promo.id} className={`border rounded-xl p-3 flex items-center gap-3 transition-colors ${isDisabled ? 'border-gray-100 bg-gray-50 opacity-70' : 'border-gray-200 hover:border-emerald-300 cursor-pointer'}`} onClick={() => !isDisabled && handleApplyPromo(promo.name)}>
+                                                <div key={promo.id} className={`border rounded-xl p-3 flex items-center gap-3 transition-colors ${isDisabled ? 'border-gray-100 bg-gray-50 opacity-70' : isApplied ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-emerald-300 cursor-pointer'}`} onClick={() => !isDisabled && !isApplied && handleApplyPromo(promo.name)}>
                                                     <div className={`p-2 rounded-lg ${isDisabled ? 'bg-gray-200' : 'bg-emerald-100'}`}><span className={`material-symbols-outlined ${isDisabled ? 'text-gray-400' : 'text-emerald-600'}`}>percent</span></div>
                                                     <div className="flex-1">
                                                         <p className={`font-bold text-sm uppercase ${isDisabled ? 'text-gray-500' : 'text-gray-800'}`}>{promo.name}</p>
                                                         <p className="text-xs text-gray-500">{promo.description}</p>
                                                         {isDisabled && <p className="text-[10px] text-red-500 font-medium mt-0.5">{invalidReason}</p>}
                                                     </div>
-                                                    <button disabled={isDisabled} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${isDisabled ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-[#406D5E] text-white hover:bg-[#2f5146]'}`}>Áp dụng</button>
+                                                    <button disabled={isDisabled || isApplied} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${isDisabled ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : isApplied ? 'bg-gray-200 text-gray-500 cursor-default' : 'bg-[#406D5E] text-white hover:bg-[#2f5146]'}`}>
+                                                        {isApplied ? 'Đã áp dụng' : 'Áp dụng'}
+                                                    </button>
                                                 </div>
                                             );
                                         })}

@@ -24,11 +24,16 @@ export default function OAuth2Success() {
             const redirectUrl = localStorage.getItem("redirectAfterLogin") || "/";
             localStorage.removeItem("redirectAfterLogin"); 
 
+            // Lấy tên mạng xã hội để hiển thị thông báo chi tiết
+            const provider = localStorage.getItem("socialProvider");
+            const providerName = provider === "facebook" ? "Facebook" : (provider === "google" ? "Google" : "");
+            localStorage.removeItem("socialProvider"); // Xóa sau khi đã lấy
+
             Swal.fire({
                 toast: true,
                 position: 'bottom',
                 icon: 'success',
-                title: 'Đăng nhập Google thành công!',
+                title: providerName ? `Đăng nhập ${providerName} thành công!` : 'Đăng nhập thành công!',
                 timer: 1500,
                 showConfirmButton: false,
                 width: 'auto',

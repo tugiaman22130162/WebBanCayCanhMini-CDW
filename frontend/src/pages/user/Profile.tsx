@@ -125,13 +125,14 @@ export default function Profile() {
                     total: order.totalPrice,
                     status: getStatusLabel(order.status),
                     statusColor: getStatusColor(order.status),
-                    promoCode: order.promotions?.length > 0 ? order.promotions[0].promotionCode : null,
+                    promotions: order.promotions || [],
                     discount: order.discountAmount || 0,
                     shippingFee: order.shippingFee || 0,
                     receiverName: order.receiverName,
                     phone: order.phone,
                     address: order.address,
                     note: order.note,
+                    paymentMethod: order.paymentMethod,
                     items: (order.items || []).map((item: any) => {
                         let imageUrl = "https://images.unsplash.com/photo-1614594975525-e45190c55d40?w=100&h=100&fit=crop";
                         if (item.product?.images && item.product.images.length > 0) {
@@ -364,7 +365,7 @@ export default function Profile() {
                                         <h2 className="text-2xl font-bold text-gray-800">Đơn Hàng Của Tôi</h2>
                                         <button
                                             onClick={() => handleTabChange('history')}
-                                            className="text-sm font-bold text-primary hover:text-primary-container transition-colors hover:underline"
+                                            className="text-sm font-bold text-primary hover:text-primary-container transition-colors"
                                         >Lịch sử mua hàng</button>
                                     </div>
 
@@ -546,7 +547,7 @@ export default function Profile() {
                             {activeTab === 'password' && (
                                 <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-300">
                                     <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b border-gray-100 pb-4">Đổi Mật Khẩu</h2>
-                                    <form className="space-y-5 max-w-lg" onSubmit={handleUpdatePassword}>
+                                    <form className="space-y-5 max-w-2xl" onSubmit={handleUpdatePassword}>
                                         <div>
                                             <label className="block text-sm font-bold text-gray-700 mb-1.5">Mật khẩu hiện tại</label>
                                             <input type="password" name="currentPassword" placeholder="••••••••" required className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-all font-medium" />
@@ -609,6 +610,13 @@ export default function Profile() {
                                     <div className="md:col-span-2"><p className="text-xs text-gray-500 uppercase font-bold mb-1">Địa chỉ giao hàng</p><p className="font-semibold text-gray-800">{selectedOrder.address}</p></div>
                                     {selectedOrder.note && <div className="md:col-span-2"><p className="text-xs text-gray-500 uppercase font-bold mb-1">Ghi chú</p><p className="font-semibold text-gray-800 bg-yellow-50 p-3 rounded-lg border border-yellow-100 text-sm">{selectedOrder.note}</p></div>}
                                 </div>
+                                <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
+                                    <div>
+                                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Phương thức thanh toán</p>
+                                        <p className="font-semibold text-gray-800">{selectedOrder.paymentMethod?.toUpperCase() === 'VNPAY' ? 'Ví điện tử VNPAY' : 'Thanh toán khi nhận hàng (COD)'}</p>
+                                    </div>
+                                    
+                                </div>
                             </div>
 
                             <div>
@@ -641,41 +649,97 @@ export default function Profile() {
                                         </tbody>
                                     </table>
                                 </div>
-                                {selectedOrder.promoCode && (
-                                    <div className="mt-4 flex justify-between items-center bg-emerald-50 p-3.5 rounded-xl border border-emerald-100">
-                                        <div className="flex items-center gap-2 text-emerald-700">
-                                            <span className="material-symbols-outlined text-[20px]">local_activity</span>
-                                            <span className="font-semibold text-sm">Mã giảm giá: <span className="font-bold px-2 py-1 bg-white rounded-md ml-1 border border-emerald-200 shadow-sm">{selectedOrder.promoCode}</span></span>
-                                        </div>
-                                        <span className="font-bold text-emerald-700">
-                                            -{selectedOrder.discount?.toLocaleString('vi-VN')}đ
-                                        </span>
+                                {selectedOrder.promotions && selectedOrder.promotions.length > 0 && (
+                                    <div className="mt-4 space-y-2">
+                                        {selectedOrder.promotions.map((promo: any, idx: number) => {
+                                            const isShipping = promo.promotionCode?.toUpperCase().includes('SHIP');
+                                            // Tự động lấy phí ship (với mã vận chuyển) hoặc tổng giảm (với mã sản phẩm) nếu giá trị bị 0
+                                            const discountVal = promo.discountAmount || promo.discount_amount || (isShipping ? selectedOrder.shippingFee : selectedOrder.discount) || 0;
+                                            return (
+                                                <div key={idx} className={`flex justify-between items-center p-3.5 rounded-xl border ${isShipping ? 'bg-blue-50 border-blue-100' : 'bg-emerald-50 border-emerald-100'}`}>
+                                                    <div className={`flex items-center gap-2 ${isShipping ? 'text-blue-700' : 'text-emerald-700'}`}>
+                                                        <span className="material-symbols-outlined text-[20px]">
+                                                            {isShipping ? 'local_shipping' : 'local_activity'}
+                                                        </span>
+                                                        <span className="font-semibold text-sm">
+                                                            {isShipping ? 'Mã vận chuyển:' : 'Mã giảm giá:'} <span className={`font-bold px-2 py-1 bg-white rounded-md ml-1 border shadow-sm ${isShipping ? 'border-blue-200' : 'border-emerald-200'}`}>{promo.promotionCode}</span>
+                                                        </span>
+                                                    </div>
+                                                    <span className={`font-bold ${isShipping ? 'text-blue-700' : 'text-emerald-700'}`}>
+                                                        -{discountVal.toLocaleString('vi-VN')}đ
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 )}
 
-                                {/* TỔNG TIỀN */}
-                                <div className="mt-6 pt-4 border-t border-gray-100 flex flex-col items-end space-y-2">
-                                    <div className="flex justify-between w-full sm:w-1/2 text-gray-600 text-sm">
-                                        <span>Tạm tính:</span>
-                                        <span className="font-semibold">{selectedOrderSubtotal.toLocaleString('vi-VN')}đ</span>
-                                    </div>
-                                    {/* Phí vận chuyển */}
-                                    <div className="flex justify-between w-full sm:w-1/2 text-gray-600 text-sm">
-                                        <span>Phí vận chuyển:</span>
-                                        <span className="font-semibold">{selectedOrder.shippingFee ? selectedOrder.shippingFee.toLocaleString('vi-VN') + 'đ' : '0đ'}</span>
-                                    </div>
-                                    {selectedOrder.promoCode && (
-                                        <div className="flex justify-between w-full sm:w-1/2 text-emerald-600 text-sm">
-                                            <span>Giảm giá:</span>
-                                            <span className="font-semibold">-{selectedOrderDiscount.toLocaleString('vi-VN')}đ</span>
+                                {/* TỔNG TIỀN VÀ THANH TOÁN */}
+                                <div className="mt-6 pt-6 border-t border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative">
+                                    {/* Logo in chìm Đã thanh toán */}
+                                    {selectedOrder.paymentMethod?.toUpperCase() === 'VNPAY' && (
+                                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.08] pointer-events-none transform -rotate-12 select-none z-0">
+                                            <div className="border-8 border-emerald-600 rounded-3xl p-6 flex flex-col items-center justify-center">
+                                                <span className="font-black text-4xl sm:text-5xl text-emerald-600 tracking-widest uppercase">Đã thanh toán</span>
+                                            </div>
                                         </div>
                                     )}
-                                    <div className="flex justify-between w-full sm:w-1/2 text-lg pt-2 border-t border-gray-100">
-                                        <span className="font-bold text-gray-800">Tổng cộng:</span>
-                                        <span className="font-black text-primary">{selectedOrderFinalTotal.toLocaleString('vi-VN')}đ</span>
+
+                                    {/* Trạng thái thanh toán (Bên trái) */}
+                                    <div className="flex flex-col items-start w-full md:w-auto bg-gray-50 p-5 rounded-xl border border-gray-200 relative z-10">
+                                        {selectedOrder.paymentMethod?.toUpperCase() === 'VNPAY' ? (
+                                            <div className="flex flex-col items-start gap-3">
+                                                <span className="text-sm font-black px-4 py-2 bg-emerald-100 text-emerald-700 rounded-full border border-emerald-200 flex items-center gap-2 shadow-sm">
+                                                    <span className="material-symbols-outlined text-[20px]">check_circle</span> Đã thanh toán
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col items-start gap-3">
+                                                <span className="text-sm font-black px-4 py-2 bg-orange-100 text-orange-700 rounded-full border border-orange-200 flex items-center gap-2 shadow-sm">
+                                                    <span className="material-symbols-outlined text-[20px]">schedule</span> Chưa thanh toán
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
+
+                                    {/* Chi tiết tiền (Bên phải) */}
+                                    <div className="w-full sm:w-1/2 flex flex-col space-y-2 relative z-10">
+                                        <div className="flex justify-between text-gray-600 text-sm">
+                                            <span>Tạm tính:</span>
+                                            <span className="font-semibold">{selectedOrderSubtotal.toLocaleString('vi-VN')}đ</span>
+                                        </div>
+                                        {/* Phí vận chuyển */}
+                                        <div className="flex justify-between text-gray-600 text-sm">
+                                            <span>Phí vận chuyển:</span>
+                                            <span className="font-semibold">
+                                                {(() => {
+                                                    const shippingPromo = selectedOrder.promotions?.find((p: any) => p.promotionCode?.toUpperCase().includes('SHIP'));
+                                                    const shippingPromoDiscount = shippingPromo ? (shippingPromo.discountAmount || shippingPromo.discount_amount || selectedOrder.shippingFee || 0) : 0;
+                                                    // Hiển thị phí ship gốc, nếu = 0 thì lấy từ shippingPromoDiscount
+                                                    const displayShippingFee = selectedOrder.shippingFee > 0 ? selectedOrder.shippingFee : shippingPromoDiscount;
+                                                    return displayShippingFee ? displayShippingFee.toLocaleString('vi-VN') + 'đ' : '0đ';
+                                                })()}
+                                            </span>
+                                        </div>
+                                        {selectedOrder.promotions && selectedOrder.promotions.length > 0 && (
+                                            <div className="flex justify-between text-emerald-600 text-sm">
+                                                <span>Tổng giảm giá:</span>
+                                                <span className="font-semibold">
+                                                    -{selectedOrder.promotions.reduce((sum: number, p: any) => {
+                                                        const isShipping = p.promotionCode?.toUpperCase().includes('SHIP');
+                                                        const pDiscount = p.discountAmount || p.discount_amount || (isShipping ? selectedOrder.shippingFee : selectedOrder.discount) || 0;
+                                                        return sum + Number(pDiscount);
+                                                    }, 0).toLocaleString('vi-VN')}đ
+                                                </span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between text-lg pt-3 mt-1 border-t border-gray-200">
+                                            <span className="font-bold text-gray-800">Tổng cộng:</span>
+                                            <span className="font-black text-primary">{selectedOrderFinalTotal.toLocaleString('vi-VN')}đ</span>
+                                        </div>
+                                    </div>
                             </div>
+                        </div>
                         </div>
                         <div className="p-5 border-t bg-gray-50 flex justify-end gap-3">
                             {selectedOrder.status === 'Chờ xác nhận' && (

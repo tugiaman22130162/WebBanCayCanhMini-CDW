@@ -181,7 +181,7 @@ export default function PromotionManagement() {
             showToast('success', 'Xuất file Excel thành công!');
         } catch (error) {
             Swal.close();
-            alert("Tính năng Xuất Excel cần được cấu hình API ở Backend trước. Đang chờ cập nhật...");
+            showToast('error', 'Có lỗi xảy ra khi xuất file!');
         }
     };
 
@@ -193,6 +193,17 @@ export default function PromotionManagement() {
         formData.append('file', file);
 
         try {
+            Swal.fire({
+                toast: true,
+                position: 'bottom',
+                title: 'Đang nạp dữ liệu...',
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+                customClass: { popup: 'mb-6 rounded-full shadow-lg border border-gray-100', title: 'text-sm font-bold text-gray-700' }
+            });
+
             const token = localStorage.getItem('token');
             await axios.post('http://localhost:8080/api/promotions/import', formData, {
                 headers: {
@@ -200,10 +211,12 @@ export default function PromotionManagement() {
                     'Authorization': `Bearer ${token}` 
                 }
             });
+            Swal.close();
             showToast('success', 'Nhập dữ liệu thành công!');
             fetchPromotions();
         } catch (error: any) {
-            alert("Tính năng Nhập Excel cần được cấu hình API ở Backend trước. Đang chờ cập nhật...");
+            Swal.close();
+            showToast('error', error.response?.data?.error || 'Vui lòng kiểm tra lại định dạng file!');
         } finally {
             if (fileInputRef.current) fileInputRef.current.value = '';
         }

@@ -156,7 +156,7 @@ export default function EditPromotionModal({ isOpen, onClose, onSuccess, categor
                                 }}
                                 options={[
                                     { value: 'SHOP', label: 'Cho tất cả sản phẩm (Toàn shop)' },
-                                    { value: 'CATEGORY', label: 'Cho danh mục)' },
+                                    { value: 'CATEGORY', label: 'Cho danh mục' },
                                     { value: 'PRODUCT', label: 'Cho từng sản phẩm' },
                                     { value: 'SHIPPING', label: 'Mã vận chuyển' }
                                 ]}
