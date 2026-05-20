@@ -134,6 +134,15 @@ export default function Register() {
         }
     };
 
+    // Xử lý lưu URL để chuyển hướng lại sau khi đăng ký bằng Mạng xã hội
+    const handleSocialLogin = (provider: string) => {
+        if (redirectUrl && redirectUrl !== "/") {
+            localStorage.setItem("redirectAfterLogin", redirectUrl);
+        }
+        localStorage.setItem("socialProvider", provider); // Lưu loại Mạng xã hội đang click
+        window.location.href = `http://localhost:8080/oauth2/authorization/${provider}`;
+    };
+
     return (
         <div className="min-h-screen bg-[#222] flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
 
@@ -274,12 +283,12 @@ export default function Register() {
                     </div>
 
                     <div className="flex gap-4 mt-6 justify-center">
-                        <a href="http://localhost:8080/oauth2/authorization/google" className="w-14 h-14 flex items-center justify-center bg-white rounded-full border border-gray-200 shadow-sm hover:shadow-md hover:border-[#006c49] hover:-translate-y-0.5 focus:border-[#006c49] focus:ring-1 focus:ring-[#006c49] outline-none transition-all duration-200">
+                        <button type="button" onClick={() => handleSocialLogin("google")} className="w-14 h-14 flex items-center justify-center bg-white rounded-full border border-gray-200 shadow-sm hover:shadow-md hover:border-[#006c49] hover:-translate-y-0.5 focus:border-[#006c49] focus:ring-1 focus:ring-[#006c49] outline-none transition-all duration-200">
                             <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-6 h-6" />
-                        </a>
-                        <a href="#login-facebook" className="w-14 h-14 flex items-center justify-center bg-white rounded-full border border-gray-200 shadow-sm hover:shadow-md hover:border-[#006c49] hover:-translate-y-0.5 focus:border-[#006c49] focus:ring-1 focus:ring-[#006c49] outline-none transition-all duration-200">
+                        </button>
+                        <button type="button" onClick={() => handleSocialLogin("facebook")} className="w-14 h-14 flex items-center justify-center bg-white rounded-full border border-gray-200 shadow-sm hover:shadow-md hover:border-[#006c49] hover:-translate-y-0.5 focus:border-[#006c49] focus:ring-1 focus:ring-[#006c49] outline-none transition-all duration-200">
                             <img src="https://www.svgrepo.com/show/475647/facebook-color.svg" alt="Facebook" className="w-6 h-6" />
-                        </a>
+                        </button>
                     </div>
 
                     <p className="text-center text-sm text-[#65645F] font-medium mt-6">

@@ -107,6 +107,7 @@ export default function Login() {
         if (redirectUrl && redirectUrl !== "/") {
             localStorage.setItem("redirectAfterLogin", redirectUrl);
         }
+        localStorage.setItem("socialProvider", provider); // Lưu loại Mạng xã hội đang click
         window.location.href = `http://localhost:8080/oauth2/authorization/${provider}`;
     };
 
