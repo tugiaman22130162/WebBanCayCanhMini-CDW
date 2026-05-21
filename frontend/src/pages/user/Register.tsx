@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import Swal from "sweetalert2";
+import { showSuccessToast, showErrorToast } from "../../utils/ToastUtils";
 
 export default function Register() {
     const [formData, setFormData] = useState({
@@ -99,37 +100,14 @@ export default function Register() {
         if (validateForm()) {
             try {
                 await axios.post("http://localhost:8080/api/auth/register", formData);
-                Swal.fire({
-                    toast: true,
-                    position: 'bottom',
-                    icon: 'success',
-                    title: 'Đăng ký thành công! Vui lòng đăng nhập.',
-                    showConfirmButton: false,
-                    timer: 2000,
-                    width: 'auto',
-                    padding: '0.5em 1em',
-                    customClass: {
-                        popup: 'mb-6 rounded-full shadow-lg border border-gray-100',
-                        title: 'text-sm font-bold text-gray-700',
-                    }
-                }).then(() => {
+                showSuccessToast('Đăng ký thành công! Vui lòng đăng nhập.', 2000).then(() => {
                     navigate(redirectUrl ? `/login?redirect=${encodeURIComponent(redirectUrl)}` : "/login");
                 });
             } catch (error: any) {
-                Swal.fire({
-                    toast: true,
-                    position: 'bottom',
-                    icon: 'error',
-                    title: error.response?.data?.message || 'Đăng ký thất bại, vui lòng thử lại!',
-                    showConfirmButton: false,
-                    timer: 2500,
-                    width: 'auto',
-                    padding: '0.5em 1em',
-                    customClass: {
-                        popup: 'mb-6 rounded-full shadow-lg border border-gray-100',
-                        title: 'text-sm font-bold text-gray-700',
-                    }
-                });
+                showErrorToast(
+                    error.response?.data?.message || 'Đăng ký thất bại, vui lòng thử lại!',
+                    2500
+                );
             }
         }
     };

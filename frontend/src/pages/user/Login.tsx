@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import Swal from "sweetalert2";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/AuthContext"; // Import the utility functions
+import { showSuccessToast, showErrorToast } from "../../utils/ToastUtils";
 
 export default function Login() {
     const [formData, setFormData] = useState({
@@ -57,24 +58,11 @@ export default function Login() {
 
                 // Lưu Token vào LocalStorage và chuyển hướng
                 localStorage.setItem("token", data.token);
-                
-                // Cập nhật state toàn cục của AuthContext ngay lập tức
-                login(data.token, data.user || data); 
 
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: 'success',
-                    title: 'Đăng nhập thành công!',
-                    timer: 1500,
-                    showConfirmButton: false,
-                    width: 'auto',
-                    padding: '0.5em 1em',
-                    customClass: {
-                        popup: 'mb-6 rounded-full shadow-lg border border-gray-100 flex items-center',
-                        title: 'text-sm font-bold text-gray-700 whitespace-nowrap',
-                    }
-                }).then(() => {
+                // Cập nhật state toàn cục của AuthContext ngay lập tức
+                login(data.token, data.user || data);
+
+                showSuccessToast('Đăng nhập thành công!').then(() => {
                     const userRole = data.user?.role || data.role; // Lấy role từ data.user hoặc data
                     if (userRole === "ADMIN") {
                         navigate("/admin/dashboard");
@@ -84,20 +72,7 @@ export default function Login() {
                 });
             } catch (error: any) {
                 console.error("Lỗi đăng nhập:", error);
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: 'error',
-                    title: error.response?.data?.message || "Đăng nhập thất bại!",
-                    showConfirmButton: false,
-                    timer: 2500,
-                    width: 'auto',
-                    padding: '0.5em 1em',
-                    customClass: {
-                        popup: 'mb-6 rounded-full shadow-lg border border-gray-100 flex items-center',
-                        title: 'text-sm font-bold text-gray-700 whitespace-nowrap',
-                    }
-                });
+                showErrorToast(error.response?.data?.message || "Đăng nhập thất bại!");
             }
         }
     };

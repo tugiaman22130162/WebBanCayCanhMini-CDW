@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
+import { showSuccessToast, showErrorToast } from "../../utils/ToastUtils";
 
 interface EditProductModalProps {
     isOpen: boolean;
@@ -108,7 +109,7 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, productId
             setImagePreviews(data.images || []);
         } catch (error) {
             console.error("Lỗi lấy chi tiết sản phẩm:", error);
-            alert("Không thể tải thông tin chi tiết sản phẩm!");
+            showErrorToast("Không thể tải thông tin chi tiết sản phẩm!", 3000);
         }
     };
 
@@ -128,7 +129,7 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, productId
         if (e.target.files) {
             const files = Array.from(e.target.files);
             if (files.length > 5) {
-                alert("Chỉ được phép chọn tối đa 5 ảnh.");
+                showErrorToast("Chỉ được phép chọn tối đa 5 ảnh.", 3000);
                 return;
             }
             setImageFiles(files);
@@ -181,13 +182,13 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, productId
 
             await axios.put(`http://localhost:8080/api/products/${productId}`, formData);
 
-            alert("Cập nhật sản phẩm thành công!");
+            showSuccessToast("Cập nhật sản phẩm thành công!", 2000);
             onClose();
             onSuccess(); // Refresh danh sách sản phẩm bên ngoài
         } catch (error: any) {
             console.error("Lỗi khi cập nhật sản phẩm:", error);
             const errorMessage = error.response?.data?.message || error.message;
-            alert(`Có lỗi xảy ra: ${errorMessage}`);
+            showErrorToast(`Có lỗi xảy ra: ${errorMessage}`, 3000);
         } finally {
             setIsSubmitting(false);
         }

@@ -6,6 +6,7 @@ import AdminSidebar from "../../components/admin/AdminSidebar";
 import { useSearchParams } from "react-router-dom";
 import AddProductModal from "../../components/admin/AddProductModal";
 import EditProductModal from "../../components/admin/EditProductModal";
+import { showSuccessToast, showErrorToast } from "../../utils/ToastUtils";
 
 type Product = {
     id: string;
@@ -109,12 +110,13 @@ export default function ProductManagement() {
         setIsDeleting(true);
         try {
             await axios.delete(`http://localhost:8080/api/products/${productToDelete}`);
+            showSuccessToast("Xóa sản phẩm thành công!", 2000);
             setIsDeleteDialogOpen(false);
             setProductToDelete(null);
             fetchProducts();
         } catch (error) {
             console.error("Lỗi khi xóa sản phẩm:", error);
-            alert("Có lỗi xảy ra khi xóa sản phẩm.");
+            showErrorToast("Có lỗi xảy ra khi xóa sản phẩm.", 2000);
         } finally {
             setIsDeleting(false);
         }
@@ -138,7 +140,7 @@ export default function ProductManagement() {
 
     const handleExportExcel = () => {
         if (products.length === 0) {
-            alert("Không có dữ liệu để xuất!");
+            showErrorToast("Không có dữ liệu để xuất!", 2000);
             return;
         }
 
@@ -158,6 +160,7 @@ export default function ProductManagement() {
         XLSX.utils.book_append_sheet(workbook, worksheet, "DanhSachSanPham");
 
         XLSX.writeFile(workbook, "DanhSachSanPham.xlsx");
+        showSuccessToast("Xuất file Excel thành công!", 2000);
     };
 
     const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -174,7 +177,7 @@ export default function ProductManagement() {
                 const data = XLSX.utils.sheet_to_json(ws);
 
                 console.log("Dữ liệu từ Excel:", data);
-                alert(`Đã đọc thành công ${data.length} sản phẩm từ file Excel!\n(Vui lòng mở Console F12 để xem cấu trúc dữ liệu. Để lưu thực tế, cần tạo API thêm hàng loạt ở Backend).`);
+                showSuccessToast(`Đã đọc thành công ${data.length} sản phẩm từ file Excel!`, 3000);
 
                 // Ví dụ khi có API Backend:
                 // await axios.post("http://localhost:8080/api/products/batch", data);
@@ -182,7 +185,7 @@ export default function ProductManagement() {
 
             } catch (error) {
                 console.error("Lỗi khi import file Excel:", error);
-                alert("Có lỗi xảy ra khi đọc file Excel. Vui lòng kiểm tra lại định dạng file!");
+                showErrorToast("Có lỗi xảy ra khi đọc file Excel. Vui lòng kiểm tra lại định dạng file!", 3000);
             } finally {
                 // Reset lại input để có thể chọn lại đúng file đó vào lần sau
                 if (fileInputRef.current) {

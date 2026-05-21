@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import Swal from "sweetalert2";
+import { showSuccessToast, showErrorToast } from "../../utils/ToastUtils"; // Import ToastUtils
 import Header from "../../components/user/Header";
 import { motion } from "framer-motion";
 
@@ -137,14 +138,7 @@ export default function Cart() {
                 // Báo cho Header biết giỏ hàng thay đổi
                 window.dispatchEvent(new Event("cartUpdated"));
                 
-                Swal.fire({
-                    toast: true,
-                    position: 'bottom-end',
-                    icon: 'success',
-                    title: 'Đã xóa sản phẩm khỏi giỏ hàng',
-                    showConfirmButton: false,
-                    timer: 2000
-                });
+                showSuccessToast('Đã xóa sản phẩm khỏi giỏ hàng', 2000);
             } catch (error) {
                 console.error("Lỗi khi xóa sản phẩm:", error);
                 Swal.fire("Lỗi", "Không thể xóa sản phẩm", "error");

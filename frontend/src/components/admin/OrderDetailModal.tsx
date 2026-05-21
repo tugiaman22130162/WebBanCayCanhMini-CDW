@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { showSuccessToast, showErrorToast } from "../../utils/ToastUtils";
 
 type OrderStatus = 'PENDING' | 'CONFIRMED' | 'SHIPPING' | 'DELIVERED' | 'CANCELLED';
 
@@ -113,12 +114,12 @@ export default function OrderDetailModal({ isOpen, onClose, orderId, onSuccess }
             // Cập nhật lại UI
             setOrder({ ...order, status: selectedStatus });
             setIsEditingStatus(false);
-            alert("Cập nhật trạng thái thành công!");
+            showSuccessToast("Cập nhật trạng thái thành công!", 2000);
             
             if (onSuccess) onSuccess(); // Báo cho component cha tải lại danh sách đơn hàng
         } catch (error) {
             console.error("Lỗi khi cập nhật trạng thái:", error);
-            alert("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng.");
+            showErrorToast("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng.", 3000);
         } finally {
             setIsUpdating(false);
         }

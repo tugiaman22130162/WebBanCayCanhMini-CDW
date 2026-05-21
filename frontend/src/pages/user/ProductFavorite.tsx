@@ -6,6 +6,7 @@ import { useFavorites } from "../../data/useFavorites";
 import { useAuth } from "../../context/AuthContext";
 import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
+import { showSuccessToast } from "../../utils/ToastUtils";
 import { motion } from "framer-motion";
 
 const ProductFavorite: React.FC = () => {
@@ -31,20 +32,8 @@ const ProductFavorite: React.FC = () => {
             if (result.isConfirmed) {
                 await toggleFavorite(product);
                 
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: 'success',
-                    title: 'Đã xóa thành công!',
-                    timer: 1500,
-                    showConfirmButton: false,
-                    width: 'auto',
-                    padding: '0.5em 1em',
-                    customClass: {
-                        popup: 'mb-6 mt-16 rounded-full shadow-lg border border-gray-100 flex items-center',
-                        title: 'text-sm font-bold text-gray-700 whitespace-nowrap',
-                    }
-                });
+                // Sử dụng hàm tiện ích showSuccessToast
+                showSuccessToast('Đã xóa thành công!', 1500);
             }
         });
     };

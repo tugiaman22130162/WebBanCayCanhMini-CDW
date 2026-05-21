@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Swal from "sweetalert2";
+import { showSuccessToast } from "../../utils/ToastUtils";
 
 export default function OAuth2Success() {
     const navigate = useNavigate();
@@ -29,20 +30,10 @@ export default function OAuth2Success() {
             const providerName = provider === "facebook" ? "Facebook" : (provider === "google" ? "Google" : "");
             localStorage.removeItem("socialProvider"); // Xóa sau khi đã lấy
 
-            Swal.fire({
-                toast: true,
-                position: 'bottom',
-                icon: 'success',
-                title: providerName ? `Đăng nhập ${providerName} thành công!` : 'Đăng nhập thành công!',
-                timer: 1500,
-                showConfirmButton: false,
-                width: 'auto',
-                padding: '0.5em 1em',
-                customClass: {
-                    popup: 'mb-6 rounded-full shadow-lg border border-gray-100',
-                    title: 'text-sm font-bold text-gray-700',
-                }
-            }).then(() => {
+            showSuccessToast(
+                providerName ? `Đăng nhập ${providerName} thành công!` : 'Đăng nhập thành công!',
+                1500
+            ).then(() => {
                 navigate(redirectUrl);
             });
         } else {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { showSuccessToast, showErrorToast } from "../../utils/ToastUtils";
 
 interface AddProductModalProps {
     isOpen: boolean;
@@ -60,7 +61,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
         if (e.target.files) {
             const files = Array.from(e.target.files);
             if (imageFiles.length + files.length > 5) {
-                alert("Chỉ được phép chọn tối đa 5 ảnh.");
+                showErrorToast("Chỉ được phép chọn tối đa 5 ảnh.", 3000);
                 return;
             }
             const newFiles = [...imageFiles, ...files].slice(0, 5);
@@ -77,7 +78,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
     const handleAddSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (imageFiles.length === 0) {
-            alert("Vui lòng chọn ít nhất 1 hình ảnh sản phẩm.");
+            showErrorToast("Vui lòng chọn ít nhất 1 hình ảnh sản phẩm.", 3000);
             return;
         }
         setIsSubmitting(true);
@@ -121,7 +122,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
             // 3. Gửi Request lên Backend
             await axios.post("http://localhost:8080/api/products", formData);
 
-            alert("Thêm sản phẩm thành công!");
+            showSuccessToast("Thêm sản phẩm thành công!", 2000);
             onClose();
             setNewProduct({ name: "", description: "", price: "", quantity: "", categoryId: "", light: "", water: "", size: "", origin: "", temperature: "", potType: "", weight: "", note: "", care_watering: "", care_sunlight: "", care_fertilizing: "" });
             setImageFiles([]);
@@ -130,7 +131,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
         } catch (error: any) {
             console.error("Lỗi khi thêm sản phẩm:", error);
             const errorMessage = error.response?.data?.message || error.message;
-            alert(`Có lỗi xảy ra: ${errorMessage}`);
+            showErrorToast(`Có lỗi xảy ra: ${errorMessage}`, 3000);
         } finally {
             setIsSubmitting(false);
         }

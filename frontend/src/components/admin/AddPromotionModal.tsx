@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import Swal from "sweetalert2";
+import { showSuccessToast, showErrorToast } from "../../utils/ToastUtils";
 
 type PromotionType = 'SHOP' | 'CATEGORY' | 'PRODUCT' | 'SHIPPING';
 type DiscountType = 'PERCENTAGE' | 'FIXED_AMOUNT' | 'FREE';
@@ -46,14 +46,6 @@ export default function AddPromotionModal({ isOpen, onClose, onSuccess, categori
         }
     }, [isOpen]);
 
-    const showToast = (icon: 'success' | 'error', title: string) => {
-        Swal.fire({
-            toast: true, position: 'bottom', icon, title, timer: 2000,
-            showConfirmButton: false, width: 'auto', padding: '0.5em 1em',
-            customClass: { popup: 'mb-6 rounded-full shadow-lg border border-gray-100', title: 'text-sm font-bold text-gray-700' }
-        });
-    };
-
     const handleSavePromo = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
@@ -78,12 +70,12 @@ export default function AddPromotionModal({ isOpen, onClose, onSuccess, categori
             await axios.post("http://localhost:8080/api/promotions", payload, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            showToast('success', "Thêm khuyến mãi thành công!");
+            showSuccessToast("Thêm khuyến mãi thành công!", 2000);
             onClose();
             onSuccess();
         } catch (error) {
             console.error("Lỗi khi lưu khuyến mãi:", error);
-            showToast('error', "Có lỗi xảy ra khi lưu khuyến mãi.");
+            showErrorToast("Có lỗi xảy ra khi lưu khuyến mãi.", 2000);
         } finally {
             setIsSubmitting(false);
         }

@@ -3,6 +3,7 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import AdminHeader from "../../components/admin/AdminHeader";
 import AdminSidebar from "../../components/admin/AdminSidebar";
+import { showSuccessToast, showErrorToast } from "../../utils/ToastUtils";
 
 
 type Category = {
@@ -140,29 +141,12 @@ export default function CategoryManagement() {
     const activeCount = activeProducts !== undefined ? activeProducts : activeCategories;
     const hiddenProducts = Math.max(0, totalProducts - (activeCount || 0));
 
-    const showToast = (icon: 'success' | 'error', title: string) => {
-        Swal.fire({
-            toast: true,
-            position: 'bottom',
-            icon: icon,
-            title: title,
-            timer: 2000,
-            showConfirmButton: false,
-            width: 'auto',
-            padding: '0.5em 1em',
-            customClass: {
-                popup: 'mb-6 rounded-full shadow-lg border border-gray-100',
-                title: 'text-sm font-bold text-gray-700',
-            }
-        });
-    };
-
     // Handlers
     const handleExport = async () => {
         try {
             Swal.fire({
                 toast: true,
-                position: 'bottom',
+                position: 'top-end',
                 title: 'Đang xuất file Excel...',
                 showConfirmButton: false,
                 didOpen: () => {
@@ -191,10 +175,10 @@ export default function CategoryManagement() {
             document.body.removeChild(link);
 
             Swal.close();
-            showToast('success', 'Xuất file Excel thành công!');
+            showSuccessToast('Xuất file Excel thành công!', 2000);
         } catch (error) {
             Swal.close();
-            showToast('error', 'Có lỗi xảy ra khi xuất file!');
+            showErrorToast('Có lỗi xảy ra khi xuất file!', 2000);
         }
     };
 
@@ -208,7 +192,7 @@ export default function CategoryManagement() {
         try {
             Swal.fire({
                 toast: true,
-                position: 'bottom',
+                position: 'top-end',
                 title: 'Đang nạp dữ liệu...',
                 showConfirmButton: false,
                 didOpen: () => {
@@ -229,12 +213,12 @@ export default function CategoryManagement() {
             });
 
             Swal.close();
-            showToast('success', 'Nhập danh mục từ Excel thành công!');
+            showSuccessToast('Nhập danh mục từ Excel thành công!', 2000);
             fetchCategories();
             fetchStatistics();
         } catch (error: any) {
             Swal.close();
-            showToast('error', error.response?.data?.error || 'Vui lòng kiểm tra lại định dạng file!');
+            showErrorToast(error.response?.data?.error || 'Vui lòng kiểm tra lại định dạng file!', 2000);
         } finally {
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
@@ -310,19 +294,19 @@ export default function CategoryManagement() {
                 await axios.post("http://localhost:8080/api/categories", formData, {
                     headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" }
                 });
-                showToast('success', "Thêm danh mục thành công!");
+                showSuccessToast("Thêm danh mục thành công!", 2000);
             } else {
                 await axios.put(`http://localhost:8080/api/categories/${currentCategory.id}`, formData, {
                     headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" }
                 });
-                showToast('success', "Cập nhật danh mục thành công!");
+                showSuccessToast("Cập nhật danh mục thành công!", 2000);
             }
             setIsModalOpen(false);
             fetchCategories();
             fetchStatistics(); // Làm mới số liệu thống kê sau khi lưu
         } catch (error) {
             console.error("Lỗi khi lưu danh mục:", error);
-            showToast('error', "Có lỗi xảy ra khi lưu danh mục.");
+            showErrorToast("Có lỗi xảy ra khi lưu danh mục.", 2000);
         } finally {
             setIsSubmitting(false);
         }
@@ -335,14 +319,14 @@ export default function CategoryManagement() {
                 await axios.delete(`http://localhost:8080/api/categories/${categoryToDelete}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                showToast('success', "Xóa danh mục thành công!");
+            showSuccessToast("Xóa danh mục thành công!", 2000);
                 setIsDeleteModalOpen(false);
                 setCategoryToDelete(null);
                 fetchCategories();
                 fetchStatistics(); // Làm mới số liệu thống kê sau khi xóa
             } catch (error) {
                 console.error("Lỗi khi xóa danh mục:", error);
-                showToast('error', "Có lỗi xảy ra khi xóa danh mục.");
+            showErrorToast("Có lỗi xảy ra khi xóa danh mục.", 2000);
             }
         }
     };

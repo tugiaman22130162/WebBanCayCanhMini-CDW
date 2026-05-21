@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import axios from "axios";
-import Swal from "sweetalert2";
+import { showSuccessToast } from "../../utils/ToastUtils";
 
 const AdminHeader: React.FC = () => {
     const location = useLocation();
@@ -38,26 +38,7 @@ const AdminHeader: React.FC = () => {
             if (prevNotifCountRef.current !== -1 && currentUnreadCount > prevNotifCountRef.current) {
                 const latestNotif = newNotifs.find((n: any) => !n.isRead);
                 if (latestNotif) {
-                    // Phát âm thanh "Ting"
-                    try {
-                        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-                        audio.play().catch(e => console.log('Trình duyệt chặn phát âm thanh tự động', e));
-                    } catch (e) {}
-
-                    Swal.fire({
-                        toast: true,
-                        position: 'bottom-end',
-                        showConfirmButton: false,
-                        timer: 5000,
-                        timerProgressBar: true,
-                        icon: 'info',
-                        title: 'Thông báo mới',
-                        text: latestNotif.message,
-                        customClass: {
-                            popup: 'rounded-2xl shadow-xl border border-gray-100 mb-4 mr-4 bg-white',
-                            title: 'text-sm font-bold text-gray-800'
-                        }
-                    });
+                    showSuccessToast(`Thông báo mới: ${latestNotif.message}`, 5000);
                 }
             }
             prevNotifCountRef.current = currentUnreadCount;

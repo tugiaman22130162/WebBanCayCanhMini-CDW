@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
 import axios from "axios";
+import { showSuccessToast, showErrorToast } from "../../utils/ToastUtils";
 
 export default function ForgotPassword() {
     const [formData, setFormData] = useState({
@@ -39,36 +40,13 @@ export default function ForgotPassword() {
             setIsLoading(true);
             try {
                 const response = await axios.post(`http://localhost:8080/api/auth/forgot-password?email=${formData.email}`);
-                Swal.fire({
-                    toast: true,
-                    position: 'bottom',
-                    icon: 'success',
-                    title: response.data.message || 'Đã gửi email khôi phục mật khẩu!',
-                    showConfirmButton: false,
-                    timer: 3000,
-                    width: 'auto',
-                    padding: '0.5em 1em',
-                    customClass: {
-                        popup: 'mb-6 rounded-full shadow-lg border border-gray-100',
-                        title: 'text-sm font-bold text-gray-700',
-                    }
-                });
+                showSuccessToast(response.data.message || 'Đã gửi email khôi phục mật khẩu!', 3000);
                 setFormData({ email: "" }); // Reset lại form
             } catch (error: any) {
-                Swal.fire({
-                    toast: true,
-                    position: 'bottom',
-                    icon: 'error',
-                    title: error.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại sau!',
-                    showConfirmButton: false,
-                    timer: 3000,
-                    width: 'auto',
-                    padding: '0.5em 1em',
-                    customClass: {
-                        popup: 'mb-6 rounded-full shadow-lg border border-gray-100',
-                        title: 'text-sm font-bold text-gray-700',
-                    }
-                });
+                showErrorToast(
+                    error.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại sau!',
+                    3000
+                );
             } finally {
                 setIsLoading(false);
             }
