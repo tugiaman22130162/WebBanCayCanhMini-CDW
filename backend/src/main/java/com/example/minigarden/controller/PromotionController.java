@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/promotions")
@@ -65,7 +66,7 @@ public class PromotionController {
                 .ok()
                 .headers(headers)
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                .body(new InputStreamResource(in));
+                .body(new InputStreamResource(Objects.requireNonNull(in)));
     }
 
     @PostMapping("/import")

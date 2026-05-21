@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import axios from "axios";
+import { showSuccessToast, showErrorToast } from "../../utils/ToastUtils";
 
 export default function ResetPassword() {
     const [searchParams] = useSearchParams();
@@ -70,37 +71,14 @@ export default function ResetPassword() {
                         newPassword: formData.password
                     }
                 });
-                Swal.fire({
-                    toast: true,
-                    position: 'bottom',
-                    icon: 'success',
-                    title: response.data.message || 'Đặt lại mật khẩu thành công!',
-                    showConfirmButton: false,
-                    timer: 2000,
-                    width: 'auto',
-                    padding: '0.5em 1em',
-                    customClass: {
-                        popup: 'mb-6 rounded-full shadow-lg border border-gray-100',
-                        title: 'text-sm font-bold text-gray-700',
-                    }
-                }).then(() => {
+                showSuccessToast(response.data.message || 'Đặt lại mật khẩu thành công!', 2000).then(() => {
                     navigate("/login");
                 });
             } catch (error: any) {
-                Swal.fire({
-                    toast: true,
-                    position: 'bottom',
-                    icon: 'error',
-                    title: error.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại sau!',
-                    showConfirmButton: false,
-                    timer: 3000,
-                    width: 'auto',
-                    padding: '0.5em 1em',
-                    customClass: {
-                        popup: 'mb-6 rounded-full shadow-lg border border-gray-100',
-                        title: 'text-sm font-bold text-gray-700',
-                    }
-                });
+                showErrorToast(
+                    error.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại sau!',
+                    3000
+                );
             } finally {
                 setIsLoading(false);
             }

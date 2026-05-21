@@ -4,6 +4,7 @@ import AdminSidebar from "../../components/admin/AdminSidebar";
 import { useAuth } from "../../context/AuthContext";
 import axios from "axios";
 import Swal from "sweetalert2";
+import { showSuccessToast, showErrorToast } from "../../utils/ToastUtils";
 
 export default function AdminProfile() {
     const [activeTab, setActiveTab] = useState<'info' | 'password'>('info');
@@ -60,9 +61,9 @@ export default function AdminProfile() {
                     phoneNumber: updatedData.phone
                 });
             }
-            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Cập nhật thông tin thành công!', showConfirmButton: false, timer: 3000 });
+            showSuccessToast('Cập nhật thông tin thành công!', 3000);
         } catch (error: any) {
-            Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: error.response?.data?.message || 'Cập nhật thất bại!', showConfirmButton: false, timer: 3000 });
+            showErrorToast(error.response?.data?.message || 'Cập nhật thất bại!', 3000);
         } finally {
             setIsSubmitting(false);
         }
@@ -77,7 +78,7 @@ export default function AdminProfile() {
         const confirmPassword = formData.get('confirmPassword')?.toString() || '';
 
         if (newPassword !== confirmPassword) {
-            Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Mật khẩu mới không khớp!', showConfirmButton: false, timer: 3000 });
+            showErrorToast('Mật khẩu mới không khớp!', 3000);
             return;
         }
 
@@ -99,12 +100,12 @@ export default function AdminProfile() {
             await axios.put('http://localhost:8080/api/users/me/password', { currentPassword, newPassword }, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Đổi mật khẩu thành công!', showConfirmButton: false, timer: 3000 });
+            showSuccessToast('Đổi mật khẩu thành công!', 3000);
             form.reset(); // <-- Sử dụng biến đã lưu
         } catch (error: any) {
             // Log lỗi chi tiết ra console để debug
             console.error("Lỗi đổi mật khẩu:", error.response?.data || error.message);
-            Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: error.response?.data?.message || 'Đổi mật khẩu thất bại!', showConfirmButton: false, timer: 3000 });
+            showErrorToast(error.response?.data?.message || 'Đổi mật khẩu thất bại!', 3000);
         } finally {
             setIsSubmitting(false);
         }
@@ -119,7 +120,7 @@ export default function AdminProfile() {
         const file = event.target.files?.[0];
         if (!file) return;
         if (!file.type.startsWith('image/')) {
-            Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Vui lòng chọn file hình ảnh hợp lệ!', showConfirmButton: false, timer: 3000 });
+            showErrorToast('Vui lòng chọn file hình ảnh hợp lệ!', 3000);
             return;
         }
         setSelectedFile(file);
@@ -175,10 +176,10 @@ export default function AdminProfile() {
                                             try {
                                                 const response = await axios.post('http://localhost:8080/api/users/me/avatar', formData, { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } });
                                                 if (authUser) updateUser({ ...authUser, avatar: response.data.avatarUrl });
-                                                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Cập nhật ảnh đại diện thành công!', showConfirmButton: false, timer: 3000 });
+                                                showSuccessToast('Cập nhật ảnh đại diện thành công!', 3000);
                                                 setAvatarPreview(null); setSelectedFile(null);
                                             } catch (error) {
-                                                Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Không thể cập nhật ảnh đại diện', showConfirmButton: false, timer: 3000 });
+                                                showErrorToast('Không thể cập nhật ảnh đại diện', 3000);
                                             } finally { setIsUploading(false); }
                                         }} disabled={isUploading} className="px-3 py-1.5 text-xs font-bold text-white bg-[#006c49] hover:bg-[#005236] rounded-lg transition-colors flex items-center gap-1 disabled:opacity-50">
                                             {isUploading && <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>} Lưu ảnh

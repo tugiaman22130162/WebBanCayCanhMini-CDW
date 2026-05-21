@@ -5,6 +5,7 @@ import AdminHeader from "../../components/admin/AdminHeader";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import AddPromotionModal from "../../components/admin/AddPromotionModal";
 import EditPromotionModal from "../../components/admin/EditPromotionModal";
+import { showSuccessToast, showErrorToast } from "../../utils/ToastUtils";
 
 type PromotionType = 'SHOP' | 'CATEGORY' | 'PRODUCT' | 'SHIPPING';
 type DiscountType = 'PERCENTAGE' | 'FIXED_AMOUNT' | 'FREE';
@@ -80,18 +81,10 @@ export default function PromotionManagement() {
             setPromotions(response.data);
         } catch (error) {
             console.error("Lỗi khi lấy danh sách khuyến mãi:", error);
-            showToast('error', "Không thể tải danh sách khuyến mãi!");
+            showErrorToast("Không thể tải danh sách khuyến mãi!", 2000);
         } finally {
             setIsLoading(false);
         }
-    };
-
-    const showToast = (icon: 'success' | 'error', title: string) => {
-        Swal.fire({
-            toast: true, position: 'bottom', icon, title, timer: 2000,
-            showConfirmButton: false, width: 'auto', padding: '0.5em 1em',
-            customClass: { popup: 'mb-6 rounded-full shadow-lg border border-gray-100', title: 'text-sm font-bold text-gray-700' }
-        });
     };
 
     // Xử lý Lọc
@@ -139,13 +132,13 @@ export default function PromotionManagement() {
                 await axios.delete(`http://localhost:8080/api/promotions/${promoToDelete}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                showToast('success', "Xóa khuyến mãi thành công!");
+                showSuccessToast("Xóa khuyến mãi thành công!", 2000);
                 setIsDeleteModalOpen(false);
                 setPromoToDelete(null);
                 fetchPromotions();
             } catch (error) {
                 console.error("Lỗi khi xóa khuyến mãi:", error);
-                showToast('error', "Có lỗi xảy ra khi xóa khuyến mãi.");
+                showErrorToast("Có lỗi xảy ra khi xóa khuyến mãi.", 2000);
             }
         }
     };
@@ -154,7 +147,7 @@ export default function PromotionManagement() {
         try {
             Swal.fire({
                 toast: true,
-                position: 'bottom',
+                position: 'top-end',
                 title: 'Đang xuất file Excel...',
                 showConfirmButton: false,
                 didOpen: () => {
@@ -178,10 +171,10 @@ export default function PromotionManagement() {
             document.body.removeChild(link);
 
             Swal.close();
-            showToast('success', 'Xuất file Excel thành công!');
+            showSuccessToast('Xuất file Excel thành công!', 2000);
         } catch (error) {
             Swal.close();
-            showToast('error', 'Có lỗi xảy ra khi xuất file!');
+            showErrorToast('Có lỗi xảy ra khi xuất file!', 2000);
         }
     };
 
@@ -195,7 +188,7 @@ export default function PromotionManagement() {
         try {
             Swal.fire({
                 toast: true,
-                position: 'bottom',
+                position: 'top-end',
                 title: 'Đang nạp dữ liệu...',
                 showConfirmButton: false,
                 didOpen: () => {
@@ -212,11 +205,11 @@ export default function PromotionManagement() {
                 }
             });
             Swal.close();
-            showToast('success', 'Nhập dữ liệu thành công!');
+            showSuccessToast('Nhập dữ liệu thành công!', 2000);
             fetchPromotions();
         } catch (error: any) {
             Swal.close();
-            showToast('error', error.response?.data?.error || 'Vui lòng kiểm tra lại định dạng file!');
+            showErrorToast(error.response?.data?.error || 'Vui lòng kiểm tra lại định dạng file!', 2000);
         } finally {
             if (fileInputRef.current) fileInputRef.current.value = '';
         }

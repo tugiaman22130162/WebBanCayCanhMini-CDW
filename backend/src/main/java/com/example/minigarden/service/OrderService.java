@@ -25,6 +25,7 @@ public class OrderService {
     private final CartItemRepository cartItemRepository;
     private final PromotionRepository promotionRepository;
     private final PaymentRepository paymentRepository;
+    private final NotificationService notificationService;
 
     public Order createOrder(Integer userId, OrderRequest request) {
 
@@ -225,6 +226,11 @@ public class OrderService {
                 .status(PaymentStatus.PENDING)
                 .build();
         paymentRepository.save(Objects.requireNonNull(payment));
+
+        // Tạo thông báo cho Admin xác nhận đơn hàng nếu là COD
+        if (paymentMethod == PaymentMethod.COD) {
+            notificationService.createNotification("Đơn hàng mới " + savedOrder.getOrderCode() + " (COD) đang chờ xác nhận!", "/admin/orders?search=" + savedOrder.getOrderCode(), NotificationType.ORDER);
+        }
 
         return savedOrder;
     }

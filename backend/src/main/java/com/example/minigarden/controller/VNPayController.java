@@ -2,11 +2,14 @@ package com.example.minigarden.controller;
 
 import com.example.minigarden.config.VNPayConfig;
 import com.example.minigarden.entity.Order;
+import com.example.minigarden.entity.OrderStatus;
 import com.example.minigarden.entity.PaymentStatus;
 import com.example.minigarden.entity.Payments;
+import com.example.minigarden.entity.NotificationType;
 import com.example.minigarden.repository.PaymentRepository;
 import com.example.minigarden.repository.OrderRepository;
 import com.example.minigarden.service.OrderService;
+import com.example.minigarden.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +29,7 @@ public class VNPayController {
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
     private final OrderService orderService;
+    private final NotificationService notificationService;
 
     // FE gọi để xác thực kết quả sau khi VNPAY redirect về trang Success
     @GetMapping("/payment-return")
@@ -117,6 +121,7 @@ public class VNPayController {
         if (orderOpt.isPresent() && orderOpt.get().getPaidAt() == null) {
             Order order = orderOpt.get();
             order.setPaidAt(LocalDateTime.now());
+            order.setStatus(OrderStatus.CONFIRMED);
             orderRepository.save(Objects.requireNonNull(order));
 
             // Cập nhật trạng thái trong bảng payments
@@ -124,6 +129,9 @@ public class VNPayController {
             for (Payments payment : payments) {
                 payment.setStatus(PaymentStatus.SUCCESS);
                 paymentRepository.save(Objects.requireNonNull(payment));
+                
+                // Gửi thông báo cho Admin
+                notificationService.createNotification("Đơn hàng " + orderCode + " vừa thanh toán thành công qua VNPAY!", "/admin/payments?search=" + orderCode, NotificationType.PAYMENT);
             }
             return true;
         }
