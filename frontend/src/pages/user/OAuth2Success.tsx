@@ -2,11 +2,14 @@ import React, { useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Swal from "sweetalert2";
 import { showSuccessToast } from "../../utils/ToastUtils";
+import { useAuth } from "../../context/AuthContext";
+import axios from "axios";
 
 export default function OAuth2Success() {
     const navigate = useNavigate();
     const location = useLocation();
     const hasProcessed = useRef(false);
+    const { login } = useAuth();
 
     useEffect(() => {
         // Ngăn chặn useEffect bị gọi 2 lần trong React Strict Mode
@@ -18,28 +21,36 @@ export default function OAuth2Success() {
         const token = params.get("token");
 
         if (token) {
-            // Lưu token vào localStorage để sử dụng cho các API sau này
-            localStorage.setItem("token", token);
-            
-            // Đọc URL chuyển hướng đã lưu từ trước và xóa ngay lập tức
-            const redirectUrl = localStorage.getItem("redirectAfterLogin") || "/";
-            localStorage.removeItem("redirectAfterLogin"); 
+            // Lấy thông tin user bằng token
+            axios.get("http://localhost:8080/api/users/me", {
+                headers: { Authorization: `Bearer ${token}` }
+            }).then(response => {
+                // Cập nhật state toàn cục của AuthContext ngay lập tức
+                login(token, response.data);
 
-            // Lấy tên mạng xã hội để hiển thị thông báo chi tiết
-            const provider = localStorage.getItem("socialProvider");
-            const providerName = provider === "facebook" ? "Facebook" : (provider === "google" ? "Google" : "");
-            localStorage.removeItem("socialProvider"); // Xóa sau khi đã lấy
+                // Đọc URL chuyển hướng đã lưu từ trước và xóa ngay lập tức
+                const redirectUrl = localStorage.getItem("redirectAfterLogin") || "/";
+                localStorage.removeItem("redirectAfterLogin"); 
 
-            showSuccessToast(
-                providerName ? `Đăng nhập ${providerName} thành công!` : 'Đăng nhập thành công!',
-                1500
-            ).then(() => {
-                navigate(redirectUrl);
+                // Lấy tên mạng xã hội để hiển thị thông báo chi tiết
+                const provider = localStorage.getItem("socialProvider");
+                const providerName = provider === "facebook" ? "Facebook" : (provider === "google" ? "Google" : "");
+                localStorage.removeItem("socialProvider"); // Xóa sau khi đã lấy
+
+                showSuccessToast(
+                    providerName ? `Đăng nhập ${providerName} thành công!` : 'Đăng nhập thành công!',
+                    1500
+                ).then(() => {
+                    navigate(redirectUrl);
+                });
+            }).catch(error => {
+                console.error("Lỗi xác thực người dùng:", error);
+                navigate("/login");
             });
         } else {
             navigate("/login");
         }
-    }, [location, navigate]);
+    }, [location, navigate, login]);
 
     return (
         <div className="min-h-screen bg-[#222] flex items-center justify-center p-4">
