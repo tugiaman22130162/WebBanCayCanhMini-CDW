@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import AdminHeader from "../../components/admin/AdminHeader";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import { useSearchParams } from "react-router-dom";
+import axios from "axios";
 
 type PaymentStatus = 'SUCCESS' | 'PENDING' | 'FAILED' | 'REFUNDED';
 type PaymentMethod = 'COD' | 'VNPAY';
@@ -13,17 +14,9 @@ type Payment = {
     amount: number;
     method: PaymentMethod;
     status: PaymentStatus;
+    orderStatus?: string;
     date: string;
 };
-
-// Mock data giả lập
-const initialPayments: Payment[] = [
-    { id: "PAY-1001", orderId: "ORD-1001", customerName: "Nguyễn Văn A", amount: 450000, method: "COD", status: "PENDING", date: "2026-04-20T10:30:00" },
-    { id: "PAY-1002", orderId: "ORD-1002", customerName: "Trần Thị B", amount: 1200000, method: "VNPAY", status: "SUCCESS", date: "2026-04-19T15:20:00" },
-    { id: "PAY-1003", orderId: "ORD-1003", customerName: "Lê Văn C", amount: 250000, method: "COD", status: "SUCCESS", date: "2026-04-18T09:15:00" },
-    { id: "PAY-1004", orderId: "ORD-1004", customerName: "Phạm Thị D", amount: 600000, method: "VNPAY", status: "FAILED", date: "2026-04-20T11:00:00" },
-    { id: "PAY-1005", orderId: "ORD-1005", customerName: "Hoàng Văn E", amount: 850000, method: "VNPAY", status: "REFUNDED", date: "2026-04-17T14:45:00" },
-];
 
 const getStatusLabel = (status: PaymentStatus) => {
     switch (status) {
@@ -54,9 +47,9 @@ const getMethodIcon = (method: PaymentMethod) => {
 };
 
 export default function PaymentManagement() {
-    const [payments, setPayments] = useState<Payment[]>(initialPayments);
+    const [payments, setPayments] = useState<Payment[]>([]);
     const [statusFilter, setStatusFilter] = useState<PaymentStatus | 'ALL'>('ALL');
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const searchTerm = searchParams.get("search") || "";
 
     // State quản lý Modal Chi Tiết
@@ -67,10 +60,42 @@ export default function PaymentManagement() {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
 
+    const handleShowAll = () => {
+        setStatusFilter('ALL');
+        setSearchParams(new URLSearchParams());
+        setCurrentPage(1);
+    };
+
     // Đặt lại về trang 1 mỗi khi thay đổi bộ lọc tìm kiếm / trạng thái
     useEffect(() => {
         setCurrentPage(1);
     }, [searchTerm, statusFilter]);
+
+    useEffect(() => {
+        const fetchPayments = async () => {
+            try {
+                const token = localStorage.getItem("token");
+                const response = await axios.get("http://localhost:8080/api/payments", {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const formattedData: Payment[] = response.data.map((p: any) => ({
+                    id: `PAY-${p.id}`,
+                    orderId: p.orderCode,
+                    customerName: p.customerName,
+                    amount: p.amount,
+                    method: p.method,
+                    status: p.status,
+                    orderStatus: p.orderStatus,
+                    date: p.createdAt
+                }));
+                formattedData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                setPayments(formattedData);
+            } catch (error) {
+                console.error("Lỗi khi tải danh sách thanh toán:", error);
+            }
+        };
+        fetchPayments();
+    }, []);
 
     const filteredPayments = useMemo(() => {
         return payments.filter(payment => {
@@ -158,6 +183,12 @@ export default function PaymentManagement() {
                                 </span>
                             </div>
                         </div>
+                        <button
+                            onClick={handleShowAll}
+                            className="px-4 py-2.5 rounded-xl bg-[#006c49] text-white text-sm font-bold hover:bg-[#005236] transition shadow-sm whitespace-nowrap"
+                        >
+                            Hiển thị tất cả
+                        </button>
                     </div>
 
                     {/* BẢNG DANH SÁCH THANH TOÁN */}
@@ -295,18 +326,17 @@ export default function PaymentManagement() {
                             <button onClick={() => setIsDetailModalOpen(false)} className="px-6 py-2 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition-colors shadow-sm">
                                 Đóng
                             </button>
-                            {['SUCCESS', 'PENDING'].includes(selectedPayment.status) && (
-                                <button 
-                                    onClick={() => {
-                                        alert(`Đã tạo yêu cầu giao hàng cho đơn vị vận chuyển (Mã đơn: ${selectedPayment.orderId})!`);
-                                        setIsDetailModalOpen(false);
-                                    }} 
-                                    className="px-6 py-2 rounded-xl bg-[#006c49] text-white font-bold hover:bg-[#005236] transition-colors shadow-md flex items-center gap-2"
-                                >
-                                    <span className="material-symbols-outlined text-[20px]">local_shipping</span>
-                                    Giao hàng
-                                </button>
-                            )}
+                            <button 
+                                onClick={() => {
+                                    alert(`Đã tạo yêu cầu giao hàng cho đơn vị vận chuyển (Mã đơn: ${selectedPayment.orderId})!`);
+                                    setIsDetailModalOpen(false);
+                                }} 
+                                disabled={selectedPayment.orderStatus !== 'CONFIRMED'}
+                                className={`px-6 py-2 rounded-xl font-bold transition-colors flex items-center gap-2 ${selectedPayment.orderStatus === 'CONFIRMED' ? 'bg-[#006c49] text-white hover:bg-[#005236] shadow-md' : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-70'}`}
+                            >
+                                <span className="material-symbols-outlined text-[20px]">local_shipping</span>
+                                Giao hàng
+                            </button>
                         </div>
                     </div>
                 </div>
