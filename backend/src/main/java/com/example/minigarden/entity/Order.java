@@ -20,7 +20,7 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    //Mã đơn hàng vd DH+thời gian tạo
+    // Mã đơn hàng vd DH+thời gian tạo
     @Column(name = "order_code", nullable = false, unique = true, length = 50)
     private String orderCode;
 
@@ -51,7 +51,7 @@ public class Order {
     @Column(length = 255, name = "note", nullable = true)
     private String note;
 
-    //Khuyến mãi áp dụng
+    // Khuyến mãi áp dụng
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     private List<OrderPromotion> promotions;
 
@@ -59,17 +59,17 @@ public class Order {
     @Column(name = "shipping_fee", precision = 12, scale = 2)
     private BigDecimal shippingFee;
 
-    //Thời gian giao hàng dự kiến
+    // Thời gian giao hàng dự kiến
     @Column(name = "estimated_delivery_time_to")
     private LocalDateTime estimatedDeliveryTimeTo;
     @Column(name = "estimated_delivery_time_from")
     private LocalDateTime estimatedDeliveryTimeFrom;
 
-    //Phương thức thanh toán
+    // Phương thức thanh toán
     @Column(name = "payment_method", length = 50)
     private String paymentMethod;
 
-    //Thời gian thanh toán thành công
+    // Thời gian thanh toán thành công
     @Column(name = "paidAt", nullable = true)
     private LocalDateTime paidAt;
 

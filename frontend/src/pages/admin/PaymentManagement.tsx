@@ -3,6 +3,7 @@ import AdminHeader from "../../components/admin/AdminHeader";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import { useSearchParams } from "react-router-dom";
 import axios from "axios";
+import { showSuccessToast, showErrorToast } from "../../utils/ToastUtils";
 
 type PaymentStatus = 'SUCCESS' | 'PENDING' | 'FAILED' | 'REFUNDED';
 type PaymentMethod = 'COD' | 'VNPAY';
@@ -55,10 +56,11 @@ export default function PaymentManagement() {
     // State quản lý Modal Chi Tiết
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+    const [isUpdating, setIsUpdating] = useState(false);
 
     // State phân trang
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 10;
+    const itemsPerPage = 5;
 
     const handleShowAll = () => {
         setStatusFilter('ALL');
@@ -71,31 +73,68 @@ export default function PaymentManagement() {
         setCurrentPage(1);
     }, [searchTerm, statusFilter]);
 
+    const fetchPayments = async () => {
+        try {
+            const token = localStorage.getItem("token");
+            const response = await axios.get("http://localhost:8080/api/payments", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const formattedData: Payment[] = response.data.map((p: any) => ({
+                id: `PAY-${p.id}`,
+                orderId: p.orderCode,
+                customerName: p.customerName,
+                amount: p.amount,
+                method: p.method,
+                status: p.status,
+                orderStatus: p.orderStatus,
+                date: p.createdAt
+            }));
+            formattedData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            setPayments(formattedData);
+        } catch (error) {
+            console.error("Lỗi khi tải danh sách thanh toán:", error);
+        }
+    };
+
     useEffect(() => {
-        const fetchPayments = async () => {
-            try {
-                const token = localStorage.getItem("token");
-                const response = await axios.get("http://localhost:8080/api/payments", {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                const formattedData: Payment[] = response.data.map((p: any) => ({
-                    id: `PAY-${p.id}`,
-                    orderId: p.orderCode,
-                    customerName: p.customerName,
-                    amount: p.amount,
-                    method: p.method,
-                    status: p.status,
-                    orderStatus: p.orderStatus,
-                    date: p.createdAt
-                }));
-                formattedData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                setPayments(formattedData);
-            } catch (error) {
-                console.error("Lỗi khi tải danh sách thanh toán:", error);
-            }
-        };
         fetchPayments();
     }, []);
+
+    const handleShipping = async () => {
+        if (!selectedPayment) return;
+        
+        setIsUpdating(true);
+        try {
+            const token = localStorage.getItem("token");
+            
+            // Tìm orderId thật sự dựa trên orderCode
+            const orderRes = await axios.get(`http://localhost:8080/api/orders?keyword=${selectedPayment.orderId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            const orders = orderRes.data;
+            if (orders && orders.length > 0) {
+                const realOrderId = orders[0].id;
+                
+                // Cập nhật trạng thái đơn hàng thành SHIPPING
+                await axios.put(`http://localhost:8080/api/orders/${realOrderId}/status`, {}, {
+                    params: { status: 'SHIPPING' },
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                
+                showSuccessToast(`Đã tạo yêu cầu giao hàng cho đơn vị vận chuyển!`, 3000);
+                setIsDetailModalOpen(false);
+                fetchPayments(); // Cập nhật lại danh sách thanh toán để thấy sự thay đổi (trạng thái đơn hàng)
+            } else {
+                showErrorToast("Không tìm thấy đơn hàng tương ứng!", 3000);
+            }
+        } catch (error) {
+            console.error("Lỗi khi cập nhật trạng thái giao hàng:", error);
+            showErrorToast("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng.", 3000);
+        } finally {
+            setIsUpdating(false);
+        }
+    };
 
     const filteredPayments = useMemo(() => {
         return payments.filter(payment => {
@@ -327,15 +366,12 @@ export default function PaymentManagement() {
                                 Đóng
                             </button>
                             <button 
-                                onClick={() => {
-                                    alert(`Đã tạo yêu cầu giao hàng cho đơn vị vận chuyển (Mã đơn: ${selectedPayment.orderId})!`);
-                                    setIsDetailModalOpen(false);
-                                }} 
-                                disabled={selectedPayment.orderStatus !== 'CONFIRMED'}
+                                onClick={handleShipping} 
+                                disabled={selectedPayment.orderStatus !== 'CONFIRMED' || isUpdating}
                                 className={`px-6 py-2 rounded-xl font-bold transition-colors flex items-center gap-2 ${selectedPayment.orderStatus === 'CONFIRMED' ? 'bg-[#006c49] text-white hover:bg-[#005236] shadow-md' : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-70'}`}
                             >
-                                <span className="material-symbols-outlined text-[20px]">local_shipping</span>
-                                Giao hàng
+                                {isUpdating ? <span className="material-symbols-outlined animate-spin text-[20px]">autorenew</span> : <span className="material-symbols-outlined text-[20px]">local_shipping</span>}
+                                {isUpdating ? "Đang xử lý..." : "Giao hàng"}
                             </button>
                         </div>
                     </div>

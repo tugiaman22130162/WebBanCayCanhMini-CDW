@@ -14,6 +14,7 @@ interface OrderItem {
 
 interface OrderDetail {
     id: number;
+    orderCode: string;
     receiver_name: string;
     phone: string;
     address: string;
@@ -21,7 +22,11 @@ interface OrderDetail {
     total_price: number;
     status: OrderStatus;
     created_at: string;
+    updatedAt?: string;
     items: OrderItem[];
+    paymentMethod: string;
+    shippingFee: number;
+    discountAmount: number;
 }
 
 interface OrderDetailModalProps {
@@ -63,37 +68,43 @@ export default function OrderDetailModal({ isOpen, onClose, orderId, onSuccess }
     useEffect(() => {
         if (isOpen && orderId) {
             setIsLoading(true);
-            // Tạm thời dùng Mock Data giả lập độ trễ mạng. 
-            // Sau này bạn thay bằng: const response = await axios.get(`http://localhost:8080/api/orders/${orderId}`);
-            setTimeout(() => {
-                setOrder({
-                    id: orderId,
-                    receiver_name: "Nguyễn Văn A",
-                    phone: "0901234567",
-                    address: "123 Đường ABC, Quận 1, TP HCM",
-                    note: "Giao trong giờ hành chính, gọi điện trước khi đến.",
-                    total_price: orderId === 1002 ? 1200000 : 450000,
-                    status: orderId === 1002 ? 'SHIPPING' : 'PENDING',
-                    created_at: "2026-04-20T10:30:00",
-                    items: [
-                        {
-                            id: 1,
-                            product_name: "Terrarium Forest Mini",
-                            price: 150000,
-                            quantity: 2,
-                            subtotal: 300000
-                        },
-                        {
-                            id: 2,
-                            product_name: "Chậu Gốm Sứ Trắng",
-                            price: 150000,
-                            quantity: 1,
-                            subtotal: 150000
-                        }
-                    ]
-                });
-                setIsLoading(false);
-            }, 500);
+            const fetchOrderDetail = async () => {
+                try {
+                    const token = localStorage.getItem("token");
+                    const response = await axios.get(`http://localhost:8080/api/orders/${orderId}`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    const data = response.data;
+                    setOrder({
+                        id: data.id,
+                        orderCode: data.orderCode || data.id.toString(),
+                        receiver_name: data.receiverName,
+                        phone: data.phone,
+                        address: data.address,
+                        note: data.note || "",
+                        total_price: data.totalPrice,
+                        status: data.status,
+                        created_at: data.createdAt,
+                        updatedAt: data.updatedAt,
+                        paymentMethod: data.paymentMethod || "N/A", // Lấy paymentMethod từ API
+                        shippingFee: data.shippingFee || 0,
+                        discountAmount: data.discountAmount || 0,
+                        items: data.items.map((item: any) => ({
+                            id: item.id,
+                            product_name: item.product_name,
+                            price: item.price,
+                            quantity: item.quantity,
+                            subtotal: item.subtotal
+                        }))
+                    });
+                } catch (error) {
+                    console.error("Lỗi khi tải chi tiết đơn hàng:", error);
+                    showErrorToast("Không thể tải thông tin chi tiết đơn hàng!", 3000);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+            fetchOrderDetail();
         } else {
             setOrder(null);
             setIsEditingStatus(false);
@@ -102,20 +113,22 @@ export default function OrderDetailModal({ isOpen, onClose, orderId, onSuccess }
 
     const handleUpdateStatus = async () => {
         if (!order || selectedStatus === order.status) return;
-        
+
         setIsUpdating(true);
         try {
-            // Gọi API cập nhật trạng thái đơn hàng dưới Backend
-            // (Bạn cần viết API tiếp nhận PUT method tại Backend cho Endpoint này)
-            await axios.put(`http://localhost:8080/api/orders/${order.id}/status`, null, {
-                params: { status: selectedStatus }
+            const token = localStorage.getItem("token");
+            await axios.put(`http://localhost:8080/api/orders/${order.id}/status`, {}, {
+                params: { status: selectedStatus },
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
             });
-            
+
             // Cập nhật lại UI
             setOrder({ ...order, status: selectedStatus });
             setIsEditingStatus(false);
             showSuccessToast("Cập nhật trạng thái thành công!", 2000);
-            
+
             if (onSuccess) onSuccess(); // Báo cho component cha tải lại danh sách đơn hàng
         } catch (error) {
             console.error("Lỗi khi cập nhật trạng thái:", error);
@@ -130,15 +143,27 @@ export default function OrderDetailModal({ isOpen, onClose, orderId, onSuccess }
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
-                
+
                 {/* HEADER */}
                 <div className="p-6 border-b flex justify-between items-center bg-gray-50">
                     <div>
-                        <h3 className="text-xl font-bold text-gray-800">Chi tiết đơn hàng #{orderId}</h3>
+                        <h3 className="text-xl font-bold text-gray-800">Chi tiết đơn hàng #{order?.orderCode || orderId}</h3>
                         {order && (
-                            <p className="text-sm text-gray-500 mt-1">
-                                Ngày đặt: {new Date(order.created_at).toLocaleString('vi-VN')}
-                            </p>
+                            <>
+                                <p className="text-sm text-gray-500 mt-1">
+                                    Ngày đặt: {new Date(order.created_at).toLocaleString('vi-VN')}
+                                </p>
+                                {order.status === 'DELIVERED' && order.updatedAt && (
+                                    <p className="text-sm text-gray-500 mt-1">
+                                        Ngày giao: {new Date(order.updatedAt).toLocaleString('vi-VN')}
+                                    </p>
+                                )}
+                                {order.status === 'CANCELLED' && order.updatedAt && (
+                                    <p className="text-sm text-gray-500 mt-1">
+                                        Ngày hủy: {new Date(order.updatedAt).toLocaleString('vi-VN')}
+                                    </p>
+                                )}
+                            </>
                         )}
                     </div>
                     <button onClick={onClose} className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50">
@@ -183,8 +208,8 @@ export default function OrderDetailModal({ isOpen, onClose, orderId, onSuccess }
                                 </div>
                                 <div className="flex gap-2">
                                     {!isEditingStatus ? (
-                                        <button 
-                                            onClick={() => { setSelectedStatus(order.status); setIsEditingStatus(true); }} 
+                                        <button
+                                            onClick={() => { setSelectedStatus(order.status); setIsEditingStatus(true); }}
                                             className="px-4 py-2 text-sm font-bold bg-primary text-white rounded-lg hover:bg-[#2f5146] transition-colors shadow-sm"
                                         >
                                             Cập nhật trạng thái
@@ -212,7 +237,26 @@ export default function OrderDetailModal({ isOpen, onClose, orderId, onSuccess }
                                     <div><p className="text-xs text-gray-500 uppercase font-bold mb-1">Người nhận</p><p className="font-semibold text-gray-800">{order.receiver_name}</p></div>
                                     <div><p className="text-xs text-gray-500 uppercase font-bold mb-1">Số điện thoại</p><p className="font-semibold text-gray-800">{order.phone}</p></div>
                                     <div className="md:col-span-2"><p className="text-xs text-gray-500 uppercase font-bold mb-1">Địa chỉ giao hàng</p><p className="font-semibold text-gray-800">{order.address}</p></div>
-                                    <div className="md:col-span-2"><p className="text-xs text-gray-500 uppercase font-bold mb-1">Ghi chú của khách</p><p className="font-semibold text-gray-800 bg-yellow-50 p-3 rounded-lg border border-yellow-100 text-sm">{order.note || "Không có ghi chú"}</p></div>
+                                    <div>
+                                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Phương thức thanh toán</p>
+                                        <div className="flex items-center gap-2">
+                                            {order.paymentMethod?.toUpperCase() === 'VNPAY' ? (
+                                                <>
+                                                    <img src="https://vinadesign.vn/uploads/thumbnails/800/2023/05/vnpay-logo-vinadesign-25-12-59-16.jpg" alt="VNPAY" className="w-6 h-6 object-contain" />
+                                                    <span className="font-semibold text-gray-800">Ví điện tử VNPAY</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span className="material-symbols-outlined text-[#406D5E] text-[20px]">payments</span>
+                                                    <span className="font-semibold text-gray-800">Thanh toán khi nhận hàng (COD)</span>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Ghi chú của khách</p>
+                                        <p className="font-semibold text-gray-800 bg-yellow-50 p-3 rounded-lg border border-yellow-100 text-sm">{order.note || "Không có ghi chú"}</p>
+                                    </div>
                                 </div>
                             </div>
 
@@ -234,10 +278,28 @@ export default function OrderDetailModal({ isOpen, onClose, orderId, onSuccess }
                                         </tbody>
                                     </table>
                                 </div>
-                                
+
                                 {/* Tổng tiền */}
                                 <div className="mt-4 pt-4 border-t flex justify-end">
-                                    <div className="w-full md:w-1/2 space-y-2"><div className="flex justify-between text-gray-600"><span>Tạm tính:</span><span className="font-semibold">{order.total_price.toLocaleString('vi-VN')}đ</span></div><div className="flex justify-between text-gray-600"><span>Phí vận chuyển:</span><span className="font-semibold">0đ</span></div><div className="flex justify-between text-lg border-t pt-2 mt-2"><span className="font-bold text-gray-800">Tổng cộng:</span><span className="font-black text-emerald-600">{order.total_price.toLocaleString('vi-VN')}đ</span></div></div>
+                                    <div className="w-full md:w-1/2 space-y-2">
+                                        <div className="flex justify-between text-gray-600">
+                                            <span>Tạm tính:</span>
+                                            <span className="font-semibold">
+                                                {(order.items.reduce((sum, item) => sum + item.subtotal, 0)).toLocaleString('vi-VN')}đ
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between text-gray-600">
+                                            <span>Phí vận chuyển:</span>
+                                            <span className="font-semibold">{order.shippingFee.toLocaleString('vi-VN')}đ</span>
+                                        </div>
+                                        {order.discountAmount > 0 && (
+                                            <div className="flex justify-between text-emerald-600">
+                                                <span>Giảm giá:</span>
+                                                <span className="font-semibold">-{order.discountAmount.toLocaleString('vi-VN')}đ</span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between text-lg border-t pt-2 mt-2"><span className="font-bold text-gray-800">Tổng cộng:</span><span className="font-black text-emerald-600">{order.total_price.toLocaleString('vi-VN')}đ</span></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

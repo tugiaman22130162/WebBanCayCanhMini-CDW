@@ -157,6 +157,50 @@ public class OrderController {
         }
     }
 
+    // API Xác nhận đã nhận được hàng (Dành cho User)
+    @PutMapping("/{id}/receive")
+    @Transactional
+    public ResponseEntity<?> confirmOrderReceived(@PathVariable Integer id, Principal principal) {
+        try {
+            if (principal == null) {
+                return ResponseEntity.status(401).body(Map.of("message", "Chưa đăng nhập"));
+            }
+            User user = userRepository.findByEmail(principal.getName())
+                    .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
+
+            Order order = orderService.confirmOrderReceived(id, user.getId());
+            return ResponseEntity.ok(mapOrderToDto(order));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Lỗi khi xác nhận nhận hàng"));
+        }
+    }
+
+    // API đánh giá sản phẩm
+    @PostMapping("/items/{itemId}/review")
+    @Transactional
+    public ResponseEntity<?> reviewOrderItem(
+            @PathVariable Integer itemId,
+            @RequestBody Map<String, Object> payload,
+            Principal principal) {
+        try {
+            if (principal == null) {
+                return ResponseEntity.status(401).body(Map.of("message", "Chưa đăng nhập"));
+            }
+            User user = userRepository.findByEmail(principal.getName())
+                    .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
+
+            Integer rating = (Integer) payload.get("rating");
+            String comment = (String) payload.get("comment");
+
+            orderService.reviewOrderItem(itemId, user.getId(), rating, comment);
+            return ResponseEntity.ok(Map.of("message", "Đánh giá thành công"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Lỗi khi đánh giá"));
+        }
+    }
+
     // map json trả về cho FE
     private Map<String, Object> mapOrderToDto(Order order) {
         Map<String, Object> map = new java.util.HashMap<>();
@@ -167,6 +211,20 @@ public class OrderController {
         map.put("estimatedDeliveryTimeTo", order.getEstimatedDeliveryTimeTo());
         map.put("totalPrice", order.getTotalPrice());
         map.put("status", order.getStatus());
+        map.put("updatedAt", order.getUpdatedAt());
+        
+        java.math.BigDecimal totalDiscount = order.getPromotions() != null 
+                ? order.getPromotions().stream().map(op -> {
+                    java.math.BigDecimal amt = op.getDiscountAmount();
+                    if (amt == null || amt.compareTo(java.math.BigDecimal.ZERO) == 0) {
+                        Promotion p = promotionRepository.findByName(op.getPromotionCode()).orElse(null);
+                        if (p != null && p.getDiscountType() == DiscountType.FIXED_AMOUNT) amt = p.getDiscountValue();
+                        else amt = java.math.BigDecimal.ZERO;
+                    }
+                    return amt;
+                }).reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add)
+                : java.math.BigDecimal.ZERO;
+        map.put("discountAmount", totalDiscount);
         map.put("shippingFee", order.getShippingFee());
         map.put("receiverName", order.getReceiverName());
         map.put("phone", order.getPhone());
@@ -206,6 +264,7 @@ public class OrderController {
 
                 if (item.getProduct() != null) {
                     Map<String, Object> pMap = new java.util.HashMap<>();
+                    pMap.put("id", item.getProduct().getId());
                     if (item.getProduct().getImages() != null && !item.getProduct().getImages().isEmpty()) {
                         pMap.put("images", item.getProduct().getImages().stream()
                                 .map(com.example.minigarden.entity.ProductImages::getImage_url)
@@ -213,6 +272,7 @@ public class OrderController {
                     }
                     iMap.put("product", pMap);
                 }
+                iMap.put("isReviewed", item.getIsReviewed());
                 return iMap;
             }).toList());
         } else {

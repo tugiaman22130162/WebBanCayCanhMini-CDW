@@ -118,12 +118,13 @@ export default function Profile() {
                     id: order.orderCode || order.id,
                     realId: order.id,
                     date: new Date(order.createdAt).toLocaleDateString('vi-VN'),
-                    estimatedDelivery: order.estimatedDeliveryTimeFrom && order.estimatedDeliveryTimeTo 
-                        ? `${new Date(order.estimatedDeliveryTimeFrom).toLocaleDateString('vi-VN')} - ${new Date(order.estimatedDeliveryTimeTo).toLocaleDateString('vi-VN')}` 
+                    estimatedDelivery: order.estimatedDeliveryTimeFrom && order.estimatedDeliveryTimeTo
+                        ? `${new Date(order.estimatedDeliveryTimeFrom).toLocaleDateString('vi-VN')} - ${new Date(order.estimatedDeliveryTimeTo).toLocaleDateString('vi-VN')}`
                         : "-",
                     total: order.totalPrice,
                     status: getStatusLabel(order.status),
                     statusColor: getStatusColor(order.status),
+                    updatedAt: order.updatedAt,
                     promoCode: order.promotions?.length > 0 ? order.promotions[0].promotionCode : null,
                     discount: order.discountAmount || 0,
                     shippingFee: order.shippingFee || 0,
@@ -138,14 +139,34 @@ export default function Profile() {
                             imageUrl = item.product.images[0].image_url || item.product.images[0].imageUrl || item.product.images[0];
                         }
                         return {
+                            id: item.id,
+                            productId: item.product?.id,
                             name: item.product_name,
                             quantity: item.quantity,
                             price: item.price,
-                            image: imageUrl
+                            image: imageUrl,
+                            isReviewed: item.isReviewed || false
                         };
                     })
                 }));
                 setOrders(formattedOrders);
+
+                // Lọc các sản phẩm chưa đánh giá từ đơn hàng Đã giao
+                const pending = formattedOrders
+                    .filter((o: any) => o.status === 'Đã giao')
+                    .flatMap((o: any) => o.items
+                        .filter((item: any) => !item.isReviewed)
+                        .map((item: any) => ({
+                            id: item.id,
+                            productId: item.productId,
+                            productName: item.name,
+                            image: item.image,
+                            orderId: o.id,
+                            orderRealId: o.realId,
+                            date: o.date
+                        }))
+                    );
+                setPendingReviews(pending);
             } catch (error) {
                 console.error("Lỗi khi tải đơn hàng:", error);
             }
@@ -155,16 +176,38 @@ export default function Profile() {
         }
     }, [isLoggedIn, token]);
 
-    // Mock data đánh giá
-    const userReviews = [
-        { id: 1, productName: "Sen đá Echeveria Laui", image: "/images/sen_da.webp", rating: 5, date: "22/04/2026", content: "Cây đẹp, gói hàng cẩn thận. Rất ưng ý!", status: "Đã duyệt" },
-        { id: 2, productName: "Terrarium Forest Mini", image: "/images/terrarium.png", rating: 4, date: "18/04/2026", content: "Bình thuỷ tinh hơi xước nhẹ nhưng tổng thể vẫn rất đẹp.", status: "Đã duyệt" }
-    ];
+    // State data đánh giá
+    const [userReviews, setUserReviews] = useState<any[]>([]);
 
-    // Mock data chưa đánh giá
-    const pendingReviews = [
-        { id: 101, productName: "Cây để bàn Mix", image: "/images/cay_de_ban.webp", orderId: "MG-1003", date: "10/04/2026" }
-    ];
+    // Gọi API để lấy các đánh giá (Reviews) đã thực hiện
+    useEffect(() => {
+        const fetchMyReviews = async () => {
+            if (!token) return;
+            try {
+                const response = await axios.get("http://localhost:8080/api/reviews/my-reviews", {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const formattedReviews = response.data.map((r: any) => ({
+                    id: r.id,
+                    productName: r.productName,
+                    image: r.image || "/images/terrarium.png",
+                    rating: r.rating,
+                    date: new Date(r.createdAt).toLocaleDateString('vi-VN'),
+                    content: r.comment,
+                    status: r.status
+                }));
+                setUserReviews(formattedReviews);
+            } catch (error) {
+                console.error("Lỗi khi tải danh sách đánh giá:", error);
+            }
+        };
+        if (isLoggedIn) {
+            fetchMyReviews();
+        }
+    }, [isLoggedIn, token]);
+
+    // State data chưa đánh giá
+    const [pendingReviews, setPendingReviews] = useState<any[]>([]);
 
     const handleLogout = () => {
         logout(); // Handle logout via Context
@@ -252,13 +295,40 @@ export default function Profile() {
         setImagePreviews(prev => prev.filter((_, i) => i !== index));
     };
 
-    const handleSubmitReview = (e: React.FormEvent) => {
+    const handleSubmitReview = async (e: React.FormEvent) => {
         e.preventDefault();
-        alert("Cảm ơn bạn đã gửi đánh giá cho sản phẩm!");
-        setIsReviewModalOpen(false);
-        setReviewText("");
-        setImagePreviews([]);
-        setRating(5);
+        try {
+            const payload = {
+                rating: rating,
+                comment: reviewText
+            };
+
+            await axios.post(`http://localhost:8080/api/orders/items/${reviewProduct.id}/review`, payload, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            Toast.fire({ icon: 'success', title: 'Cảm ơn bạn đã gửi đánh giá!' });
+            setIsReviewModalOpen(false);
+            setReviewText("");
+            setImagePreviews([]);
+            setRating(5);
+
+            setPendingReviews(prev => prev.filter(r => r.id !== reviewProduct.id));
+
+            const newReview = {
+                id: Date.now(),
+                productName: reviewProduct.name || reviewProduct.productName,
+                image: reviewProduct.image || reviewProduct.image_url,
+                rating: rating,
+                date: new Date().toLocaleDateString('vi-VN'),
+                content: reviewText,
+                status: "Đã duyệt"
+            };
+            setUserReviews(prev => [newReview, ...prev]);
+
+        } catch (error: any) {
+            Toast.fire({ icon: 'error', title: error.response?.data?.message || 'Lỗi khi gửi đánh giá' });
+        }
     };
     //hủy đơn hàng
     const handleCancelOrder = async (orderRealId: number) => {
@@ -286,6 +356,47 @@ export default function Profile() {
                 setOrders(prev => prev.map(o => o.realId === orderRealId ? { ...o, status: 'Đã hủy', statusColor: 'text-red-600 bg-red-50' } : o));
             } catch (error: any) {
                 Toast.fire({ icon: 'error', title: error.response?.data?.message || 'Lỗi khi hủy đơn hàng' });
+            }
+        }
+    };
+
+    // Xử lý xác nhận đã nhận được hàng
+    const handleConfirmReceived = async (orderRealId: number) => {
+        const result = await Swal.fire({
+            title: 'Xác nhận nhận hàng?',
+            text: "Bạn xác nhận đã nhận được đơn hàng này trong tình trạng nguyên vẹn?",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Đã nhận hàng',
+            cancelButtonText: 'Chưa nhận',
+            customClass: {
+                confirmButton: 'bg-primary text-white px-6 py-2.5 rounded-xl font-bold mx-3 hover:bg-[#2f5146] transition-colors shadow-sm',
+                cancelButton: 'bg-gray-200 text-gray-700 px-6 py-2.5 rounded-xl font-bold mx-3 hover:bg-gray-300 transition-colors shadow-sm'
+            },
+            buttonsStyling: false
+        });
+
+        if (result.isConfirmed) {
+            try {
+                await axios.put(`http://localhost:8080/api/orders/${orderRealId}/receive`, {}, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                Toast.fire({ icon: 'success', title: 'Xác nhận nhận hàng thành công!' });
+                setIsOrderModalOpen(false);
+
+                // Cập nhật lại trạng thái của đơn hàng trong danh sách đang hiển thị
+                setOrders(prev => prev.map(o => o.realId === orderRealId ? { ...o, status: 'Đã giao', statusColor: 'text-emerald-600 bg-emerald-50' } : o));
+
+                // Tự động đẩy các sản phẩm của đơn hàng vừa nhận vào danh sách "Chờ đánh giá"
+                const newlyDeliveredOrder = orders.find(o => o.realId === orderRealId);
+                if (newlyDeliveredOrder) {
+                    const pendingItems = newlyDeliveredOrder.items.map((item: any) => ({
+                        id: item.id, productId: item.productId, productName: item.name, image: item.image, orderId: newlyDeliveredOrder.id, orderRealId: newlyDeliveredOrder.realId, date: newlyDeliveredOrder.date
+                    }));
+                    setPendingReviews(prev => [...pendingItems, ...prev]);
+                }
+            } catch (error: any) {
+                Toast.fire({ icon: 'error', title: error.response?.data?.message || 'Lỗi khi xác nhận nhận hàng' });
             }
         }
     };
@@ -355,7 +466,7 @@ export default function Profile() {
 
                             {/* TAB: ĐƠN HÀNG */}
                             {activeTab === 'orders' && (
-                                <MyOrders 
+                                <MyOrders
                                     orders={orders}
                                     onViewDetails={(order) => {
                                         setSelectedOrder(order);
@@ -437,7 +548,10 @@ export default function Profile() {
                                         <p className="text-sm text-gray-500 mt-1">Dự kiến giao: <span className="font-semibold text-gray-800">{selectedOrder.estimatedDelivery}</span></p>
                                     )}
                                     {selectedOrder.status === 'Đã giao' && (
-                                        <p className="text-sm text-gray-500 mt-1">Ngày nhận hàng: <span className="font-semibold text-gray-800">{selectedOrder.estimatedDelivery}</span></p>
+                                        <p className="text-sm text-gray-500 mt-1">Ngày giao: <span className="font-semibold text-gray-800">{selectedOrder.updatedAt ? new Date(selectedOrder.updatedAt).toLocaleString('vi-VN') : selectedOrder.estimatedDelivery}</span></p>
+                                    )}
+                                    {selectedOrder.status === 'Đã hủy' && (
+                                        <p className="text-sm text-gray-500 mt-1">Ngày hủy: <span className="font-semibold text-gray-800">{selectedOrder.updatedAt ? new Date(selectedOrder.updatedAt).toLocaleString('vi-VN') : "-"}</span></p>
                                     )}
                                     <p className="text-sm text-gray-500 mt-2 flex items-center gap-2">Trạng thái: <span className={`inline-flex items-center justify-center font-bold px-3 py-1 rounded-full text-xs ${selectedOrder.statusColor}`}>{selectedOrder.status}</span></p>
                                 </div>
@@ -458,9 +572,21 @@ export default function Profile() {
                                 <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
                                     <div>
                                         <p className="text-xs text-gray-500 uppercase font-bold mb-1">Phương thức thanh toán</p>
-                                        <p className="font-semibold text-gray-800">{selectedOrder.paymentMethod?.toUpperCase() === 'VNPAY' ? 'Ví điện tử VNPAY' : 'Thanh toán khi nhận hàng (COD)'}</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            {selectedOrder.paymentMethod?.toUpperCase() === 'VNPAY' ? (
+                                                <>
+                                                    <img src="https://vinadesign.vn/uploads/thumbnails/800/2023/05/vnpay-logo-vinadesign-25-12-59-16.jpg" alt="VNPAY" className="w-6 h-6 object-contain" />
+                                                    <span className="font-semibold text-gray-800">Ví điện tử VNPAY</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span className="material-symbols-outlined text-primary text-[20px]">payments</span>
+                                                    <span className="font-semibold text-gray-800">Thanh toán khi nhận hàng (COD)</span>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
-                                    
+
                                 </div>
                             </div>
 
@@ -544,7 +670,7 @@ export default function Profile() {
                             </button>
                             {selectedOrder.status === 'Đang giao' && (
                                 <button
-                                    onClick={() => { alert('Cảm ơn bạn đã xác nhận nhận hàng!'); setIsOrderModalOpen(false); }}
+                                    onClick={() => handleConfirmReceived(selectedOrder.realId)}
                                     className="px-6 py-2 rounded-xl bg-primary text-white font-bold hover:bg-[#2f5146] transition-colors shadow-sm"
                                 >
                                     Đã nhận được hàng

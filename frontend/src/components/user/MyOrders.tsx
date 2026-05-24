@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { useSearchParams } from "react-router-dom";
 
 interface MyOrdersProps {
     orders: any[];
@@ -7,9 +9,29 @@ interface MyOrdersProps {
 }
 
 export default function MyOrders({ orders, onViewDetails, onViewHistory }: MyOrdersProps) {
-    const [orderStatusFilter, setOrderStatusFilter] = useState<string>('Tất cả');
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    const getStatusLabelFromParam = (statusParam: string | null) => {
+        switch (statusParam) {
+            case "PENDING": return "Chờ xác nhận";
+            case "CONFIRMED": return "Đã xác nhận";
+            case "SHIPPING": return "Đang giao";
+            case "DELIVERED": return "Đã giao";
+            case "CANCELLED": return "Đã hủy";
+            default: return "Tất cả";
+        }
+    };
+
+    const [orderStatusFilter, setOrderStatusFilter] = useState<string>(getStatusLabelFromParam(searchParams.get("status")));
     const [ordersCurrentPage, setOrdersCurrentPage] = useState(1);
     const ordersItemsPerPage = 5;
+
+    useEffect(() => {
+        const statusParam = searchParams.get("status");
+        if (statusParam) {
+            setOrderStatusFilter(getStatusLabelFromParam(statusParam));
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         setOrdersCurrentPage(1);
@@ -55,14 +77,32 @@ export default function MyOrders({ orders, onViewDetails, onViewHistory }: MyOrd
                         return (
                             <button
                                 key={step.label}
-                                onClick={() => setOrderStatusFilter(step.label)}
+                                onClick={() => {
+                                    setOrderStatusFilter(step.label);
+                                    let param = "ALL";
+                                    switch (step.label) {
+                                        case "Chờ xác nhận": param = "PENDING"; break;
+                                        case "Đã xác nhận": param = "CONFIRMED"; break;
+                                        case "Đang giao": param = "SHIPPING"; break;
+                                        case "Đã giao": param = "DELIVERED"; break;
+                                        case "Đã hủy": param = "CANCELLED"; break;
+                                    }
+                                    setSearchParams({ status: param }, { replace: true });
+                                }}
                                 className="relative z-10 flex flex-col items-center gap-2 group outline-none"
                             >
                                 <div className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${isActive ? 'bg-primary border-primary/20 text-white shadow-md scale-110' : 'bg-white border-gray-200 text-gray-400 group-hover:border-primary/30 group-hover:text-primary'}`}>
                                     <span className="material-symbols-outlined text-[20px] sm:text-[24px]">{step.icon}</span>
-                                    {count > 0 && (step.label === 'Chờ xác nhận' || step.label === 'Đã xác nhận' || step.label === 'Đang giao') && (
+                                    {count > 0 && step.label !== 'Tất cả' && step.label !== 'Đã giao' && step.label !== 'Đã hủy' && (
                                         <span className={`absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1 flex items-center justify-center text-[11px] font-black rounded-full shadow-md border-2 border-white transition-all duration-300 ${isActive ? 'bg-red-500 text-white scale-110' : 'bg-gray-400 text-white group-hover:bg-red-400 group-hover:scale-110'}`}>
-                                            {count}
+                                            <motion.span
+                                                key={count}
+                                                initial={{ scale: 1.8, opacity: 0 }}
+                                                animate={{ scale: 1, opacity: 1 }}
+                                                transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                                            >
+                                                {count}
+                                            </motion.span>
                                         </span>
                                     )}
                                 </div>
@@ -80,6 +120,8 @@ export default function MyOrders({ orders, onViewDetails, onViewHistory }: MyOrd
                         <tr>
                             <th className="text-left p-4">Mã Đơn</th>
                             <th className="text-left p-4">Ngày Đặt</th>
+                            {orderStatusFilter === 'Đã giao' && <th className="text-left p-4">Ngày Giao</th>}
+                            {orderStatusFilter === 'Đã hủy' && <th className="text-left p-4">Ngày Hủy</th>}
                             <th className="text-right p-4">Tổng Tiền</th>
                             <th className="text-center p-4">Trạng Thái</th>
                             <th className="text-center p-4">Thao Tác</th>
@@ -91,6 +133,24 @@ export default function MyOrders({ orders, onViewDetails, onViewHistory }: MyOrd
                                 <tr key={i} className="hover:bg-gray-50/80 transition-colors">
                                     <td className="p-4 font-bold text-[#406D5E]">{order.id}</td>
                                     <td className="p-4 text-sm text-gray-600 font-medium">{order.date}</td>
+                                    {orderStatusFilter === 'Đã giao' && (
+                                        <td className="p-4 text-sm text-gray-600 font-medium">
+                                            {order.updatedAt ? (
+                                                <span className="text-emerald-600">{new Date(order.updatedAt).toLocaleDateString('vi-VN')}</span>
+                                            ) : (
+                                                <span className="text-gray-400">-</span>
+                                            )}
+                                        </td>
+                                    )}
+                                    {orderStatusFilter === 'Đã hủy' && (
+                                        <td className="p-4 text-sm text-gray-600 font-medium">
+                                            {order.updatedAt ? (
+                                                <span className="text-red-600">{new Date(order.updatedAt).toLocaleDateString('vi-VN')}</span>
+                                            ) : (
+                                                <span className="text-gray-400">-</span>
+                                            )}
+                                        </td>
+                                    )}
                                     <td className="p-4 text-right font-bold text-gray-800">{order.total.toLocaleString('vi-VN')}đ</td>
                                     <td className="p-4 text-center">
                                         <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${order.statusColor}`}>
@@ -109,7 +169,7 @@ export default function MyOrders({ orders, onViewDetails, onViewHistory }: MyOrd
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={5} className="p-8 text-center text-gray-500 font-medium">Không có đơn hàng nào ở trạng thái này.</td>
+                                <td colSpan={orderStatusFilter === 'Đã giao' || orderStatusFilter === 'Đã hủy' ? 6 : 5} className="p-8 text-center text-gray-500 font-medium">Không có đơn hàng nào ở trạng thái này.</td>
                             </tr>
                         )}
                     </tbody>
