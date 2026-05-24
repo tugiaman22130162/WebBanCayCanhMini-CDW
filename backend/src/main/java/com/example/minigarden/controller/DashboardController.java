@@ -17,6 +17,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/dashboard")
@@ -44,6 +45,6 @@ public class DashboardController {
         return ResponseEntity.ok()
                 .headers(headers)
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                .body(new InputStreamResource(in));
+                .body(new InputStreamResource(Objects.requireNonNull(in)));
     }
 }

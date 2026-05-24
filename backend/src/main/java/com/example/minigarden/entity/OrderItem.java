@@ -44,4 +44,8 @@ public class OrderItem {
     // Thành tiền
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal subtotal;
+
+    @Builder.Default
+    @Column(name = "is_reviewed", nullable = false)
+    private Boolean isReviewed = false;
 }

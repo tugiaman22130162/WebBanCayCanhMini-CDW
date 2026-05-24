@@ -3,11 +3,13 @@ package com.example.minigarden;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.boot.CommandLineRunner;
 
 import com.example.minigarden.repository.UserRepository;
 
 @SpringBootApplication
+@EnableScheduling
 public class MiniGardenApplication implements CommandLineRunner {
 
     @Autowired

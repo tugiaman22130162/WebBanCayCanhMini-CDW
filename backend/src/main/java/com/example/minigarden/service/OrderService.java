@@ -31,6 +31,7 @@ import java.util.Objects;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.springframework.data.domain.Sort;
+import org.springframework.scheduling.annotation.Scheduled;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
@@ -46,6 +47,8 @@ public class OrderService {
     private final PromotionRepository promotionRepository;
     private final PaymentRepository paymentRepository;
     private final NotificationService notificationService;
+    private final ReviewsRepository reviewsRepository;
+    private final OrderItemRepository orderItemRepository;
 
     public Order createOrder(Integer userId, OrderRequest request) {
 
@@ -82,6 +85,7 @@ public class OrderService {
                     .quantity(itemRequest.getQuantity())
                     .price(product.getPrice())
                     .subtotal(itemTotal)
+                    .isReviewed(false)
                     .build();
 
             orderItems.add(orderItem);
@@ -197,9 +201,9 @@ public class OrderService {
         
         LocalDateTime deliveryFrom = request.getEstimatedDeliveryTimeFrom() != null ? request.getEstimatedDeliveryTimeFrom() : defaultDeliveryFrom;
         LocalDateTime deliveryTo = request.getEstimatedDeliveryTimeTo() != null ? request.getEstimatedDeliveryTimeTo() : defaultDeliveryTo;
-              
-        if (deliveryFrom.toLocalDate().isEqual(deliveryTo.toLocalDate())) {
-            deliveryTo = deliveryTo.plusDays(1);
+        if (deliveryTo.isAfter(defaultDeliveryTo)) {
+            deliveryFrom = defaultDeliveryFrom;
+            deliveryTo = defaultDeliveryTo;
         }
 
         //Tạo order
@@ -397,18 +401,28 @@ public class OrderService {
         Order savedOrder = orderRepository.save(order);
 
         // Tạo thông báo cho User khi trạng thái đơn hàng thay đổi
-        String statusMessage = switch (newStatus) {
-            case CONFIRMED -> "đã được xác nhận. Chúng tôi đang chuẩn bị hàng cho bạn.";
-            case SHIPPING -> "đang được giao đến bạn. Vui lòng chú ý điện thoại.";
-            case DELIVERED -> "đã giao thành công. Cảm ơn bạn đã mua sắm!";
-            case CANCELLED -> "đã bị hủy.";
-            default -> "đã được cập nhật trạng thái.";
-        };
-        
-        String message = "Đơn hàng " + savedOrder.getOrderCode() + " " + statusMessage;
+        String message;
+        if (newStatus == OrderStatus.SHIPPING) {
+            LocalDate today = LocalDate.now();
+            LocalDate deliveryTo = savedOrder.getEstimatedDeliveryTimeTo() != null ? savedOrder.getEstimatedDeliveryTimeTo().toLocalDate() : null;
+            if (deliveryTo != null && today.isEqual(deliveryTo)) {
+                message = "Đơn hàng " + savedOrder.getOrderCode() + " đang được giao đến bạn. Vui lòng chú ý điện thoại.";
+            } else {
+                message = "Đơn vị vận chuyển lấy hàng thành công và đang trên đường giao.";
+            }
+        } else {
+            String statusMessage = switch (newStatus) {
+                case CONFIRMED -> "đã được xác nhận. Chúng tôi đang chuẩn bị hàng cho bạn.";
+                case DELIVERED -> "đã giao thành công. Cảm ơn bạn đã mua sắm!";
+                case CANCELLED -> "đã bị hủy.";
+                default -> "đã được cập nhật trạng thái.";
+            };
+            message = "Đơn hàng " + savedOrder.getOrderCode() + " " + statusMessage;
+        }
+
         String link = (newStatus == OrderStatus.DELIVERED || newStatus == OrderStatus.CANCELLED) 
                 ? "/profile/history" 
-                : "/profile/orders";
+                : "/profile/orders?status=" + newStatus.name();
 
         // GỌI HÀM LƯU THÔNG BÁO CHO USER (Lấy userId từ chính đơn hàng bị cập nhật)
         notificationService.createUserNotification(savedOrder.getUserId(), message, link, NotificationType.ORDER);
@@ -593,6 +607,72 @@ public class OrderService {
 
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());
+        }
+    }
+
+    // Đánh giá sản phẩm trong đơn hàng
+    @Transactional
+    public void reviewOrderItem(Integer itemId, Integer userId, Integer rating, String comment) {
+        OrderItem item = orderItemRepository.findById(Objects.requireNonNull(itemId))
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm trong đơn hàng"));
+
+        if (!item.getOrder().getUserId().equals(userId)) {
+            throw new RuntimeException("Bạn không có quyền đánh giá sản phẩm này");
+        }
+
+        if (item.getOrder().getStatus() != OrderStatus.DELIVERED) {
+            throw new RuntimeException("Chỉ có thể đánh giá sản phẩm khi đơn hàng đã giao");
+        }
+
+        if (Boolean.TRUE.equals(item.getIsReviewed())) {
+            throw new RuntimeException("Sản phẩm này đã được đánh giá");
+        }
+
+        Reviews review = Reviews.builder()
+                .user_id(userId)
+                .product(item.getProduct())
+                .rating(rating)
+                .comment(comment)
+                .build();
+        reviewsRepository.save(Objects.requireNonNull(review));
+
+        item.setIsReviewed(true);
+        orderItemRepository.save(Objects.requireNonNull(item));
+    }
+
+    // Xác nhận đã nhận hàng (User)
+    @Transactional
+    public Order confirmOrderReceived(Integer orderId, Integer userId) {
+        Order order = orderRepository.findById(Objects.requireNonNull(orderId))
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng với ID: " + orderId));
+
+        if (!order.getUserId().equals(userId)) {
+            throw new RuntimeException("Bạn không có quyền thao tác trên đơn hàng này");
+        }
+
+        if (order.getStatus() != OrderStatus.SHIPPING) {
+            throw new RuntimeException("Chỉ có thể xác nhận nhận hàng khi đơn hàng đang được giao");
+        }
+
+        order.setStatus(OrderStatus.DELIVERED);
+        return orderRepository.save(order);
+    }
+
+    // Tự động quét vào 8:00 sáng mỗi ngày để gửi thông báo cho các đơn hàng Đang giao
+    @Scheduled(cron = "0 0 8 * * ?")
+    @Transactional
+    public void notifyShippingOrdersOnDeliveryDate() {
+        LocalDate today = LocalDate.now();
+        
+        List<Order> shippingOrders = orderRepository.findAll().stream()
+                .filter(o -> o.getStatus() == OrderStatus.SHIPPING)
+                .filter(o -> o.getEstimatedDeliveryTimeTo() != null && o.getEstimatedDeliveryTimeTo().toLocalDate().isEqual(today))
+                .toList();
+
+        for (Order order : shippingOrders) {
+            String message = "Đơn hàng " + order.getOrderCode() + " đang được giao đến bạn. Vui lòng chú ý điện thoại.";
+            String link = "/profile/orders?status=SHIPPING";
+            notificationService.createUserNotification(order.getUserId(), message, link, NotificationType.ORDER);
         }
     }
 }

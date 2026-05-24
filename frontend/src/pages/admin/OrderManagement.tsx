@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import axios from "axios";
 import AdminHeader from "../../components/admin/AdminHeader";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import OrderDetailModal from "../../components/admin/OrderDetailModal";
@@ -9,58 +10,16 @@ type OrderStatus = 'PENDING' | 'CONFIRMED' | 'SHIPPING' | 'DELIVERED' | 'CANCELL
 
 type Order = {
     id: number;
+    orderCode: string;
     receiver_name: string;
     phone: string;
     address: string;
     total_price: number;
     status: OrderStatus;
     created_at: string;
+    updatedAt?: string;
     items_count: number; // Tổng số lượng sản phẩm trong đơn
 };
-
-// Dữ liệu giả lập (Mock data) chờ kết nối API
-const initialOrders: Order[] = [
-    {
-        id: 1001,
-        receiver_name: "Nguyễn Văn A",
-        phone: "0901234567",
-        address: "123 Đường ABC, Quận 1, TP HCM",
-        total_price: 450000,
-        status: 'PENDING',
-        created_at: "2026-04-20T10:30:00",
-        items_count: 3
-    },
-    {
-        id: 1002,
-        receiver_name: "Trần Thị B",
-        phone: "0912345678",
-        address: "456 Đường XYZ, Quận Hoàn Kiếm, Hà Nội",
-        total_price: 1200000,
-        status: 'SHIPPING',
-        created_at: "2026-04-19T15:20:00",
-        items_count: 5
-    },
-    {
-        id: 1003,
-        receiver_name: "Lê Văn C",
-        phone: "0987654321",
-        address: "789 Đường LMN, Quận Hải Châu, Đà Nẵng",
-        total_price: 250000,
-        status: 'DELIVERED',
-        created_at: "2026-04-18T09:15:00",
-        items_count: 1
-    },
-    {
-        id: 1004,
-        receiver_name: "Phạm Thị D",
-        phone: "0976543210",
-        address: "321 Đường DEF, Quận 3, TP HCM",
-        total_price: 600000,
-        status: 'CANCELLED',
-        created_at: "2026-04-20T11:00:00",
-        items_count: 2
-    }
-];
 
 // Hàm hỗ trợ hiển thị Label và Màu sắc cho trạng thái
 const getStatusLabel = (status: OrderStatus) => {
@@ -86,9 +45,10 @@ const getStatusColor = (status: OrderStatus) => {
 };
 
 export default function OrderManagement() {
-    const [orders, setOrders] = useState<Order[]>(initialOrders);
+    const [orders, setOrders] = useState<Order[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>('ALL');
-    
+
     const [searchParams] = useSearchParams();
     const searchTerm = searchParams.get("search") || "";
 
@@ -96,16 +56,62 @@ export default function OrderManagement() {
     const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
+    // State phân trang
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 5;
+
+    const fetchOrders = async () => {
+        setIsLoading(true);
+        try {
+            const token = localStorage.getItem("token");
+            const response = await axios.get("http://localhost:8080/api/orders", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const fetchedOrders = response.data.map((o: any) => ({
+                id: o.id,
+                orderCode: o.orderCode || o.id.toString(),
+                receiver_name: o.receiverName,
+                phone: o.phone,
+                address: o.address,
+                total_price: o.totalPrice,
+                status: o.status,
+                created_at: o.createdAt,
+                updatedAt: o.updatedAt,
+                items_count: o.items ? o.items.reduce((acc: number, item: any) => acc + item.quantity, 0) : 0
+            }));
+            setOrders(fetchedOrders);
+        } catch (error) {
+            console.error("Lỗi khi tải danh sách đơn hàng:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchOrders();
+    }, []);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, statusFilter]);
+
     // Lọc danh sách theo trạng thái
     const filteredOrders = useMemo(() => {
         return orders.filter(order => {
-            const matchSearch = searchTerm === "" || 
-                                order.id.toString().includes(searchTerm) || 
-                                order.receiver_name.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchSearch = searchTerm === "" ||
+                order.orderCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                order.receiver_name.toLowerCase().includes(searchTerm.toLowerCase());
             const matchStatus = statusFilter === 'ALL' || order.status === statusFilter;
             return matchSearch && matchStatus;
         });
-    }, [orders, statusFilter]);
+    }, [orders, statusFilter, searchTerm]);
+
+    // Phân trang
+    const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+    const currentOrders = filteredOrders.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
 
     // Thống kê
     const totalOrders = orders.length;
@@ -180,29 +186,57 @@ export default function OrderManagement() {
                                         <th className="text-left p-4">Mã ĐH</th>
                                         <th className="text-left p-4">Khách hàng</th>
                                         <th className="text-left p-4">Ngày đặt</th>
+                                        {statusFilter === 'DELIVERED' && <th className="text-left p-4">Ngày giao</th>}
+                                        {statusFilter === 'CANCELLED' && <th className="text-left p-4">Ngày hủy</th>}
                                         <th className="text-right p-4">Tổng tiền</th>
                                         <th className="text-center p-4">Trạng thái</th>
-                                        <th className="text-right p-4">Hành động</th>
+                                        <th className="text-center p-4">Hành động</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredOrders.length === 0 ? (
-                                        <tr><td colSpan={6} className="p-8 text-center text-gray-500">Không có đơn hàng nào.</td></tr>
+                                    {isLoading ? (
+                                        <tr><td colSpan={statusFilter === 'DELIVERED' || statusFilter === 'CANCELLED' ? 7 : 6} className="p-8 text-center text-gray-500 font-medium">Đang tải dữ liệu...</td></tr>
+                                    ) : filteredOrders.length === 0 ? (
+                                        <tr><td colSpan={statusFilter === 'DELIVERED' || statusFilter === 'CANCELLED' ? 7 : 6} className="p-8 text-center text-gray-500">Không có đơn hàng nào.</td></tr>
                                     ) : (
-                                        filteredOrders.map((order) => (
+                                        currentOrders.map((order) => (
                                             <tr key={order.id} className="border-t border-gray-50 hover:bg-gray-50 transition">
-                                                <td className="p-4 font-bold text-primary">#{order.id}</td>
+                                                <td className="p-4 font-bold text-primary">{order.orderCode}</td>
                                                 <td className="p-4">
                                                     <p className="font-bold text-gray-800">{order.receiver_name}</p>
                                                     <p className="text-xs text-gray-500">{order.phone}</p>
                                                 </td>
-                                                <td className="p-4 text-sm text-gray-600">{new Date(order.created_at).toLocaleString('vi-VN')}</td>
+                                                <td className="p-4 text-sm text-gray-600">
+                                                    {new Date(order.created_at).toLocaleString('vi-VN')}
+                                                </td>
+                                                {statusFilter === 'DELIVERED' && (
+                                                    <td className="p-4 text-sm text-gray-600">
+                                                        {order.updatedAt ? (
+                                                            <span className="text-emerald-600 font-semibold">{new Date(order.updatedAt).toLocaleString('vi-VN')}</span>
+                                                        ) : (
+                                                            <span className="text-gray-400">-</span>
+                                                        )}
+                                                    </td>
+                                                )}
+                                                {statusFilter === 'CANCELLED' && (
+                                                    <td className="p-4 text-sm text-gray-600">
+                                                        {order.updatedAt ? (
+                                                            <span className="text-red-600 font-semibold">{new Date(order.updatedAt).toLocaleString('vi-VN')}</span>
+                                                        ) : (
+                                                            <span className="text-gray-400">-</span>
+                                                        )}
+                                                    </td>
+                                                )}
                                                 <td className="p-4 text-right font-bold text-emerald-600">{order.total_price.toLocaleString('vi-VN')}đ</td>
                                                 <td className="p-4 text-center">
                                                     <span className={`text-xs font-bold px-3 py-1 rounded-full border ${getStatusColor(order.status)}`}>{getStatusLabel(order.status)}</span>
                                                 </td>
-                                                <td className="p-4 text-right space-x-2">
-                                                    <button onClick={() => { setSelectedOrderId(order.id); setIsDetailModalOpen(true); }} className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-lg transition" title="Xem chi tiết">Chi tiết</button>
+                                                <td className="p-4 text-center space-x-2">
+                                                    <button
+                                                        onClick={() => { setSelectedOrderId(order.id); setIsDetailModalOpen(true); }}
+                                                        className="w-8 h-8 inline-flex items-center justify-center text-gray-400 hover:text-primary hover:bg-primary/10 rounded-full transition-colors" title="Xem chi tiết">
+                                                        <span className="material-symbols-outlined text-[20px]">visibility</span>
+                                                    </button>
                                                 </td>
                                             </tr>
                                         ))
@@ -213,20 +247,40 @@ export default function OrderManagement() {
                     </div>
 
                     {/* PAGINATION */}
-                    <div className="flex justify-center items-center mt-6 text-sm text-on-surface-variant">
-                        <div className="flex flex-wrap justify-center gap-2">
-                            <button className="px-3 py-1 rounded border">‹</button>
-                            <button className="px-3 py-1 rounded bg-primary text-white">1</button>
-                            <button className="px-3 py-1 rounded border">2</button>
-                            <button className="px-3 py-1 rounded border">3</button>
-                            <button className="px-3 py-1 rounded border">›</button>
+                    {totalPages > 1 && (
+                        <div className="flex justify-center items-center mt-6 text-sm text-on-surface-variant">
+                            <div className="flex flex-wrap justify-center gap-2">
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className="px-3 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition"
+                                >
+                                    ‹
+                                </button>
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                    <button
+                                        key={page}
+                                        onClick={() => setCurrentPage(page)}
+                                        className={`px-3 py-1 rounded transition ${currentPage === page ? 'bg-primary text-white font-bold' : 'border hover:bg-gray-50'}`}
+                                    >
+                                        {page}
+                                    </button>
+                                ))}
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="px-3 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition"
+                                >
+                                    ›
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </main>
             </div>
 
             {/* MODAL CHI TIẾT ĐƠN HÀNG */}
-            <OrderDetailModal isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} orderId={selectedOrderId} />
+            <OrderDetailModal isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} orderId={selectedOrderId} onSuccess={fetchOrders} />
         </div>
     );
 }
