@@ -38,4 +38,17 @@ public class NotificationController {
         notificationService.markAllAsRead();
         return ResponseEntity.ok(Map.of("message", "Đã đánh dấu đọc tất cả"));
     }
+
+    // Lấy thông báo dành riêng cho 1 User cụ thể
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<List<Notification>> getUserNotifications(@PathVariable Integer userId) {
+        return ResponseEntity.ok(notificationService.getUserNotifications(userId));
+    }
+
+    // Đánh dấu tất cả thông báo của riêng 1 User là đã đọc
+    @PutMapping("/user/{userId}/read-all")
+    public ResponseEntity<?> markAllUserAsRead(@PathVariable Integer userId) {
+        notificationService.markAllUserAsRead(userId);
+        return ResponseEntity.ok(Map.of("message", "Đã đánh dấu đọc tất cả"));
+    }
 }

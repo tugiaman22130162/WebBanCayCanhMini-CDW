@@ -5,15 +5,35 @@ import com.example.minigarden.dto.OrderItemRequest;
 import com.example.minigarden.entity.*;
 import com.example.minigarden.repository.*;
 import lombok.RequiredArgsConstructor;
+
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.springframework.data.domain.Sort;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
 
 @Service
 @RequiredArgsConstructor
@@ -128,7 +148,23 @@ public class OrderService {
             for (OrderPromotion op : orderPromotions) {
                 Promotion promo = appliedPromotions.stream().filter(p -> p.getName().equals(op.getPromotionCode())).findFirst().orElse(null);
                 if (promo != null && promo.getType() != PromotionType.SHIPPING) {
-                    op.setDiscountAmount(productDiscount);
+                    // Tự động tính toán lại nếu frontend không gửi kèm discountAmount (bị null hoặc bằng 0)
+                    if (productDiscount == null || productDiscount.compareTo(BigDecimal.ZERO) == 0) {
+                        BigDecimal calcDiscount = BigDecimal.ZERO;
+                        if (promo.getDiscountType() == DiscountType.FIXED_AMOUNT) {
+                            calcDiscount = promo.getDiscountValue();
+                        } else if (promo.getDiscountType() == DiscountType.PERCENTAGE) {
+                            calcDiscount = subtotal.multiply(promo.getDiscountValue()).divide(new BigDecimal(100));
+                            if (promo.getMaxDiscount() != null && promo.getMaxDiscount().compareTo(BigDecimal.ZERO) > 0) {
+                                if (calcDiscount.compareTo(promo.getMaxDiscount()) > 0) calcDiscount = promo.getMaxDiscount();
+                            }
+                        }
+                        if (calcDiscount.compareTo(subtotal) > 0) calcDiscount = subtotal;
+                        op.setDiscountAmount(calcDiscount);
+                        productDiscount = calcDiscount; // Cập nhật tổng tiền giảm để trừ vào đơn hàng
+                    } else {
+                        op.setDiscountAmount(productDiscount);
+                    }
                 }
             }
         }
@@ -161,9 +197,9 @@ public class OrderService {
         
         LocalDateTime deliveryFrom = request.getEstimatedDeliveryTimeFrom() != null ? request.getEstimatedDeliveryTimeFrom() : defaultDeliveryFrom;
         LocalDateTime deliveryTo = request.getEstimatedDeliveryTimeTo() != null ? request.getEstimatedDeliveryTimeTo() : defaultDeliveryTo;
-        if (deliveryTo.isAfter(defaultDeliveryTo)) {
-            deliveryFrom = defaultDeliveryFrom;
-            deliveryTo = defaultDeliveryTo;
+              
+        if (deliveryFrom.toLocalDate().isEqual(deliveryTo.toLocalDate())) {
+            deliveryTo = deliveryTo.plusDays(1);
         }
 
         //Tạo order
@@ -176,7 +212,6 @@ public class OrderService {
                 .paymentMethod(request.getPaymentMethod())
                 .note(request.getNote())
                 .shippingFee(shippingFee)
-                .discountAmount(productDiscount)
                 .totalPrice(total)
                 .estimatedDeliveryTimeFrom(deliveryFrom)
                 .estimatedDeliveryTimeTo(deliveryTo)
@@ -248,15 +283,43 @@ public class OrderService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng với ID: " + id));
     }
 
-    // Tìm kiếm đơn hàng theo mã đơn hoặc tên sản phẩm
+      // Tìm kiếm đơn hàng theo mã đơn hoặc tên sản phẩm
     @Transactional(readOnly = true)
-    public List<Order> searchOrders(String keyword) {
+    public List<Order> searchOrders(String keyword, String timeRange, LocalDate customStartDate, LocalDate customEndDate) {
+        LocalDateTime startDate = null;
+        LocalDateTime endDate = LocalDateTime.now();
+
+        if (timeRange != null && !timeRange.equals("all")) {
+            switch (timeRange) {
+                case "7days": startDate = endDate.minusDays(7); break;
+                case "30days": startDate = endDate.minusDays(30); break;
+                case "6months": startDate = endDate.minusMonths(6); break;
+                case "1year": startDate = endDate.minusYears(1); break;
+                case "quarter":
+                    int currentQuarter = (endDate.getMonthValue() - 1) / 3 + 1;
+                    startDate = LocalDateTime.of(endDate.getYear(), (currentQuarter - 1) * 3 + 1, 1, 0, 0);
+                    break;
+                case "custom":
+                    if (customStartDate != null && customEndDate != null) {
+                        startDate = customStartDate.atStartOfDay();
+                        endDate = customEndDate.atTime(LocalTime.MAX);
+                    }
+                    break;
+            }
+        }
+
         if (keyword == null || keyword.trim().isEmpty()) {
-            return orderRepository.findAll();
+            if (startDate != null) {
+                return orderRepository.findByCreatedAtBetweenOrderByCreatedAtDesc(startDate, endDate);
+            }
+            return orderRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
+        }
+        
+        if (startDate != null) {
+            return orderRepository.searchOrdersWithDate(keyword.trim(), startDate, endDate);
         }
         return orderRepository.searchOrders(keyword.trim());
     }
-
     // Lấy danh sách đơn hàng theo userId
     @Transactional(readOnly = true)
     public List<Order> getOrdersByUserId(Integer userId) {
@@ -331,7 +394,26 @@ public class OrderService {
         }
 
         order.setStatus(newStatus);
-        return orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+
+        // Tạo thông báo cho User khi trạng thái đơn hàng thay đổi
+        String statusMessage = switch (newStatus) {
+            case CONFIRMED -> "đã được xác nhận. Chúng tôi đang chuẩn bị hàng cho bạn.";
+            case SHIPPING -> "đang được giao đến bạn. Vui lòng chú ý điện thoại.";
+            case DELIVERED -> "đã giao thành công. Cảm ơn bạn đã mua sắm!";
+            case CANCELLED -> "đã bị hủy.";
+            default -> "đã được cập nhật trạng thái.";
+        };
+        
+        String message = "Đơn hàng " + savedOrder.getOrderCode() + " " + statusMessage;
+        String link = (newStatus == OrderStatus.DELIVERED || newStatus == OrderStatus.CANCELLED) 
+                ? "/profile/history" 
+                : "/profile/orders";
+
+        // GỌI HÀM LƯU THÔNG BÁO CHO USER (Lấy userId từ chính đơn hàng bị cập nhật)
+        notificationService.createUserNotification(savedOrder.getUserId(), message, link, NotificationType.ORDER);
+
+        return savedOrder;
     }
 
     // Xóa đơn hàng và hoàn lại số lượng nếu thanh toán VNPay thất bại / hủy bỏ
@@ -364,5 +446,153 @@ public class OrderService {
         });
     }
 
-    //
+     //lấy danh sách đơn hàng
+     public List<Order> getAllOrders() {
+        return orderRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
+    }
+
+     // Export danh sách đơn hàng ra file Excel
+    @Transactional(readOnly = true)
+    public ByteArrayInputStream exportOrdersToExcel() throws IOException {
+        List<Order> orders = orderRepository.findAll();
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("DANH SÁCH ĐƠN HÀNG");
+
+            // Style cho Tiêu đề lớn (Title)
+            Font titleFont = workbook.createFont();
+            titleFont.setBold(true);
+            titleFont.setFontHeightInPoints((short) 18);
+            titleFont.setColor(IndexedColors.DARK_GREEN.getIndex());
+
+            CellStyle titleStyle = workbook.createCellStyle();
+            titleStyle.setFont(titleFont);
+            titleStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            // Tạo Title Row ở dòng 0 và gộp 4 cột lại cho đẹp
+            Row titleRow = sheet.createRow(0);
+            Cell titleCell = titleRow.createCell(0);
+            titleCell.setCellValue("DANH SÁCH ĐƠN HÀNG");
+            titleCell.setCellStyle(titleStyle);
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(0, 0, 0, 11));
+
+            // Style cho Header (Tiêu đề cột)
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerFont.setColor(IndexedColors.WHITE.getIndex());
+
+            CellStyle headerCellStyle = workbook.createCellStyle();
+            headerCellStyle.setFont(headerFont);
+            headerCellStyle.setFillForegroundColor(IndexedColors.DARK_GREEN.getIndex()); // Màu xanh chủ đạo
+            headerCellStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerCellStyle.setBorderBottom(BorderStyle.THIN);
+            headerCellStyle.setBorderTop(BorderStyle.THIN);
+            headerCellStyle.setBorderRight(BorderStyle.THIN);
+            headerCellStyle.setBorderLeft(BorderStyle.THIN);
+            headerCellStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            // Tạo Header Row (Bị dời xuống dòng 1)
+            Row headerRow = sheet.createRow(1);
+            String[] columns = {"ID", "Mã Đơn Hàng", "Người Nhận", "Số Điện Thoại", "Địa Chỉ", "Phương Thức TT", "Tiền Ship", "Giảm Giá", "Tổng Tiền", "Ngày Đặt", "Trạng Thái", "Ghi Chú"};
+            for (int col = 0; col < columns.length; col++) {
+                Cell cell = headerRow.createCell(col);
+                cell.setCellValue(columns[col]);
+                cell.setCellStyle(headerCellStyle);
+            }
+
+            // Style cho Data
+            CellStyle dataCellStyle = workbook.createCellStyle();
+            dataCellStyle.setBorderBottom(BorderStyle.DASHED);
+            dataCellStyle.setBorderTop(BorderStyle.DASHED);
+            dataCellStyle.setBorderRight(BorderStyle.DASHED);
+            dataCellStyle.setBorderLeft(BorderStyle.DASHED);
+
+            // Đổ dữ liệu vào Excel (Bắt đầu từ dòng 2)
+            int rowIdx = 2;
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+            for (Order order : orders) {
+                Row row = sheet.createRow(rowIdx++);
+                
+                int colIdx = 0;
+                Cell cell0 = row.createCell(colIdx++);
+                cell0.setCellValue(order.getId());
+                cell0.setCellStyle(dataCellStyle);
+
+                Cell cell1 = row.createCell(colIdx++);
+                cell1.setCellValue(order.getOrderCode() != null ? order.getOrderCode() : "");
+                cell1.setCellStyle(dataCellStyle);
+
+                Cell cell2 = row.createCell(colIdx++);
+                cell2.setCellValue(order.getReceiverName() != null ? order.getReceiverName() : "");
+                cell2.setCellStyle(dataCellStyle);
+
+                Cell cell3 = row.createCell(colIdx++);
+                cell3.setCellValue(order.getPhone() != null ? order.getPhone() : "");
+                cell3.setCellStyle(dataCellStyle);
+                
+                Cell cell4 = row.createCell(colIdx++);
+                cell4.setCellValue(order.getAddress() != null ? order.getAddress() : "");
+                cell4.setCellStyle(dataCellStyle);
+                
+                Cell cell5 = row.createCell(colIdx++);
+                cell5.setCellValue(order.getPaymentMethod() != null ? order.getPaymentMethod() : "");
+                cell5.setCellStyle(dataCellStyle);
+                
+                Cell cell6 = row.createCell(colIdx++);
+                cell6.setCellValue(order.getShippingFee() != null ? order.getShippingFee().doubleValue() : 0);
+                cell6.setCellStyle(dataCellStyle);
+                
+                Cell cell7 = row.createCell(colIdx++);
+                BigDecimal totalDiscount = order.getPromotions() != null 
+                        ? order.getPromotions().stream().map(op -> {
+                            BigDecimal amt = op.getDiscountAmount();
+                            if (amt == null || amt.compareTo(BigDecimal.ZERO) == 0) {
+                                Promotion p = promotionRepository.findByName(op.getPromotionCode()).orElse(null);
+                                if (p != null && p.getDiscountType() == DiscountType.FIXED_AMOUNT) amt = p.getDiscountValue();
+                                else amt = BigDecimal.ZERO;
+                            }
+                            return amt;
+                        }).reduce(BigDecimal.ZERO, BigDecimal::add)
+                        : BigDecimal.ZERO;
+                cell7.setCellValue(totalDiscount.doubleValue());
+                cell7.setCellStyle(dataCellStyle);
+                
+                Cell cell8 = row.createCell(colIdx++);
+                cell8.setCellValue(order.getTotalPrice() != null ? order.getTotalPrice().doubleValue() : 0);
+                cell8.setCellStyle(dataCellStyle);
+                
+                Cell cell9 = row.createCell(colIdx++);
+                cell9.setCellValue(order.getCreatedAt() != null ? order.getCreatedAt().format(formatter) : "");
+                cell9.setCellStyle(dataCellStyle);
+
+                Cell cell10 = row.createCell(colIdx++);
+                String statusStr = "";
+                if (order.getStatus() != null) {
+                    switch (order.getStatus().name()) {
+                        case "PENDING": statusStr = "Chờ xác nhận"; break;
+                        case "CONFIRMED": statusStr = "Đã xác nhận"; break;
+                        case "DELIVERED": statusStr = "Đã giao hàng"; break;
+                        case "CANCELLED": statusStr = "Đã hủy"; break;
+                        default: statusStr = order.getStatus().name();
+                    }
+                }
+                cell10.setCellValue(statusStr);
+                cell10.setCellStyle(dataCellStyle);
+                
+                Cell cell11 = row.createCell(colIdx++);
+                cell11.setCellValue(order.getNote() != null ? order.getNote() : "");
+                cell11.setCellStyle(dataCellStyle);
+            }
+
+            // Tự động căn chỉnh độ rộng cột
+            for (int i = 0; i < columns.length; i++) {
+                sheet.setColumnWidth(i, 6000); // 6000 tương đương khoảng 23 ký tự
+            }
+            sheet.setColumnWidth(4, 10000); // Cho cột địa chỉ rộng hơn
+            sheet.setColumnWidth(11, 8000); // Cho cột ghi chú rộng hơn
+
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        }
+    }
 }

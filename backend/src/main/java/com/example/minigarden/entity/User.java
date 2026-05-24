@@ -58,4 +58,12 @@ public class User {
 
     @Column(name = "failed_login_attempts")
     private Integer failedLoginAttempts;
+    
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
 }
