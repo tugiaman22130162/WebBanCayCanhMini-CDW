@@ -9,10 +9,18 @@ import java.util.List;
 
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Integer> {
-    List<Notification> findByIsReadFalseOrderByCreatedAtDesc();
-    List<Notification> findAllByOrderByCreatedAtDesc();
+    // Admin notifications (Lọc những thông báo không gán cho user nào)
+    List<Notification> findByIsReadFalseAndUserIsNullOrderByCreatedAtDesc();
+    List<Notification> findByUserIsNullOrderByCreatedAtDesc();
 
     @Modifying
-    @Query("UPDATE Notification n SET n.isRead = true WHERE n.isRead = false")
-    void markAllAsRead();
+    @Query("UPDATE Notification n SET n.isRead = true WHERE n.isRead = false AND n.user IS NULL")
+    void markAllAdminAsRead();
+
+    @Modifying
+    @Query("UPDATE Notification n SET n.isRead = true WHERE n.isRead = false AND n.user.id = :userId")
+    void markAllUserAsRead(Integer userId);
+
+    //tìm kiếm thông báo theo userId và sắp xếp theo createdAt giảm dần
+    List<Notification> findByUser_IdOrderByCreatedAtDesc(Integer userId);
 }

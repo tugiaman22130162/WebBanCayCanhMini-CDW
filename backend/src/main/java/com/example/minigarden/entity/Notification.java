@@ -1,5 +1,6 @@
 package com.example.minigarden.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -37,4 +38,9 @@ public class Notification {
         createdAt = LocalDateTime.now();
         if (isRead == null) isRead = false;
     }
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    @JsonIgnore
+    private User user;
 }

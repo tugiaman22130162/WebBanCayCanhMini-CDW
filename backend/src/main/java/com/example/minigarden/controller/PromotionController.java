@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.multipart.MultipartFile;
@@ -73,9 +75,17 @@ public class PromotionController {
     public ResponseEntity<?> importExcel(@RequestParam("file") MultipartFile file) {
         try {
             promotionService.importPromotionsFromExcel(file);
-            return ResponseEntity.ok(Map.of("message", "Nhập dữ liệu thành công!"));
+               return ResponseEntity.ok(Map.of("message", "Nhập dữ liệu từ file Excel thành công!"));
+        } catch (IllegalArgumentException e) {
+            // Lỗi validation cụ thể từ service (ví dụ: sai định dạng, tên trùng lặp)
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+        } catch (DataIntegrityViolationException e) {
+            //check tên bị trùng (nếu service không check trước)
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Lỗi: Tên mã khuyến mãi trong file đã tồn tại trong hệ thống."));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Lỗi khi nhập dữ liệu: " + e.getMessage()));
+            // Lỗi không xác định xác
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Lỗi không xác định khi nhập file: " + e.getMessage()));
         }
     }
 

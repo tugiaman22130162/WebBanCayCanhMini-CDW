@@ -58,10 +58,6 @@ public class Order {
     // Phí vận chuyển (Phí ship)
     @Column(name = "shipping_fee", precision = 12, scale = 2)
     private BigDecimal shippingFee;
-    
-    // Tổng tiền được giảm
-    @Column(name = "discount_amount", precision = 12, scale = 2)
-    private BigDecimal discountAmount;
 
     //Thời gian giao hàng dự kiến
     @Column(name = "estimated_delivery_time_to")

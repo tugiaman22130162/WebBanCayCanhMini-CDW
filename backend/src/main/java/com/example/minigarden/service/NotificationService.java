@@ -2,6 +2,7 @@ package com.example.minigarden.service;
 
 import com.example.minigarden.entity.Notification;
 import com.example.minigarden.entity.NotificationType;
+import com.example.minigarden.entity.User;
 import com.example.minigarden.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,14 +27,33 @@ public class NotificationService {
         notificationRepository.save(Objects.requireNonNull(notification));
     }
 
+    // Hàm tạo thông báo dành riêng cho 1 User cụ thể (truyền userId vào)
+    @Transactional
+    public void createUserNotification(Integer userId, String message, String link, NotificationType type) {
+        Notification notification = Notification.builder()
+                .user(User.builder().id(userId).build())
+                .message(message)
+                .link(link)
+                .type(type)
+                .isRead(false)
+                .build();
+        notificationRepository.save(Objects.requireNonNull(notification));
+    }
+
     @Transactional(readOnly = true)
     public List<Notification> getUnreadNotifications() {
-        return notificationRepository.findByIsReadFalseOrderByCreatedAtDesc();
+        return notificationRepository.findByIsReadFalseAndUserIsNullOrderByCreatedAtDesc();
     }
 
     @Transactional(readOnly = true)
     public List<Notification> getAllNotifications() {
-        return notificationRepository.findAllByOrderByCreatedAtDesc();
+        return notificationRepository.findByUserIsNullOrderByCreatedAtDesc();
+    }
+
+    // Hàm lấy danh sách thông báo của riêng 1 User (Dùng khi user đăng nhập và gọi api lấy thông báo)
+    @Transactional(readOnly = true)
+    public List<Notification> getUserNotifications(Integer userId) {
+        return notificationRepository.findByUser_IdOrderByCreatedAtDesc(userId);
     }
 
     @Transactional
@@ -46,6 +66,11 @@ public class NotificationService {
 
     @Transactional
     public void markAllAsRead() {
-        notificationRepository.markAllAsRead();
+        notificationRepository.markAllAdminAsRead();
+    }
+
+    @Transactional
+    public void markAllUserAsRead(Integer userId) {
+        notificationRepository.markAllUserAsRead(userId);
     }
 }

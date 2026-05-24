@@ -5,6 +5,9 @@ import com.example.minigarden.entity.Order;
 import com.example.minigarden.entity.User;
 import com.example.minigarden.repository.UserRepository;
 import com.example.minigarden.service.OrderService;
+import com.example.minigarden.repository.PromotionRepository;
+import com.example.minigarden.entity.Promotion;
+import com.example.minigarden.entity.DiscountType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +17,13 @@ import java.util.List;
 import org.springframework.transaction.annotation.Transactional;
 import com.example.minigarden.service.VNPayService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import org.springframework.format.annotation.DateTimeFormat;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -24,14 +34,14 @@ public class OrderController {
     private final OrderService orderService;
     private final UserRepository userRepository;
     private final VNPayService vnPayService;
+    private final PromotionRepository promotionRepository;
 
-    //tạo đơn hàng mới
+    // tạo đơn hàng mới
     @PostMapping
     public ResponseEntity<?> createOrder(
             @RequestBody OrderRequest request,
             HttpServletRequest httpServletRequest,
-            Principal principal
-    ) {
+            Principal principal) {
         try {
             if (principal == null) {
                 throw new RuntimeException("Chưa đăng nhập");
@@ -45,14 +55,16 @@ public class OrderController {
 
             // Kiểm tra nếu phương thức thanh toán là VNPAY
             if ("VNPAY".equalsIgnoreCase(request.getPaymentMethod())) {
-                String paymentUrl = vnPayService.createPaymentUrl(order.getTotalPrice().longValue(), order.getOrderCode(), httpServletRequest);
+                String paymentUrl = vnPayService.createPaymentUrl(order.getTotalPrice().longValue(),
+                        order.getOrderCode(), httpServletRequest);
                 response.put("paymentUrl", paymentUrl);
             }
-            
+
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Lỗi khi tạo đơn hàng"));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Lỗi khi tạo đơn hàng"));
         }
     }
 
@@ -65,20 +77,27 @@ public class OrderController {
             return ResponseEntity.ok(mapOrderToDto(order));
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Lỗi khi tải chi tiết đơn hàng"));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Lỗi khi tải chi tiết đơn hàng"));
         }
     }
 
-    // API Tìm kiếm đơn hàng theo mã đơn hoặc tên sản phẩm (Không truyền keyword sẽ lấy tất cả)
+    // API Tìm kiếm đơn hàng theo mã đơn hoặc tên sản phẩm (Không truyền keyword sẽ
+    // lấy tất cả)
+    @Transactional(readOnly = true) 
     @GetMapping
-    @Transactional(readOnly = true)
-    public ResponseEntity<?> searchOrders(@RequestParam(value = "keyword", required = false) String keyword) {
+    public ResponseEntity<?> searchOrders(
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(required = false, defaultValue = "all") String timeRange,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         try {
-            List<Order> orders = orderService.searchOrders(keyword);
+            List<Order> orders = orderService.searchOrders(keyword, timeRange, startDate, endDate);
             return ResponseEntity.ok(orders.stream().map(this::mapOrderToDto).toList());
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Lỗi khi tìm kiếm đơn hàng"));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Lỗi khi tìm kiếm đơn hàng"));
         }
     }
 
@@ -92,12 +111,13 @@ public class OrderController {
             }
             User user = userRepository.findByEmail(principal.getName())
                     .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
-            
+
             List<Order> orders = orderService.getOrdersByUserId(user.getId());
             return ResponseEntity.ok(orders.stream().map(this::mapOrderToDto).toList());
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Lỗi khi tải danh sách đơn hàng"));
+            return ResponseEntity.badRequest().body(
+                    Map.of("message", e.getMessage() != null ? e.getMessage() : "Lỗi khi tải danh sách đơn hàng"));
         }
     }
 
@@ -112,7 +132,8 @@ public class OrderController {
             return ResponseEntity.ok(mapOrderToDto(order));
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Lỗi khi cập nhật trạng thái"));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Lỗi khi cập nhật trạng thái"));
         }
     }
 
@@ -131,7 +152,8 @@ public class OrderController {
             return ResponseEntity.ok(mapOrderToDto(order));
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Lỗi khi hủy đơn hàng"));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Lỗi khi hủy đơn hàng"));
         }
     }
 
@@ -145,24 +167,34 @@ public class OrderController {
         map.put("estimatedDeliveryTimeTo", order.getEstimatedDeliveryTimeTo());
         map.put("totalPrice", order.getTotalPrice());
         map.put("status", order.getStatus());
-        map.put("discountAmount", order.getDiscountAmount());
         map.put("shippingFee", order.getShippingFee());
         map.put("receiverName", order.getReceiverName());
         map.put("phone", order.getPhone());
         map.put("address", order.getAddress());
         map.put("note", order.getNote());
         map.put("paymentMethod", order.getPaymentMethod());
-        
+
         if (order.getPromotions() != null && !order.getPromotions().isEmpty()) {
             map.put("promotions", order.getPromotions().stream().map(p -> {
                 Map<String, Object> pMap = new java.util.HashMap<>();
                 pMap.put("promotionCode", p.getPromotionCode());
+                
+                java.math.BigDecimal discount = p.getDiscountAmount();
+                // Fallback: Tra cứu lại từ bảng Promotion nếu đơn cũ bị lưu bằng 0
+                if (discount == null || discount.compareTo(java.math.BigDecimal.ZERO) == 0) {
+                    Promotion promo = promotionRepository.findByName(p.getPromotionCode()).orElse(null);
+                    if (promo != null && promo.getDiscountType() == DiscountType.FIXED_AMOUNT) {
+                        discount = promo.getDiscountValue();
+                    }
+                }
+                
+                pMap.put("discountAmount", discount);
                 return pMap;
             }).toList());
         } else {
             map.put("promotions", new java.util.ArrayList<>());
         }
-        
+
         if (order.getItems() != null && !order.getItems().isEmpty()) {
             map.put("items", order.getItems().stream().map(item -> {
                 Map<String, Object> iMap = new java.util.HashMap<>();
@@ -171,7 +203,7 @@ public class OrderController {
                 iMap.put("quantity", item.getQuantity());
                 iMap.put("price", item.getPrice());
                 iMap.put("subtotal", item.getSubtotal());
-                
+
                 if (item.getProduct() != null) {
                     Map<String, Object> pMap = new java.util.HashMap<>();
                     if (item.getProduct().getImages() != null && !item.getProduct().getImages().isEmpty()) {
@@ -187,5 +219,18 @@ public class OrderController {
             map.put("items", new java.util.ArrayList<>());
         }
         return map;
+    }
+    
+    // API Xuất Excel
+    @GetMapping("/export")
+    public ResponseEntity<InputStreamResource> exportOrdersToExcel() throws IOException {
+        ByteArrayInputStream in = orderService.exportOrdersToExcel();
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Disposition", "attachment; filename=Danh_Sach_Don_Hang.xlsx");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(new InputStreamResource(java.util.Objects.requireNonNull(in)));
     }
 }

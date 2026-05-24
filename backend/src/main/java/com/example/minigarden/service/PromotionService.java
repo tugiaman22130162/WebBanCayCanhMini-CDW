@@ -27,6 +27,7 @@ import com.example.minigarden.repository.PromotionProductRepository;
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -38,7 +39,7 @@ import java.io.IOException;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import java.time.format.DateTimeFormatter;
-
+import java.util.Set;
 
 @Service
 public class PromotionService {
@@ -51,9 +52,8 @@ public class PromotionService {
     @Autowired
     private PromotionProductRepository promotionProductRepository;
 
-
-    //map json từ DB sang Response trả về cho FE
-    private PromotionResponse mapToResponse( Promotion promotion) {
+    // map json từ DB sang Response trả về cho FE
+    private PromotionResponse mapToResponse(Promotion promotion) {
 
         Integer targetId = null;
         String targetName = null;
@@ -100,11 +100,12 @@ public class PromotionService {
     }
 
     // Hàm hỗ trợ tự động tạo tên/mã khuyến mãi
-    //rule là loại khuyến mãi + giá trị giảm (nếu có) + 4 ký tự ngẫu nhiên
+    // rule là loại khuyến mãi + giá trị giảm (nếu có) + 4 ký tự ngẫu nhiên
     private String generatePromotionName(PromotionType type, Double value, DiscountType discountType) {
         StringBuilder sb = new StringBuilder();
 
-       //có 4 loại khuyến mãi: SHOP( là SALE), SHIPPING (là SHIP), PRODUCT (là PROD), CATEGORY (là CATE)
+        // có 4 loại khuyến mãi: SHOP( là SALE), SHIPPING (là SHIP), PRODUCT (là PROD),
+        // CATEGORY (là CATE)
         sb.append(type == null ? "SALE" : switch (type) {
             case SHIPPING -> "SHIP";
             case PRODUCT -> "PROD";
@@ -112,8 +113,10 @@ public class PromotionService {
             default -> "SALE";
         });
 
-        // có 3 loại giảm giá: FREE (là FREE), PERCENTAGE (là số% giảm), FIXED_AMOUNT (là số tiền giảm)
-        //nếu là FREE thì là FREE, PERCENTAGE thì là số% giảm và P, FIXED_AMOUNT thì là số tiền giảm (nếu >=1000 thì đổi sang K)
+        // có 3 loại giảm giá: FREE (là FREE), PERCENTAGE (là số% giảm), FIXED_AMOUNT
+        // (là số tiền giảm)
+        // nếu là FREE thì là FREE, PERCENTAGE thì là số% giảm và P, FIXED_AMOUNT thì là
+        // số tiền giảm (nếu >=1000 thì đổi sang K)
         if (discountType != null) {
             switch (discountType) {
                 case FREE -> sb.append("FREE");
@@ -134,7 +137,8 @@ public class PromotionService {
             }
         }
 
-        // Thêm 5 ký tự ngẫu nhiên (chữ và số, loại bỏ O, 0, I, 1) để mã đẹp, dễ đọc và cực kỳ khó trùng lặp
+        // Thêm 5 ký tự ngẫu nhiên (chữ và số, loại bỏ O, 0, I, 1) để mã đẹp, dễ đọc và
+        // cực kỳ khó trùng lặp
         String chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
         java.security.SecureRandom rnd = new java.security.SecureRandom();
         for (int i = 0; i < 5; i++) {
@@ -190,7 +194,7 @@ public class PromotionService {
                 request.getQuantity() != null ? request.getQuantity() : 0);
 
         Promotion savedPromotion = promotionRepository.saveAndFlush(promotion); // Ép lưu để sinh ID ngay lập tức
-        
+
         savePromotionMapping(savedPromotion, request);
 
         return mapToResponse(savedPromotion);
@@ -266,12 +270,12 @@ public class PromotionService {
                 request.getQuantity() != null ? request.getQuantity() : 0);
 
         Promotion savedPromotion = promotionRepository.saveAndFlush(promotion); // Ép lưu để sinh ID ngay lập tức
-        
+
         promotionCategoryRepository.deleteByPromotionId(savedPromotion.getId());
         promotionCategoryRepository.flush(); // Bắt buộc Flush để thực thi lệnh XÓA ngay lập tức
         promotionProductRepository.deleteByPromotionId(savedPromotion.getId());
         promotionProductRepository.flush(); // Bắt buộc Flush để thực thi lệnh XÓA ngay lập tức
-        
+
         savePromotionMapping(savedPromotion, request);
 
         return mapToResponse(savedPromotion);
@@ -282,10 +286,10 @@ public class PromotionService {
     public void delete(int id) {
         Promotion promotion = promotionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy khuyến mãi để xóa"));
-        
+
         promotionCategoryRepository.deleteByPromotionId(promotion.getId());
         promotionProductRepository.deleteByPromotionId(promotion.getId());
-        
+
         promotionRepository.delete(promotion);
     }
 
@@ -309,16 +313,16 @@ public class PromotionService {
         if (request.getType() == PromotionType.CATEGORY) {
             Categories category = new Categories();
             category.setId(request.getTargetId());
-            
+
             PromotionCategory promoCat = PromotionCategory.builder()
                     .promotion(savedPromotion).category(category).build();
             promotionCategoryRepository.save(Objects.requireNonNull(promoCat));
             System.out.println("=> Đã chèn thành công vào bảng PromotionCategory!");
-            
+
         } else if (request.getType() == PromotionType.PRODUCT) {
             Products product = new Products();
             product.setId(request.getTargetId());
-            
+
             PromotionProduct promoProd = PromotionProduct.builder()
                     .promotion(savedPromotion).product(product).build();
             promotionProductRepository.save(Objects.requireNonNull(promoProd));
@@ -367,7 +371,8 @@ public class PromotionService {
 
             // Tạo Header Row (Bị dời xuống dòng 1)
             Row headerRow = sheet.createRow(1);
-            String[] columns = {"ID", "Mã Khuyến Mãi", "Mô Tả", "Loại KM", "Áp Dụng Cho", "Loại Giảm Giá", "Mức Giảm", "Đơn Tối Thiểu", "Trạng Thái", "Ngày Bắt Đầu", "Ngày Kết Thúc", "Số Lượng"};
+            String[] columns = { "ID", "Mã Khuyến Mãi", "Mô Tả", "Loại KM", "Áp Dụng Cho", "Loại Giảm Giá", "Mức Giảm",
+                    "Đơn Tối Thiểu", "Trạng Thái", "Ngày Bắt Đầu", "Ngày Kết Thúc", "Số Lượng" };
             for (int col = 0; col < columns.length; col++) {
                 Cell cell = headerRow.createCell(col);
                 cell.setCellValue(columns[col]);
@@ -387,7 +392,7 @@ public class PromotionService {
 
             for (Promotion promotion : promotions) {
                 Row row = sheet.createRow(rowIdx++);
-                
+
                 // Xác định đối tượng áp dụng
                 String targetName = "Toàn cửa hàng / Vận chuyển";
                 if (promotion.getType() == PromotionType.CATEGORY) {
@@ -418,27 +423,29 @@ public class PromotionService {
                 Cell cell3 = row.createCell(colIdx++);
                 cell3.setCellValue(promotion.getType() != null ? promotion.getType().name() : "");
                 cell3.setCellStyle(dataCellStyle);
-                
+
                 Cell cell4 = row.createCell(colIdx++);
                 cell4.setCellValue(targetName);
                 cell4.setCellStyle(dataCellStyle);
-                
+
                 Cell cell5 = row.createCell(colIdx++);
                 cell5.setCellValue(promotion.getDiscountType() != null ? promotion.getDiscountType().name() : "");
                 cell5.setCellStyle(dataCellStyle);
-                
+
                 Cell cell6 = row.createCell(colIdx++);
-                cell6.setCellValue(promotion.getDiscountValue() != null ? promotion.getDiscountValue().toString() : "0");
+                cell6.setCellValue(
+                        promotion.getDiscountValue() != null ? promotion.getDiscountValue().toString() : "0");
                 cell6.setCellStyle(dataCellStyle);
-                
+
                 Cell cell7 = row.createCell(colIdx++);
-                cell7.setCellValue(promotion.getMinOrderValue() != null ? promotion.getMinOrderValue().toString() : "0");
+                cell7.setCellValue(
+                        promotion.getMinOrderValue() != null ? promotion.getMinOrderValue().toString() : "0");
                 cell7.setCellStyle(dataCellStyle);
-                
+
                 Cell cell8 = row.createCell(colIdx++);
                 cell8.setCellValue(Boolean.TRUE.equals(promotion.getIsActive()) ? "Hoạt động" : "Ngừng HĐ");
                 cell8.setCellStyle(dataCellStyle);
-                
+
                 Cell cell9 = row.createCell(colIdx++);
                 cell9.setCellValue(promotion.getStartDate() != null ? promotion.getStartDate().format(formatter) : "");
                 cell9.setCellStyle(dataCellStyle);
@@ -446,7 +453,7 @@ public class PromotionService {
                 Cell cell10 = row.createCell(colIdx++);
                 cell10.setCellValue(promotion.getEndDate() != null ? promotion.getEndDate().format(formatter) : "");
                 cell10.setCellStyle(dataCellStyle);
-                
+
                 Cell cell11 = row.createCell(colIdx++);
                 Object qty = promotion.getQuantity();
                 cell11.setCellValue(qty != null ? ((Number) qty).doubleValue() : 0);
@@ -473,81 +480,128 @@ public class PromotionService {
         try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
             List<Promotion> promotions = new ArrayList<>();
-            
+            Set<String> namesInFile = new HashSet<>();
+
             // Đọc từ dòng 2 (bỏ qua Title và Header)
             for (int i = 2; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
-                if (row == null) continue;
+                if (row == null)
+                    continue;
 
                 Promotion promotion = new Promotion();
-                
+
                 // Cột 1: Mã Khuyến Mãi (Tên)
                 Cell nameCell = row.getCell(1);
                 String name = "";
                 if (nameCell != null) {
-                    try { name = nameCell.getStringCellValue().trim(); } 
-                    catch (Exception e) { 
-                        try { name = String.valueOf((int) nameCell.getNumericCellValue()); } catch (Exception ex) {} 
+                    try {
+                        name = nameCell.getStringCellValue().trim();
+                    } catch (Exception e) {
+                        try {
+                            name = String.valueOf((int) nameCell.getNumericCellValue());
+                        } catch (Exception ex) {
+                        }
                     }
                 }
-                if (name.isEmpty() || promotionRepository.findByName(name).isPresent()) continue; // Bỏ qua nếu rỗng hoặc đã tồn tại
+                if (name.isEmpty())
+                    continue; // Bỏ qua nếu rỗng
+
+                if (namesInFile.contains(name)) {
+                    throw new IllegalArgumentException(
+                            "Lỗi: Mã khuyến mãi '" + name + "' bị trùng lặp bên trong file Excel .");
+                }
+                if (promotionRepository.findByName(name).isPresent()) {
+                    throw new IllegalArgumentException("Lỗi: Mã khuyến mãi '" + name + "' đã tồn tại trong hệ thống.");
+                }
+                namesInFile.add(name);
                 promotion.setName(name);
 
                 // Cột 2: Mô tả
                 Cell descCell = row.getCell(2);
                 if (descCell != null) {
-                    try { promotion.setDescription(descCell.getStringCellValue()); } catch (Exception ignored) {}
+                    try {
+                        promotion.setDescription(descCell.getStringCellValue());
+                    } catch (Exception ignored) {
+                    }
                 }
 
                 // Cột 3: Loại Khuyến Mãi
                 Cell typeCell = row.getCell(3);
                 if (typeCell != null) {
-                    try { promotion.setType(PromotionType.valueOf(typeCell.getStringCellValue().trim().toUpperCase())); }
-                    catch (Exception e) { promotion.setType(PromotionType.SHOP); }
+                    try {
+                        promotion.setType(PromotionType.valueOf(typeCell.getStringCellValue().trim().toUpperCase()));
+                    } catch (Exception e) {
+                        promotion.setType(PromotionType.SHOP);
+                    }
                 }
 
                 // Cột 5: Loại Giảm Giá
                 Cell discTypeCell = row.getCell(5);
                 if (discTypeCell != null) {
-                    try { promotion.setDiscountType(DiscountType.valueOf(discTypeCell.getStringCellValue().trim().toUpperCase())); }
-                    catch (Exception e) { promotion.setDiscountType(DiscountType.FIXED_AMOUNT); }
+                    try {
+                        promotion.setDiscountType(
+                                DiscountType.valueOf(discTypeCell.getStringCellValue().trim().toUpperCase()));
+                    } catch (Exception e) {
+                        promotion.setDiscountType(DiscountType.FIXED_AMOUNT);
+                    }
                 }
 
                 // Cột 6: Mức giảm
                 Cell discValCell = row.getCell(6);
                 if (discValCell != null) {
-                    try { promotion.setDiscountValue(BigDecimal.valueOf(discValCell.getNumericCellValue())); }
-                    catch (Exception e) {
-                        try { promotion.setDiscountValue(new BigDecimal(discValCell.getStringCellValue().trim())); }
-                        catch (Exception ex) { promotion.setDiscountValue(BigDecimal.ZERO); }
+                    try {
+                        promotion.setDiscountValue(BigDecimal.valueOf(discValCell.getNumericCellValue()));
+                    } catch (Exception e) {
+                        try {
+                            promotion.setDiscountValue(new BigDecimal(discValCell.getStringCellValue().trim()));
+                        } catch (Exception ex) {
+                            promotion.setDiscountValue(BigDecimal.ZERO);
+                        }
                     }
-                } else promotion.setDiscountValue(BigDecimal.ZERO);
+                } else
+                    promotion.setDiscountValue(BigDecimal.ZERO);
 
                 // Cột 7: Đơn tối thiểu
                 Cell minOrderCell = row.getCell(7);
                 if (minOrderCell != null) {
-                    try { promotion.setMinOrderValue(BigDecimal.valueOf(minOrderCell.getNumericCellValue())); }
-                    catch (Exception e) {
-                        try { promotion.setMinOrderValue(new BigDecimal(minOrderCell.getStringCellValue().trim())); }
-                        catch (Exception ex) { promotion.setMinOrderValue(BigDecimal.ZERO); }
+                    try {
+                        promotion.setMinOrderValue(BigDecimal.valueOf(minOrderCell.getNumericCellValue()));
+                    } catch (Exception e) {
+                        try {
+                            promotion.setMinOrderValue(new BigDecimal(minOrderCell.getStringCellValue().trim()));
+                        } catch (Exception ex) {
+                            promotion.setMinOrderValue(BigDecimal.ZERO);
+                        }
                     }
-                } else promotion.setMinOrderValue(BigDecimal.ZERO);
+                } else
+                    promotion.setMinOrderValue(BigDecimal.ZERO);
 
                 // Cột 8: Trạng thái
                 Cell statusCell = row.getCell(8);
                 if (statusCell != null) {
-                    try { promotion.setIsActive("Hoạt động".equalsIgnoreCase(statusCell.getStringCellValue().trim())); }
-                    catch (Exception e) { promotion.setIsActive(true); }
-                } else promotion.setIsActive(true);
+                    try {
+                        promotion.setIsActive("Hoạt động".equalsIgnoreCase(statusCell.getStringCellValue().trim()));
+                    } catch (Exception e) {
+                        promotion.setIsActive(true);
+                    }
+                } else
+                    promotion.setIsActive(true);
 
                 // Cột 9: Ngày Bắt Đầu
                 Cell startDateCell = row.getCell(9);
                 if (startDateCell != null) {
                     try {
                         java.util.Date date = startDateCell.getDateCellValue();
-                        if (date != null) promotion.setStartDate(date.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime());
+                        if (date != null)
+                            promotion.setStartDate(
+                                    date.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime());
                     } catch (Exception e) {
-                        try { promotion.setStartDate(java.time.LocalDateTime.parse(startDateCell.getStringCellValue().trim(), DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))); } catch (Exception ignored) {}
+                        try {
+                            promotion.setStartDate(
+                                    java.time.LocalDateTime.parse(startDateCell.getStringCellValue().trim(),
+                                            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+                        } catch (Exception ignored) {
+                        }
                     }
                 }
 
@@ -556,26 +610,37 @@ public class PromotionService {
                 if (endDateCell != null) {
                     try {
                         java.util.Date date = endDateCell.getDateCellValue();
-                        if (date != null) promotion.setEndDate(date.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime());
+                        if (date != null)
+                            promotion.setEndDate(
+                                    date.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime());
                     } catch (Exception e) {
-                        try { promotion.setEndDate(java.time.LocalDateTime.parse(endDateCell.getStringCellValue().trim(), DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))); } catch (Exception ignored) {}
+                        try {
+                            promotion.setEndDate(java.time.LocalDateTime.parse(endDateCell.getStringCellValue().trim(),
+                                    DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+                        } catch (Exception ignored) {
+                        }
                     }
                 }
 
                 // Cột 11: Số lượng
                 Cell qtyCell = row.getCell(11);
                 if (qtyCell != null) {
-                    try { promotion.setQuantity((int) qtyCell.getNumericCellValue()); }
-                    catch (Exception e) {
-                        try { promotion.setQuantity(Integer.parseInt(qtyCell.getStringCellValue().trim())); }
-                        catch (Exception ex) { promotion.setQuantity(0); }
+                    try {
+                        promotion.setQuantity((int) qtyCell.getNumericCellValue());
+                    } catch (Exception e) {
+                        try {
+                            promotion.setQuantity(Integer.parseInt(qtyCell.getStringCellValue().trim()));
+                        } catch (Exception ex) {
+                            promotion.setQuantity(0);
+                        }
                     }
-                } else promotion.setQuantity(0);
+                } else
+                    promotion.setQuantity(0);
 
                 promotion.setCreatedAt(java.time.LocalDateTime.now());
                 promotions.add(promotion);
             }
-            
+
             promotionRepository.saveAll(promotions);
         }
     }
