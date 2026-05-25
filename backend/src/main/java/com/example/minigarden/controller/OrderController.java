@@ -84,7 +84,7 @@ public class OrderController {
 
     // API Tìm kiếm đơn hàng theo mã đơn hoặc tên sản phẩm (Không truyền keyword sẽ
     // lấy tất cả)
-    @Transactional(readOnly = true) 
+    @Transactional(readOnly = true)
     @GetMapping
     public ResponseEntity<?> searchOrders(
             @RequestParam(value = "keyword", required = false) String keyword,
@@ -172,32 +172,8 @@ public class OrderController {
             return ResponseEntity.ok(mapOrderToDto(order));
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Lỗi khi xác nhận nhận hàng"));
-        }
-    }
-
-    // API đánh giá sản phẩm
-    @PostMapping("/items/{itemId}/review")
-    @Transactional
-    public ResponseEntity<?> reviewOrderItem(
-            @PathVariable Integer itemId,
-            @RequestBody Map<String, Object> payload,
-            Principal principal) {
-        try {
-            if (principal == null) {
-                return ResponseEntity.status(401).body(Map.of("message", "Chưa đăng nhập"));
-            }
-            User user = userRepository.findByEmail(principal.getName())
-                    .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
-
-            Integer rating = (Integer) payload.get("rating");
-            String comment = (String) payload.get("comment");
-
-            orderService.reviewOrderItem(itemId, user.getId(), rating, comment);
-            return ResponseEntity.ok(Map.of("message", "Đánh giá thành công"));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Lỗi khi đánh giá"));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Lỗi khi xác nhận nhận hàng"));
         }
     }
 
@@ -212,14 +188,16 @@ public class OrderController {
         map.put("totalPrice", order.getTotalPrice());
         map.put("status", order.getStatus());
         map.put("updatedAt", order.getUpdatedAt());
-        
-        java.math.BigDecimal totalDiscount = order.getPromotions() != null 
+
+        java.math.BigDecimal totalDiscount = order.getPromotions() != null
                 ? order.getPromotions().stream().map(op -> {
                     java.math.BigDecimal amt = op.getDiscountAmount();
                     if (amt == null || amt.compareTo(java.math.BigDecimal.ZERO) == 0) {
                         Promotion p = promotionRepository.findByName(op.getPromotionCode()).orElse(null);
-                        if (p != null && p.getDiscountType() == DiscountType.FIXED_AMOUNT) amt = p.getDiscountValue();
-                        else amt = java.math.BigDecimal.ZERO;
+                        if (p != null && p.getDiscountType() == DiscountType.FIXED_AMOUNT)
+                            amt = p.getDiscountValue();
+                        else
+                            amt = java.math.BigDecimal.ZERO;
                     }
                     return amt;
                 }).reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add)
@@ -236,7 +214,7 @@ public class OrderController {
             map.put("promotions", order.getPromotions().stream().map(p -> {
                 Map<String, Object> pMap = new java.util.HashMap<>();
                 pMap.put("promotionCode", p.getPromotionCode());
-                
+
                 java.math.BigDecimal discount = p.getDiscountAmount();
                 // Fallback: Tra cứu lại từ bảng Promotion nếu đơn cũ bị lưu bằng 0
                 if (discount == null || discount.compareTo(java.math.BigDecimal.ZERO) == 0) {
@@ -245,7 +223,7 @@ public class OrderController {
                         discount = promo.getDiscountValue();
                     }
                 }
-                
+
                 pMap.put("discountAmount", discount);
                 return pMap;
             }).toList());
@@ -280,7 +258,7 @@ public class OrderController {
         }
         return map;
     }
-    
+
     // API Xuất Excel
     @GetMapping("/export")
     public ResponseEntity<InputStreamResource> exportOrdersToExcel() throws IOException {
@@ -290,7 +268,8 @@ public class OrderController {
 
         return ResponseEntity.ok()
                 .headers(headers)
-                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .contentType(
+                        MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(new InputStreamResource(java.util.Objects.requireNonNull(in)));
     }
 }

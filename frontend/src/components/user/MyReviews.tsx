@@ -67,6 +67,16 @@ export default function MyReviews({ userReviews, pendingReviews, onReviewClick }
                                             <span className="text-xs text-gray-500 font-medium">{review.date}</span>
                                         </div>
                                         <p className="text-sm text-gray-600 mt-3">{review.content}</p>
+                                        
+                                        {review.reviewImages && review.reviewImages.length > 0 && (
+                                            <div className="flex gap-2 mt-3">
+                                                {review.reviewImages.map((imgUrl: string, idx: number) => (
+                                                    <div key={idx} className="w-16 h-16 rounded-lg overflow-hidden border border-gray-100">
+                                                        <img src={imgUrl} alt="Review" className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity" />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

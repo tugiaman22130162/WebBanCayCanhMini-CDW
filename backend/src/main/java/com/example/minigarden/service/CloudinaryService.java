@@ -37,6 +37,25 @@ public class CloudinaryService {
         }
     }
 
+    // Upload anh danh gia len Cloudinary va tra ve public_id + secure_url.
+    public UploadedImage uploadReviewImage(MultipartFile file) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = cloudinary.uploader().upload(
+                    file.getBytes(),
+                    ObjectUtils.asMap(
+                            "folder", "minigarden/reviews",
+                            "resource_type", "image"));
+
+            String publicId = (String) result.get("public_id");
+            String secureUrl = (String) result.get("secure_url");
+
+            return new UploadedImage(publicId, secureUrl);
+        } catch (IOException exception) {
+            throw new RuntimeException("Khong the upload anh danh gia len Cloudinary", exception);
+        }
+    }
+
     // Upload avatar len Cloudinary va tra ve public_id + secure_url.
     public UploadedImage uploadAvatarImage(MultipartFile file) {
         try {

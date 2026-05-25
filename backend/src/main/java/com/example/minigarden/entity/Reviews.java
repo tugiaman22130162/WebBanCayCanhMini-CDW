@@ -35,6 +35,10 @@ public class Reviews {
     @Column(length = 1000)
     private String comment;
 
+    // Lưu URL hình ảnh đánh giá (các URL cách nhau bằng dấu phẩy)
+    @Column(length = 2000)
+    private String images;
+
     // Ẩn/hiện review (để admin có thể ẩn những review không phù hợp)
     @Column(nullable = false)
     private Boolean status;

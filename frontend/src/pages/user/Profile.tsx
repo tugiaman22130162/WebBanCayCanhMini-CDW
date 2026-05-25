@@ -59,6 +59,7 @@ export default function Profile() {
     const [hoverRating, setHoverRating] = useState(0);
     const [reviewText, setReviewText] = useState("");
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+    const [reviewFiles, setReviewFiles] = useState<File[]>([]);
 
     // Chuyển hướng nếu chưa đăng nhập
     useEffect(() => {
@@ -163,7 +164,7 @@ export default function Profile() {
                             image: item.image,
                             orderId: o.id,
                             orderRealId: o.realId,
-                            date: o.date
+                            date: o.updatedAt ? new Date(o.updatedAt).toLocaleDateString('vi-VN') : o.date
                         }))
                     );
                 setPendingReviews(pending);
@@ -194,7 +195,8 @@ export default function Profile() {
                     rating: r.rating,
                     date: new Date(r.createdAt).toLocaleDateString('vi-VN'),
                     content: r.comment,
-                    status: r.status
+                    status: r.status,
+                    reviewImages: r.reviewImages || []
                 }));
                 setUserReviews(formattedReviews);
             } catch (error) {
@@ -287,33 +289,54 @@ export default function Profile() {
         if (e.target.files) {
             const files = Array.from(e.target.files);
             const newPreviews = files.map(file => URL.createObjectURL(file));
+            setReviewFiles(prev => [...prev, ...files].slice(0, 3));
             setImagePreviews(prev => [...prev, ...newPreviews].slice(0, 3));
         }
     };
 
     const handleRemoveImage = (index: number) => {
+        setReviewFiles(prev => prev.filter((_, i) => i !== index));
         setImagePreviews(prev => prev.filter((_, i) => i !== index));
     };
 
     const handleSubmitReview = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const payload = {
-                rating: rating,
-                comment: reviewText
-            };
+            const formData = new FormData();
+            formData.append('rating', rating.toString());
+            formData.append('comment', reviewText);
+            reviewFiles.forEach(file => {
+                formData.append('images', file);
+            });
 
-            await axios.post(`http://localhost:8080/api/orders/items/${reviewProduct.id}/review`, payload, {
-                headers: { Authorization: `Bearer ${token}` }
+            const response = await axios.post(`http://localhost:8080/api/reviews/order-items/${reviewProduct.id}`, formData, {
+                headers: { 
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data'
+                }
             });
 
             Toast.fire({ icon: 'success', title: 'Cảm ơn bạn đã gửi đánh giá!' });
             setIsReviewModalOpen(false);
             setReviewText("");
             setImagePreviews([]);
+            setReviewFiles([]);
             setRating(5);
 
             setPendingReviews(prev => prev.filter(r => r.id !== reviewProduct.id));
+
+            // Cập nhật trạng thái isReviewed của sản phẩm trong danh sách đơn hàng
+            setOrders(prevOrders => prevOrders.map(order => {
+                if (order.id === reviewProduct.orderId) {
+                    return {
+                        ...order,
+                        items: order.items.map((item: any) => 
+                            item.id === reviewProduct.id ? { ...item, isReviewed: true } : item
+                        )
+                    };
+                }
+                return order;
+            }));
 
             const newReview = {
                 id: Date.now(),
@@ -322,7 +345,8 @@ export default function Profile() {
                 rating: rating,
                 date: new Date().toLocaleDateString('vi-VN'),
                 content: reviewText,
-                status: "Đã duyệt"
+                status: "Đã duyệt",
+                reviewImages: response?.data?.images ? response.data.images.split(",") : [...imagePreviews]
             };
             setUserReviews(prev => [newReview, ...prev]);
 
@@ -391,7 +415,7 @@ export default function Profile() {
                 const newlyDeliveredOrder = orders.find(o => o.realId === orderRealId);
                 if (newlyDeliveredOrder) {
                     const pendingItems = newlyDeliveredOrder.items.map((item: any) => ({
-                        id: item.id, productId: item.productId, productName: item.name, image: item.image, orderId: newlyDeliveredOrder.id, orderRealId: newlyDeliveredOrder.realId, date: newlyDeliveredOrder.date
+                        id: item.id, productId: item.productId, productName: item.name, image: item.image, orderId: newlyDeliveredOrder.id, orderRealId: newlyDeliveredOrder.realId, date: new Date().toLocaleDateString('vi-VN')
                     }));
                     setPendingReviews(prev => [...pendingItems, ...prev]);
                 }
@@ -678,7 +702,7 @@ export default function Profile() {
                             )}
                             {selectedOrder.status === 'Đã giao' && (
                                 <button
-                                    onClick={() => { setIsOrderModalOpen(false); setReviewProduct({ ...selectedOrder.items[0], orderId: selectedOrder.id }); setIsReviewModalOpen(true); }}
+                                    onClick={() => { setIsOrderModalOpen(false); handleTabChange('reviews'); }}
                                     className="px-6 py-2 rounded-xl bg-primary text-white font-bold hover:bg-[#2f5146] transition-colors shadow-sm"
                                 >
                                     Đánh giá
