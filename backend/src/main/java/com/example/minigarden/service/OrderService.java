@@ -395,6 +395,19 @@ public class OrderService {
             }
         }
 
+        // Nếu đơn hàng được giao thành công, cập nhật trạng thái thanh toán (đối với COD)
+        if (newStatus == OrderStatus.DELIVERED) {
+            if (order.getPayments() != null) {
+                for (Payments payment : order.getPayments()) {
+                    if (payment.getMethod() == PaymentMethod.COD && payment.getStatus() == PaymentStatus.PENDING) {
+                        payment.setStatus(PaymentStatus.SUCCESS);
+                        paymentRepository.save(payment);
+                        order.setPaidAt(LocalDateTime.now());
+                    }
+                }
+            }
+        }
+
         order.setStatus(newStatus);
         Order savedOrder = orderRepository.save(order);
 
@@ -623,6 +636,18 @@ public class OrderService {
         }
 
         order.setStatus(OrderStatus.DELIVERED);
+        
+        // Cập nhật trạng thái thanh toán thành SUCCESS khi khách hàng xác nhận đã nhận hàng (đối với COD)
+        if (order.getPayments() != null) {
+            for (Payments payment : order.getPayments()) {
+                if (payment.getMethod() == PaymentMethod.COD && payment.getStatus() == PaymentStatus.PENDING) {
+                    payment.setStatus(PaymentStatus.SUCCESS);
+                    paymentRepository.save(payment);
+                    order.setPaidAt(LocalDateTime.now());
+                }
+            }
+        }
+        
         return orderRepository.save(order);
     }
 
