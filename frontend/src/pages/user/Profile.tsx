@@ -60,6 +60,7 @@ export default function Profile() {
     const [reviewText, setReviewText] = useState("");
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [reviewFiles, setReviewFiles] = useState<File[]>([]);
+    const [isEditReviewMode, setIsEditReviewMode] = useState(false);
 
     // Chuyển hướng nếu chưa đăng nhập
     useEffect(() => {
@@ -194,6 +195,8 @@ export default function Profile() {
                     image: r.image || "/images/terrarium.png",
                     rating: r.rating,
                     date: new Date(r.createdAt).toLocaleDateString('vi-VN'),
+                    updatedAt: r.updatedAt ? new Date(r.updatedAt).toLocaleString('vi-VN') : null,
+                    editCount: r.editCount || 0,
                     content: r.comment,
                     status: r.status,
                     reviewImages: r.reviewImages || []
@@ -309,51 +312,120 @@ export default function Profile() {
                 formData.append('images', file);
             });
 
-            const response = await axios.post(`http://localhost:8080/api/reviews/order-items/${reviewProduct.id}`, formData, {
-                headers: { 
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'multipart/form-data'
-                }
-            });
+            if (isEditReviewMode) {
+                // Thêm các ảnh cũ được giữ lại vào formData
+                const keptImages = imagePreviews.filter(img => !img.startsWith("blob:")).join(",");
+                formData.append('keptImages', keptImages);
 
-            Toast.fire({ icon: 'success', title: 'Cảm ơn bạn đã gửi đánh giá!' });
+                axios.put(`http://localhost:8080/api/reviews/${reviewProduct.id}`, formData, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'multipart/form-data'
+                    }
+                }).catch(error => {
+                    console.error("Lỗi khi sửa đánh giá trên server:", error);
+                });
+
+                Toast.fire({ icon: 'success', title: 'Cập nhật đánh giá thành công!' });
+
+                const updatedReview = {
+                    ...reviewProduct,
+                    rating: rating,
+                    updatedAt: new Date().toLocaleString('vi-VN'),
+                    editCount: (reviewProduct.editCount || 0) + 1,
+                    content: reviewText,
+                    reviewImages: [...imagePreviews]
+                };
+                setUserReviews(prev => prev.map(r => r.id === reviewProduct.id ? updatedReview : r));
+
+            } else {
+                // Chạy API ngầm để không bị block UI do upload ảnh quá lâu
+                axios.post(`http://localhost:8080/api/reviews/order-items/${reviewProduct.id}`, formData, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'multipart/form-data'
+                    }
+                }).catch(error => {
+                    console.error("Lỗi khi lưu đánh giá trên server:", error);
+                });
+
+                // Cập nhật giao diện ngay lập tức
+                Toast.fire({ icon: 'success', title: 'Cảm ơn bạn đã gửi đánh giá!' });
+
+                setPendingReviews(prev => prev.filter(r => r.id !== reviewProduct.id));
+
+                // Cập nhật trạng thái isReviewed của sản phẩm trong danh sách đơn hàng
+                setOrders(prevOrders => prevOrders.map(order => {
+                    if (order.id === reviewProduct.orderId) {
+                        return {
+                            ...order,
+                            items: order.items.map((item: any) =>
+                                item.id === reviewProduct.id ? { ...item, isReviewed: true } : item
+                            )
+                        };
+                    }
+                    return order;
+                }));
+
+                const newReview = {
+                    id: Date.now(),
+                    productName: reviewProduct.name || reviewProduct.productName,
+                    image: reviewProduct.image || reviewProduct.image_url,
+                    rating: rating,
+                    date: new Date().toLocaleDateString('vi-VN'),
+                    content: reviewText,
+                    status: "Đã duyệt",
+                    reviewImages: [...imagePreviews] // Dùng luôn mảng ảnh preview tạm thời
+                };
+                setUserReviews(prev => [newReview, ...prev]);
+            }
+
             setIsReviewModalOpen(false);
             setReviewText("");
             setImagePreviews([]);
             setReviewFiles([]);
             setRating(5);
 
-            setPendingReviews(prev => prev.filter(r => r.id !== reviewProduct.id));
-
-            // Cập nhật trạng thái isReviewed của sản phẩm trong danh sách đơn hàng
-            setOrders(prevOrders => prevOrders.map(order => {
-                if (order.id === reviewProduct.orderId) {
-                    return {
-                        ...order,
-                        items: order.items.map((item: any) => 
-                            item.id === reviewProduct.id ? { ...item, isReviewed: true } : item
-                        )
-                    };
-                }
-                return order;
-            }));
-
-            const newReview = {
-                id: Date.now(),
-                productName: reviewProduct.name || reviewProduct.productName,
-                image: reviewProduct.image || reviewProduct.image_url,
-                rating: rating,
-                date: new Date().toLocaleDateString('vi-VN'),
-                content: reviewText,
-                status: "Đã duyệt",
-                reviewImages: response?.data?.images ? response.data.images.split(",") : [...imagePreviews]
-            };
-            setUserReviews(prev => [newReview, ...prev]);
-
         } catch (error: any) {
             Toast.fire({ icon: 'error', title: error.response?.data?.message || 'Lỗi khi gửi đánh giá' });
         }
     };
+
+    // Mua lại đơn hàng (Thêm toàn bộ sản phẩm cũ vào lại giỏ hàng)
+    const handleBuyAgain = async (order: any) => {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        try {
+            let userId: any;
+            const userStr = localStorage.getItem("user");
+            if (userStr) {
+                userId = JSON.parse(userStr).id;
+            }
+
+            // Gọi API thêm từng sản phẩm vào giỏ hàng chạy đồng thời
+            await Promise.all(order.items.map((item: any) =>
+                axios.post(
+                    "http://localhost:8080/api/cart/add",
+                    {
+                        userId: userId,
+                        productId: item.productId,
+                        quantity: item.quantity
+                    },
+                    { headers: { Authorization: `Bearer ${token}` } }
+                )
+            ));
+
+            Toast.fire({ icon: 'success', title: 'Đã thêm các sản phẩm vào giỏ hàng!' });
+            window.dispatchEvent(new Event("cartUpdated"));
+            setIsOrderModalOpen(false);
+            navigate('/cart');
+        } catch (error: any) {
+            console.error("Lỗi khi mua lại:", error);
+            Toast.fire({ icon: 'error', title: 'Có lỗi xảy ra khi mua lại đơn hàng' });
+        }
+    };
+
     //hủy đơn hàng
     const handleCancelOrder = async (orderRealId: number) => {
         const result = await Swal.fire({
@@ -518,6 +590,20 @@ export default function Profile() {
                                     pendingReviews={pendingReviews}
                                     onReviewClick={(item) => {
                                         setReviewProduct(item);
+                                        setIsEditReviewMode(false);
+                                        setRating(5);
+                                        setReviewText("");
+                                        setImagePreviews([]);
+                                        setReviewFiles([]);
+                                        setIsReviewModalOpen(true);
+                                    }}
+                                    onEditReviewClick={(item) => {
+                                        setReviewProduct(item);
+                                        setIsEditReviewMode(true);
+                                        setRating(item.rating);
+                                        setReviewText(item.content);
+                                        setImagePreviews(item.reviewImages || []);
+                                        setReviewFiles([]);
                                         setIsReviewModalOpen(true);
                                     }}
                                 />
@@ -708,6 +794,14 @@ export default function Profile() {
                                     Đánh giá
                                 </button>
                             )}
+                            {(selectedOrder.status === 'Đã hủy' || selectedOrder.status === 'Đã giao') && (
+                                <button
+                                    onClick={() => handleBuyAgain(selectedOrder)}
+                                    className="px-6 py-2 rounded-xl bg-primary text-white font-bold hover:bg-[#2f5146] transition-colors shadow-sm flex items-center gap-2"
+                                >
+                                    Mua lại
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -718,7 +812,7 @@ export default function Profile() {
                 <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
                         <div className="p-5 border-b flex justify-between items-center bg-gray-50 shrink-0">
-                            <h3 className="font-bold text-lg text-gray-800">Đánh giá sản phẩm</h3>
+                            <h3 className="font-bold text-lg text-gray-800">{isEditReviewMode ? "Chỉnh sửa đánh giá" : "Đánh giá sản phẩm"}</h3>
                             <button onClick={() => setIsReviewModalOpen(false)} className="text-gray-400 hover:text-red-500 transition-colors">
                                 <span className="material-symbols-outlined">close</span>
                             </button>
@@ -805,7 +899,7 @@ export default function Profile() {
                                         Hủy bỏ
                                     </button>
                                     <button type="submit" className="flex-1 py-3 rounded-xl font-bold text-white bg-primary hover:bg-[#2f5146] transition-colors shadow-md">
-                                        Gửi đánh giá
+                                        {isEditReviewMode ? "Lưu thay đổi" : "Gửi đánh giá"}
                                     </button>
                                 </div>
                             </form>

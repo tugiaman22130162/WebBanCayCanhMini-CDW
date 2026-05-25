@@ -22,6 +22,7 @@ export default function ProductDetail() {
     const [mainImage, setMainImage] = useState("");
     const [activeTab, setActiveTab] = useState<'description' | 'care' | 'reviews'>('description');
     const [totalReviews, setTotalReviews] = useState(0);
+    const [averageRating, setAverageRating] = useState<number>(0);
 
     // Ref cho ảnh chính để làm hiệu ứng bay vào giỏ hàng
     const imageRef = useRef<HTMLImageElement>(null);
@@ -40,8 +41,6 @@ export default function ProductDetail() {
                     id: data.id,
                     name: data.name,
                     price: data.price || 0,
-                    rating: 4.8, // Tạm thời Fake rating nếu DB chưa có
-                    reviewCount: 2, // Tạm thời mock data
                     soldCount: 350,
                     category: data.categoryName || data.category?.name || data.category || "Chưa phân loại",
                     categoryId: data.categoryId || data.category?.id || null,
@@ -70,7 +69,6 @@ export default function ProductDetail() {
                 
                 setProduct(formattedProduct);
                 setMainImage(formattedProduct.images[0]);
-                setTotalReviews(formattedProduct.reviewCount);
 
                 // Xử lý Cập nhật và Lấy Sản phẩm vừa xem từ LocalStorage
                 const viewed = JSON.parse(localStorage.getItem("viewedProducts") || "[]");
@@ -119,10 +117,31 @@ export default function ProductDetail() {
                 setIsLoading(false);
             }
         };
+        
+        // Fetch đánh giá để tính trung bình sao và tổng lượt đánh giá
+        const fetchReviewsData = async () => {
+            try {
+                const token = localStorage.getItem("token");
+                const headers = token ? { Authorization: `Bearer ${token}` } : {};
+                const res = await axios.get(`http://localhost:8080/api/reviews/product/${id}`, { headers });
+                const dataArray = Array.isArray(res.data) ? res.data : (res.data?.content || []);
+                setTotalReviews(dataArray.length);
+                if (dataArray.length > 0) {
+                    const sum = dataArray.reduce((acc: number, cur: any) => acc + cur.rating, 0);
+                    const avg = sum / dataArray.length;
+                    setAverageRating(Math.round(avg * 10) / 10);
+                } else {
+                    setAverageRating(0);
+                }
+            } catch (err) {
+                console.error("Lỗi lấy danh sách đánh giá:", err);
+            }
+        };
 
         window.scrollTo(0, 0);
         if (id) {
             fetchProductDetail();
+            fetchReviewsData();
         }
     }, [id]);
 
@@ -288,8 +307,8 @@ export default function ProductDetail() {
                             <h1 className="text-3xl md:text-4xl font-black text-gray-800 mb-4 leading-tight">{product.name}</h1>
                             <div className="flex flex-wrap items-center gap-4 mb-5">
                                 <div className="flex items-center gap-2">
-                                    {renderStars(product.rating)}
-                                    <span className="font-bold text-gray-700">{product.rating}</span>
+                                    {renderStars(averageRating)}
+                                    <span className="font-bold text-gray-700">{averageRating}</span>
                                 </div>
                                 <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
                                 <span className="text-gray-600 text-sm"><span className="font-bold text-gray-800">{totalReviews}</span> Đánh giá</span>
@@ -480,9 +499,13 @@ export default function ProductDetail() {
                             {/* Tab 3: Đánh giá */}
                             {activeTab === 'reviews' && (
                                 <ProductReview 
-                                    productRating={product.rating} 
-                                    initialTotalReviews={product.reviewCount} 
-                                    onReviewAdded={() => setTotalReviews(prev => prev + 1)}
+                                    productId={product.id}
+                                    productRating={averageRating} 
+                                    initialTotalReviews={totalReviews} 
+                                    onReviewAdded={(newRating) => {
+                                        setTotalReviews(prev => prev + 1);
+                                        setAverageRating(prev => Math.round(((prev * totalReviews) + (newRating || 5)) / (totalReviews + 1) * 10) / 10);
+                                    }}
                                 />
                             )}
                         </div>

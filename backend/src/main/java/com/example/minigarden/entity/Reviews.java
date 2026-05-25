@@ -44,10 +44,24 @@ public class Reviews {
     private Boolean status;
 
     private LocalDateTime created_at;
+    
+    private LocalDateTime updated_at;
+    
+    @Builder.Default
+    @Column(name = "edit_count", nullable = false)
+    private Integer editCount = 0;
 
     @PrePersist
     protected void onCreate() {
         created_at = LocalDateTime.now();
         status = true;
+        if (editCount == null) {
+            editCount = 0;
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updated_at = LocalDateTime.now();
     }
 }

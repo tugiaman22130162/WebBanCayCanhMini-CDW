@@ -4,9 +4,10 @@ interface MyReviewsProps {
     userReviews: any[];
     pendingReviews: any[];
     onReviewClick: (item: any) => void;
+    onEditReviewClick: (item: any) => void;
 }
 
-export default function MyReviews({ userReviews, pendingReviews, onReviewClick }: MyReviewsProps) {
+export default function MyReviews({ userReviews, pendingReviews, onReviewClick, onEditReviewClick }: MyReviewsProps) {
     const [reviewFilter, setReviewFilter] = useState<'pending' | 'completed'>('pending');
 
     // Phân trang
@@ -64,7 +65,18 @@ export default function MyReviews({ userReviews, pendingReviews, onReviewClick }
                                                     ))}
                                                 </div>
                                             </div>
-                                            <span className="text-xs text-gray-500 font-medium">{review.date}</span>
+                                            <div className="flex flex-col items-end">
+                                                <span className="text-xs text-gray-500 font-medium">{review.date}</span>
+                                                {review.updatedAt && (
+                                                    <span className="text-[10px] text-gray-400 mt-0.5">(Đã sửa: {review.updatedAt})</span>
+                                                )}
+                                                {(!review.editCount || review.editCount < 2) && (
+                                                    <button onClick={() => onEditReviewClick(review)} className="mt-2 text-xs text-primary font-bold flex items-center gap-1 group">
+                                                        <span className="material-symbols-outlined text-[14px]">edit</span>
+                                                        <span className="group-hover:underline">Chỉnh sửa</span>
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                         <p className="text-sm text-gray-600 mt-3">{review.content}</p>
                                         
