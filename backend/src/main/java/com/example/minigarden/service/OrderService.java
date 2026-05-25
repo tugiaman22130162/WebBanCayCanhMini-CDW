@@ -47,8 +47,6 @@ public class OrderService {
     private final PromotionRepository promotionRepository;
     private final PaymentRepository paymentRepository;
     private final NotificationService notificationService;
-    private final ReviewsRepository reviewsRepository;
-    private final OrderItemRepository orderItemRepository;
 
     public Order createOrder(Integer userId, OrderRequest request) {
 
@@ -397,6 +395,19 @@ public class OrderService {
             }
         }
 
+        // Nếu đơn hàng được giao thành công, cập nhật trạng thái thanh toán (đối với COD)
+        if (newStatus == OrderStatus.DELIVERED) {
+            if (order.getPayments() != null) {
+                for (Payments payment : order.getPayments()) {
+                    if (payment.getMethod() == PaymentMethod.COD && payment.getStatus() == PaymentStatus.PENDING) {
+                        payment.setStatus(PaymentStatus.SUCCESS);
+                        paymentRepository.save(payment);
+                        order.setPaidAt(LocalDateTime.now());
+                    }
+                }
+            }
+        }
+
         order.setStatus(newStatus);
         Order savedOrder = orderRepository.save(order);
 
@@ -610,36 +621,6 @@ public class OrderService {
         }
     }
 
-    // Đánh giá sản phẩm trong đơn hàng
-    @Transactional
-    public void reviewOrderItem(Integer itemId, Integer userId, Integer rating, String comment) {
-        OrderItem item = orderItemRepository.findById(Objects.requireNonNull(itemId))
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm trong đơn hàng"));
-
-        if (!item.getOrder().getUserId().equals(userId)) {
-            throw new RuntimeException("Bạn không có quyền đánh giá sản phẩm này");
-        }
-
-        if (item.getOrder().getStatus() != OrderStatus.DELIVERED) {
-            throw new RuntimeException("Chỉ có thể đánh giá sản phẩm khi đơn hàng đã giao");
-        }
-
-        if (Boolean.TRUE.equals(item.getIsReviewed())) {
-            throw new RuntimeException("Sản phẩm này đã được đánh giá");
-        }
-
-        Reviews review = Reviews.builder()
-                .user_id(userId)
-                .product(item.getProduct())
-                .rating(rating)
-                .comment(comment)
-                .build();
-        reviewsRepository.save(Objects.requireNonNull(review));
-
-        item.setIsReviewed(true);
-        orderItemRepository.save(Objects.requireNonNull(item));
-    }
-
     // Xác nhận đã nhận hàng (User)
     @Transactional
     public Order confirmOrderReceived(Integer orderId, Integer userId) {
@@ -655,6 +636,18 @@ public class OrderService {
         }
 
         order.setStatus(OrderStatus.DELIVERED);
+        
+        // Cập nhật trạng thái thanh toán thành SUCCESS khi khách hàng xác nhận đã nhận hàng (đối với COD)
+        if (order.getPayments() != null) {
+            for (Payments payment : order.getPayments()) {
+                if (payment.getMethod() == PaymentMethod.COD && payment.getStatus() == PaymentStatus.PENDING) {
+                    payment.setStatus(PaymentStatus.SUCCESS);
+                    paymentRepository.save(payment);
+                    order.setPaidAt(LocalDateTime.now());
+                }
+            }
+        }
+        
         return orderRepository.save(order);
     }
 

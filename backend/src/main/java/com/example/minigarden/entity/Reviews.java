@@ -35,15 +35,33 @@ public class Reviews {
     @Column(length = 1000)
     private String comment;
 
+    // Lưu URL hình ảnh đánh giá (các URL cách nhau bằng dấu phẩy)
+    @Column(length = 2000)
+    private String images;
+
     // Ẩn/hiện review (để admin có thể ẩn những review không phù hợp)
     @Column(nullable = false)
     private Boolean status;
 
     private LocalDateTime created_at;
+    
+    private LocalDateTime updated_at;
+    
+    @Builder.Default
+    @Column(name = "edit_count", nullable = false)
+    private Integer editCount = 0;
 
     @PrePersist
     protected void onCreate() {
         created_at = LocalDateTime.now();
         status = true;
+        if (editCount == null) {
+            editCount = 0;
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updated_at = LocalDateTime.now();
     }
 }

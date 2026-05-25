@@ -12,4 +12,6 @@ import java.util.List;
 public interface ReviewsRepository extends JpaRepository<Reviews, Integer> {
     @Query("SELECT r FROM Reviews r WHERE r.user_id = :userId ORDER BY r.created_at DESC")
     List<Reviews> findByUserId(@Param("userId") Integer userId);
+
+    List<Reviews> findByProductId(Integer productId);
 }
