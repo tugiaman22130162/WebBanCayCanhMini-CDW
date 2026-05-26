@@ -31,6 +31,9 @@ import NewsDetail from "./pages/user/NewsDetail"
 import AdminProfile from "./pages/admin/AdminProfile"
 import { AuthProvider } from "../src/context/AuthContext"
 import OAuth2Success from "./pages/user/OAuth2Success"
+import BlogManagement from "./pages/admin/BlogManagement"
+import ReviewManagement from "./pages/admin/ReviewManagement"
+import News from "./pages/user/News"
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -71,6 +74,7 @@ export default function App() {
           <Route path="/shipping" element={<ShippingPolicy />} />
           <Route path="/news/:id" element={<NewsDetail />} />
           <Route path="/oauth2/success" element={<OAuth2Success />} />
+          <Route path="/news" element={<News />} />
 
           {/* ADMIN */}
           <Route path="/admin/users" element={<UserManagement />} />
@@ -81,6 +85,8 @@ export default function App() {
           <Route path="/admin/promotions" element={<PromotionManagement />} />
           <Route path="/admin/payments" element={<PaymentManagement />} />
           <Route path="/admin/profile" element={<AdminProfile />} />
+          <Route path="/admin/reviews" element={<ReviewManagement />} />
+          <Route path="/admin/blogs" element={<BlogManagement />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

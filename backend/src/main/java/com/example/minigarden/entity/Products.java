@@ -81,4 +81,7 @@ public class Products {
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL)
     private List<Reviews> reviews;
+
+    @OneToMany(mappedBy = "product")
+    private List<OrderItem> orderItems;
 }

@@ -8,6 +8,8 @@ import com.example.minigarden.entity.Categories;
 import com.example.minigarden.entity.Products;
 import com.example.minigarden.entity.ProductImages;
 import com.example.minigarden.entity.CareInstructions;
+import com.example.minigarden.entity.OrderItem;
+import com.example.minigarden.entity.OrderStatus;
 import com.example.minigarden.repository.CategoryRepository;
 import com.example.minigarden.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -80,6 +82,15 @@ public class ProductService {
         Products product = productRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại với ID: " + id));
 
+        int soldCount = 0;
+        if (product.getOrderItems() != null) {
+            for (OrderItem item : product.getOrderItems()) {
+                if (item.getOrder() != null && item.getOrder().getStatus() == OrderStatus.DELIVERED) {
+                    soldCount += (item.getQuantity() != null ? item.getQuantity() : 0);
+                }
+            }
+        }
+
         List<String> imageUrls = product.getImages() != null
                 ? product.getImages().stream().map(ProductImages::getImage_url).collect(Collectors.toList())
                 : new ArrayList<>();
@@ -109,6 +120,7 @@ public class ProductService {
                 .categoryName(product.getCategory() != null ? product.getCategory().getName() : null)
                 .images(imageUrls)
                 .details(detailResponse)
+                .soldCount(soldCount)
                 .build();
     }
 

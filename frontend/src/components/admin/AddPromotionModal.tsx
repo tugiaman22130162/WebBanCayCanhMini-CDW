@@ -66,7 +66,7 @@ export default function AddPromotionModal({ isOpen, onClose, onSuccess, categori
                 targetName: currentPromo.targetName,
                 quantity: currentPromo.quantity || 0
             };
-            
+
             await axios.post("http://localhost:8080/api/promotions", payload, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -84,194 +84,199 @@ export default function AddPromotionModal({ isOpen, onClose, onSuccess, categori
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl overflow-visible zoom-in-95 duration-200 my-8">
-                <div className="p-5 border-b flex justify-between items-center bg-gray-50 rounded-t-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+                <div className="px-6 py-5 border-b flex justify-between items-center bg-gray-50 sticky top-0 z-20">
                     <h3 className="font-bold text-lg text-gray-800">Tạo Mã Khuyến Mãi Mới</h3>
-                    <button type="button" onClick={onClose} className="text-gray-400 hover:text-red-500 transition-colors">
+                    <button type="button" onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors">
                         <span className="material-symbols-outlined">close</span>
                     </button>
                 </div>
-                <form onSubmit={handleSavePromo} className="p-6 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="col-span-2">
-                            <label className="block text-sm font-semibold mb-1 text-gray-700">Mã Khuyến Mãi (Để trống tự tạo)</label>
-                            <input 
-                                type="text" 
-                                value={currentPromo.name || ''}
-                                onChange={(e) => setCurrentPromo({...currentPromo, name: e.target.value})}
-                                placeholder="VD: FREESHIP, SALE20 (Tùy chọn)"
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors uppercase"
-                            />
-                        </div>
-
-                        <div className="col-span-2">
-                            <label className="block text-sm font-semibold mb-1 text-gray-700">Mô tả khuyến mãi</label>
-                            <input 
-                                type="text" 
-                                value={currentPromo.description || ''}
-                                onChange={(e) => setCurrentPromo({...currentPromo, description: e.target.value})}
-                                placeholder="VD: Giảm 20% cho đơn hàng..."
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors"
-                            />
-                        </div>
-
-                        <div className="col-span-2">
-                            <label className="block text-sm font-semibold mb-1 text-gray-700">Loại Khuyến Mãi <span className="text-red-500">*</span></label>
-                            <CustomSelect
-                                value={currentPromo.type || 'SHOP'}
-                                onChange={(val) => {
-                                    if (val !== currentPromo.type) {
-                                        setCurrentPromo({...currentPromo, type: val as PromotionType, targetId: undefined, targetName: ''});
-                                    }
-                                }}
-                                options={[
-                                    { value: 'SHOP', label: 'Cho tất cả sản phẩm' },
-                                    { value: 'CATEGORY', label: 'Cho danh mục' },
-                                    { value: 'PRODUCT', label: 'Cho từng sản phẩm' },
-                                    { value: 'SHIPPING', label: 'Mã vận chuyển' }
-                                ]}
-                            />
-                        </div>
-
-                        {currentPromo.type === 'CATEGORY' && (
+                <form onSubmit={handleSavePromo} className="flex-1 flex flex-col overflow-hidden">
+                    <div className="p-6 flex-1 overflow-y-auto space-y-4 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full pb-32">
+                        <div className="grid grid-cols-2 gap-4">
                             <div className="col-span-2">
-                                <label className="block text-sm font-semibold mb-1 text-gray-700">Chọn Danh Mục Áp Dụng <span className="text-red-500">*</span></label>
-                                <CustomSelect
-                                    value={currentPromo.targetId || ''}
-                                    placeholder="-- Chọn danh mục --"
-                                    onChange={(val) => {
-                                        const id = Number(val);
-                                        const name = categories.find(c => c.id === id)?.name;
-                                        setCurrentPromo({...currentPromo, targetId: id, targetName: name});
-                                    }}
-                                    options={categories.map(cat => ({ value: cat.id, label: cat.name }))}
+                                <label className="block text-sm font-semibold mb-1 text-gray-700">Mã Khuyến Mãi (Để trống tự tạo)</label>
+                                <input
+                                    type="text"
+                                    value={currentPromo.name || ''}
+                                    onChange={(e) => setCurrentPromo({ ...currentPromo, name: e.target.value })}
+                                    placeholder="VD: FREESHIP, SALE20 (Tùy chọn)"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors uppercase"
                                 />
                             </div>
-                        )}
 
-                        {currentPromo.type === 'PRODUCT' && (
                             <div className="col-span-2">
-                                <label className="block text-sm font-semibold mb-1 text-gray-700">Chọn Sản Phẩm Áp Dụng <span className="text-red-500">*</span></label>
+                                <label className="block text-sm font-semibold mb-1 text-gray-700">Mô tả khuyến mãi</label>
+                                <textarea
+                                    rows={3}
+                                    value={currentPromo.description || ''}
+                                    onChange={(e) => setCurrentPromo({ ...currentPromo, description: e.target.value })}
+                                    placeholder="VD: Giảm 20% cho đơn hàng..."
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors overflow-y-auto resize-y [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full" />
+                            </div>
+
+                            <div className="col-span-2">
+                                <label className="block text-sm font-semibold mb-1 text-gray-700">Loại Khuyến Mãi <span className="text-red-500">*</span></label>
                                 <CustomSelect
-                                    value={currentPromo.targetId || ''}
-                                    placeholder="-- Chọn sản phẩm --"
+                                    value={currentPromo.type || 'SHOP'}
                                     onChange={(val) => {
-                                        const id = Number(val);
-                                        const name = products.find(p => p.id === id)?.name;
-                                        setCurrentPromo({...currentPromo, targetId: id, targetName: name});
+                                        if (val !== currentPromo.type) {
+                                            setCurrentPromo({ ...currentPromo, type: val as PromotionType, targetId: undefined, targetName: '' });
+                                        }
                                     }}
-                                    options={products.map(prod => ({ value: prod.id, label: prod.name }))}
+                                    options={[
+                                        { value: 'SHOP', label: 'Cho tất cả sản phẩm' },
+                                        { value: 'CATEGORY', label: 'Cho danh mục' },
+                                        { value: 'PRODUCT', label: 'Cho từng sản phẩm' },
+                                        { value: 'SHIPPING', label: 'Mã vận chuyển' }
+                                    ]}
                                 />
                             </div>
-                        )}
 
-                        <div>
-                            <label className="block text-sm font-semibold mb-1 text-gray-700">Kiểu giảm</label>
-                            <CustomSelect
-                                value={currentPromo.discountType || 'PERCENTAGE'}
-                                onChange={(val) => setCurrentPromo({...currentPromo, discountType: val as DiscountType})}
-                                options={[
-                                    { value: 'PERCENTAGE', label: 'Phần trăm (%)' },
-                                    { value: 'FIXED_AMOUNT', label: 'Số tiền cố định (VNĐ)' },
-                                    { value: 'FREE', label: 'Miễn phí (Free)' }
-                                ]}
-                            />
+                            {currentPromo.type === 'CATEGORY' && (
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-semibold mb-1 text-gray-700">Chọn Danh Mục Áp Dụng <span className="text-red-500">*</span></label>
+                                    <CustomSelect
+                                        value={currentPromo.targetId || ''}
+                                        placeholder="-- Chọn danh mục --"
+                                        onChange={(val) => {
+                                            const id = Number(val);
+                                            const name = categories.find(c => c.id === id)?.name;
+                                            setCurrentPromo({ ...currentPromo, targetId: id, targetName: name });
+                                        }}
+                                        options={categories.map(cat => ({ value: cat.id, label: cat.name }))}
+                                    />
+                                </div>
+                            )}
+
+                            {currentPromo.type === 'PRODUCT' && (
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-semibold mb-1 text-gray-700">Chọn Sản Phẩm Áp Dụng <span className="text-red-500">*</span></label>
+                                    <CustomSelect
+                                        value={currentPromo.targetId || ''}
+                                        placeholder="-- Chọn sản phẩm --"
+                                        onChange={(val) => {
+                                            const id = Number(val);
+                                            const name = products.find(p => p.id === id)?.name;
+                                            setCurrentPromo({ ...currentPromo, targetId: id, targetName: name });
+                                        }}
+                                        options={products.map(prod => ({ value: prod.id, label: prod.name }))}
+                                    />
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="block text-sm font-semibold mb-1 text-gray-700">Kiểu giảm</label>
+                                <CustomSelect
+                                    value={currentPromo.discountType || 'PERCENTAGE'}
+                                    onChange={(val) => setCurrentPromo({ ...currentPromo, discountType: val as DiscountType })}
+                                    options={[
+                                        { value: 'PERCENTAGE', label: 'Phần trăm (%)' },
+                                        { value: 'FIXED_AMOUNT', label: 'Số tiền cố định (VNĐ)' },
+                                        { value: 'FREE', label: 'Miễn phí (Free)' }
+                                    ]}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold mb-1 text-gray-700">
+                                    Mức giảm {currentPromo.discountType === 'PERCENTAGE' ? '(%)' : currentPromo.discountType === 'FIXED_AMOUNT' ? '(VNĐ)' : '(Bỏ qua nếu FREE)'}
+                                </label>
+                                <input
+                                    type="number"
+                                    value={currentPromo.discountValue || ''}
+                                    onChange={(e) => setCurrentPromo({ ...currentPromo, discountValue: e.target.value === '' ? '' : Number(e.target.value) })}
+                                    placeholder="0"
+                                    disabled={currentPromo.discountType === 'FREE'}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors disabled:bg-gray-100"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold mb-1 text-gray-700">Giá trị đơn tối thiểu (VNĐ)</label>
+                                <input
+                                    type="number"
+                                    value={currentPromo.minOrderValue || ''}
+                                    onChange={(e) => setCurrentPromo({ ...currentPromo, minOrderValue: e.target.value === '' ? '' : Number(e.target.value) })}
+                                    placeholder="0"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold mb-1 text-gray-700">
+                                    Giảm tối đa (VNĐ) {currentPromo.discountType === 'FIXED_AMOUNT' ? '(Có thể bỏ qua)' : ''}
+                                </label>
+                                <input
+                                    type="number"
+                                    value={currentPromo.maxDiscountValue || ''}
+                                    onChange={(e) => setCurrentPromo({ ...currentPromo, maxDiscountValue: e.target.value === '' ? '' : Number(e.target.value) })}
+                                    placeholder="0"
+                                    disabled={currentPromo.discountType === 'FREE'}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors disabled:bg-gray-100"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold mb-1 text-gray-700">Số lượng mã</label>
+                                <input
+                                    type="number"
+                                    value={currentPromo.quantity ?? ''}
+                                    onChange={(e) => setCurrentPromo({ ...currentPromo, quantity: e.target.value === '' ? '' : Number(e.target.value) })}
+                                    placeholder="VD: 100"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold mb-1 text-gray-700">Trạng thái</label>
+                                <CustomSelect
+                                    value={currentPromo.isActive ? 'TRUE' : 'FALSE'}
+                                    onChange={(val) => setCurrentPromo({ ...currentPromo, isActive: val === 'TRUE' })}
+                                    options={[
+                                        { value: 'TRUE', label: 'Hoạt động' },
+                                        { value: 'FALSE', label: 'Đang ẩn' }
+                                    ]}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold mb-1 text-gray-700">Thời gian bắt đầu <span className="text-red-500">*</span></label>
+                                <input
+                                    type="datetime-local"
+                                    required
+                                    value={currentPromo.startDate || ''}
+                                    onChange={(e) => setCurrentPromo({ ...currentPromo, startDate: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors cursor-text"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold mb-1 text-gray-700">Thời gian kết thúc <span className="text-red-500">*</span></label>
+                                <input
+                                    type="datetime-local"
+                                    required
+                                    value={currentPromo.endDate || ''}
+                                    onChange={(e) => setCurrentPromo({ ...currentPromo, endDate: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors cursor-text"
+                                />
+                            </div>
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-semibold mb-1 text-gray-700">
-                                Mức giảm {currentPromo.discountType === 'PERCENTAGE' ? '(%)' : currentPromo.discountType === 'FIXED_AMOUNT' ? '(VNĐ)' : '(Bỏ qua nếu FREE)'}
-                            </label>
-                            <input 
-                                type="number" 
-                                value={currentPromo.discountValue || ''}
-                                onChange={(e) => setCurrentPromo({...currentPromo, discountValue: e.target.value === '' ? '' : Number(e.target.value)})}
-                                placeholder="0"
-                                disabled={currentPromo.discountType === 'FREE'}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors disabled:bg-gray-100"
-                            />
                         </div>
-
-                        <div>
-                            <label className="block text-sm font-semibold mb-1 text-gray-700">Giá trị đơn tối thiểu (VNĐ)</label>
-                            <input 
-                                type="number" 
-                                value={currentPromo.minOrderValue || ''}
-                                onChange={(e) => setCurrentPromo({...currentPromo, minOrderValue: e.target.value === '' ? '' : Number(e.target.value)})}
-                                placeholder="0"
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-semibold mb-1 text-gray-700">
-                                Giảm tối đa (VNĐ) {currentPromo.discountType === 'FIXED_AMOUNT' ? '(Có thể bỏ qua)' : ''}
-                            </label>
-                            <input 
-                                type="number" 
-                                value={currentPromo.maxDiscountValue || ''}
-                                onChange={(e) => setCurrentPromo({...currentPromo, maxDiscountValue: e.target.value === '' ? '' : Number(e.target.value)})}
-                                placeholder="0"
-                                disabled={currentPromo.discountType === 'FREE'}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors disabled:bg-gray-100"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-semibold mb-1 text-gray-700">Số lượng mã</label>
-                            <input 
-                                type="number" 
-                                value={currentPromo.quantity ?? ''}
-                                onChange={(e) => setCurrentPromo({...currentPromo, quantity: e.target.value === '' ? '' : Number(e.target.value)})}
-                                placeholder="VD: 100"
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-semibold mb-1 text-gray-700">Trạng thái</label>
-                            <CustomSelect
-                                value={currentPromo.isActive ? 'TRUE' : 'FALSE'}
-                                onChange={(val) => setCurrentPromo({...currentPromo, isActive: val === 'TRUE'})}
-                                options={[
-                                    { value: 'TRUE', label: 'Hoạt động' },
-                                    { value: 'FALSE', label: 'Đang ẩn' }
-                                ]}
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-semibold mb-1 text-gray-700">Thời gian bắt đầu <span className="text-red-500">*</span></label>
-                            <input 
-                                type="datetime-local" 
-                                required
-                                value={currentPromo.startDate || ''}
-                                onChange={(e) => setCurrentPromo({...currentPromo, startDate: e.target.value})}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors cursor-text"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-semibold mb-1 text-gray-700">Thời gian kết thúc <span className="text-red-500">*</span></label>
-                            <input 
-                                type="datetime-local" 
-                                required
-                                value={currentPromo.endDate || ''}
-                                onChange={(e) => setCurrentPromo({...currentPromo, endDate: e.target.value})}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors cursor-text"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="pt-4 mt-2 border-t flex justify-end gap-3">
-                        <button type="button" onClick={onClose} className="px-5 py-2 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition-colors">
-                            Hủy
+                    <div className="px-6 py-4 border-t bg-white sticky bottom-0 z-20 flex justify-end gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                        <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition-colors">
+                            Hủy Bỏ
                         </button>
-                        <button type="submit" disabled={isSubmitting} className="px-5 py-2 rounded-xl bg-[#406D5E] text-white font-bold hover:bg-[#2f5146] transition-colors shadow-md disabled:bg-gray-400 disabled:cursor-not-allowed">
-                            {isSubmitting ? "Đang tạo..." : "Tạo mã"}
+                        <button type="submit" disabled={isSubmitting} className="px-8 py-2.5 rounded-xl bg-[#406D5E] text-white font-bold hover:bg-[#2f5146] transition-colors shadow-lg shadow-[#406D5E]/30 flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                            {isSubmitting ? (
+                                <><span className="material-symbols-outlined animate-spin text-lg">autorenew</span> Đang tạo...</>
+                            ) : (
+                                <><span className="material-symbols-outlined text-lg">save</span> Tạo mã</>
+                            )}
                         </button>
-                    </div>
+                        </div>
                 </form>
             </div>
         </div>
@@ -316,7 +321,7 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder 
                 </span>
             </div>
             {isOpen && !disabled && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-100 rounded-lg shadow-xl max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-2 py-1">
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-100 rounded-lg shadow-xl max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-2 py-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full">
                     {options.map((opt) => (
                         <div
                             key={opt.value}

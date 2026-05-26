@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import com.example.minigarden.dto.AddToCartRequest;
 import com.example.minigarden.repository.CartItemRepository;
 import com.example.minigarden.repository.CartRepository;
+import com.example.minigarden.repository.ProductRepository;
 import com.example.minigarden.entity.Carts;
 import com.example.minigarden.entity.CartItems;
 import com.example.minigarden.entity.Products;
@@ -26,7 +27,15 @@ public class CartService {
 
     @Autowired
     private CartItemRepository cartItemRepository;
+
+    @Autowired
+    private ProductRepository productRepository;
+
     public String addToCart(AddToCartRequest request) {
+
+        if (request.getUserId() <= 0) {
+            throw new RuntimeException("Vui lòng đăng nhập để thêm vào giỏ hàng");
+        }
 
         // 1. tìm cart theo user
         Carts cart = cartRepository.findByUserId(request.getUserId())
@@ -38,6 +47,12 @@ public class CartService {
 
                     return cartRepository.save(newCart);
                 });
+
+        Products product = productRepository.findById(request.getProductId())
+                .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại"));
+
+        int stock = product.getQuantity() != null ? product.getQuantity() : 0;
+        int addQty = request.getQuantity() > 0 ? request.getQuantity() : 1;
 
         // 2. kiểm tra sản phẩm đã tồn tại chưa
         Optional<CartItems> optionalCartItem =
@@ -51,13 +66,21 @@ public class CartService {
 
             CartItems cartItem = optionalCartItem.get();
 
-            cartItem.setQuantity(
-                    cartItem.getQuantity() + request.getQuantity()
-            );
+            int currentQty = cartItem.getQuantity() != null ? cartItem.getQuantity() : 0;
+            int newQuantity = currentQty + addQty;
+            if (stock < newQuantity) {
+                throw new RuntimeException("Sản phẩm không đủ số lượng trong kho");
+            }
+
+            cartItem.setQuantity(newQuantity);
 
             cartItemRepository.save(cartItem);
 
         } else {
+
+            if (stock < addQty) {
+                throw new RuntimeException("Sản phẩm không đủ số lượng trong kho");
+            }
 
             // 4. chưa tồn tại -> tạo mới
             CartItems cartItem = new CartItems();
@@ -65,12 +88,9 @@ public class CartService {
             // Set đối tượng Cart thay vì CartId
             cartItem.setCart(cart);
 
-            // JPA cho phép tham chiếu khóa ngoại chỉ bằng cách tạo Object và gắn ID
-            Products product = new Products();
-            product.setId(request.getProductId());
             cartItem.setProduct(product);
             
-            cartItem.setQuantity(request.getQuantity());
+            cartItem.setQuantity(addQty);
 
             cartItemRepository.save(cartItem);
         }
@@ -130,6 +150,11 @@ public class CartService {
             if (newQuantity <= 0) {
                 cartItemRepository.delete(item); // Số lượng <= 0 thì tự động xóa khỏi giỏ
             } else {
+                int stock = item.getProduct().getQuantity() != null ? item.getProduct().getQuantity() : 0;
+                // Chỉ kiểm tra tồn kho nếu số lượng tăng lên (bấm dấu +)
+                if (delta > 0 && stock < newQuantity) {
+                    throw new RuntimeException("Sản phẩm không đủ số lượng trong kho");
+                }
                 item.setQuantity(newQuantity);
                 cartItemRepository.save(item);
             }

@@ -75,6 +75,8 @@ const AdminHeader: React.FC = () => {
         if (location.pathname.includes("/promotions")) return "Quản lý khuyến mãi";
         if (location.pathname.includes("/payments")) return "Quản lý thanh toán";
         if (location.pathname.includes("/profile")) return "Hồ sơ cá nhân";
+        if (location.pathname.includes("/reviews")) return "Quản lý đánh giá";
+        if (location.pathname.includes("/blogs")) return "Quản lý bài viết";
         return "Tổng quan";
     };
 

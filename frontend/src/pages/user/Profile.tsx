@@ -127,8 +127,9 @@ export default function Profile() {
                     status: getStatusLabel(order.status),
                     statusColor: getStatusColor(order.status),
                     updatedAt: order.updatedAt,
-                    promoCode: order.promotions?.length > 0 ? order.promotions[0].promotionCode : null,
+                    promoCode: order.promotions?.length > 0 ? order.promotions.map((p: any) => p.promotionCode).join(', ') : null,
                     discount: order.discountAmount || 0,
+                    promotions: order.promotions || [],
                     shippingFee: order.shippingFee || 0,
                     receiverName: order.receiverName,
                     phone: order.phone,
@@ -199,7 +200,8 @@ export default function Profile() {
                     editCount: r.editCount || 0,
                     content: r.comment,
                     status: r.status,
-                    reviewImages: r.reviewImages || []
+                    reviewImages: r.reviewImages || [],
+                    replies: r.replies || []
                 }));
                 setUserReviews(formattedReviews);
             } catch (error) {
@@ -334,7 +336,8 @@ export default function Profile() {
                     updatedAt: new Date().toLocaleString('vi-VN'),
                     editCount: (reviewProduct.editCount || 0) + 1,
                     content: reviewText,
-                    reviewImages: [...imagePreviews]
+                    reviewImages: [...imagePreviews],
+                    replies: reviewProduct.replies || []
                 };
                 setUserReviews(prev => prev.map(r => r.id === reviewProduct.id ? updatedReview : r));
 
@@ -375,7 +378,8 @@ export default function Profile() {
                     date: new Date().toLocaleDateString('vi-VN'),
                     content: reviewText,
                     status: "Đã duyệt",
-                    reviewImages: [...imagePreviews] // Dùng luôn mảng ảnh preview tạm thời
+                    reviewImages: [...imagePreviews], // Dùng luôn mảng ảnh preview tạm thời
+                    replies: []
                 };
                 setUserReviews(prev => [newReview, ...prev]);
             }
@@ -388,6 +392,101 @@ export default function Profile() {
 
         } catch (error: any) {
             Toast.fire({ icon: 'error', title: error.response?.data?.message || 'Lỗi khi gửi đánh giá' });
+        }
+    };
+
+    const handleDeleteReview = async (reviewId: number) => {
+        const result = await Swal.fire({
+            title: 'Xóa đánh giá?',
+            text: "Bạn có chắc chắn muốn xóa (ẩn) đánh giá này không?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Đồng ý',
+            cancelButtonText: 'Hủy',
+            customClass: {
+                confirmButton: 'bg-red-500 text-white px-6 py-2.5 rounded-xl font-bold mx-3 hover:bg-red-600',
+                cancelButton: 'bg-gray-200 text-gray-700 px-6 py-2.5 rounded-xl font-bold mx-3 hover:bg-gray-300'
+            },
+            buttonsStyling: false
+        });
+
+        if (result.isConfirmed) {
+            try {
+                await axios.delete(`http://localhost:8080/api/reviews/${reviewId}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                Toast.fire({ icon: 'success', title: 'Đã xóa đánh giá!' });
+                setUserReviews(prev => prev.filter(r => r.id !== reviewId)); // Cập nhật ngay trên giao diện
+            } catch (error: any) {
+                Toast.fire({ icon: 'error', title: error.response?.data?.message || 'Lỗi khi xóa đánh giá' });
+            }
+        }
+    };
+
+    const handleReplyReviewSubmit = async (reviewId: number, content: string) => {
+        try {
+            await axios.post("http://localhost:8080/api/reviews/reply", {
+                reviewId,
+                comment: content
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            Toast.fire({ icon: 'success', title: 'Đã gửi phản hồi!' });
+
+            // Tải lại danh sách đánh giá từ API
+            const response = await axios.get("http://localhost:8080/api/reviews/my-reviews", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const formattedReviews = response.data.map((r: any) => ({
+                id: r.id, productName: r.productName, image: r.image || "/images/terrarium.png", rating: r.rating, date: new Date(r.createdAt).toLocaleDateString('vi-VN'), updatedAt: r.updatedAt ? new Date(r.updatedAt).toLocaleString('vi-VN') : null, editCount: r.editCount || 0, content: r.comment, status: r.status, reviewImages: r.reviewImages || [], replies: r.replies || []
+            }));
+            setUserReviews(formattedReviews);
+        } catch (error: any) {
+            Toast.fire({ icon: 'error', title: error.response?.data?.message || "Lỗi khi gửi phản hồi" });
+            throw error;
+        }
+    };
+
+    const handleEditReplySubmit = async (replyId: number, content: string) => {
+        try {
+            await axios.put(`http://localhost:8080/api/reviews/reply/${replyId}`, {
+                comment: content
+            }, { headers: { Authorization: `Bearer ${token}` } });
+            Toast.fire({ icon: 'success', title: 'Cập nhật phản hồi thành công!' });
+
+            const response = await axios.get("http://localhost:8080/api/reviews/my-reviews", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const formattedReviews = response.data.map((r: any) => ({
+                id: r.id, productName: r.productName, image: r.image || "/images/terrarium.png", rating: r.rating, date: new Date(r.createdAt).toLocaleDateString('vi-VN'), updatedAt: r.updatedAt ? new Date(r.updatedAt).toLocaleString('vi-VN') : null, editCount: r.editCount || 0, content: r.comment, status: r.status, reviewImages: r.reviewImages || [], replies: r.replies || []
+            }));
+            setUserReviews(formattedReviews);
+        } catch (error: any) {
+            Toast.fire({ icon: 'error', title: error.response?.data?.message || "Lỗi khi cập nhật phản hồi" });
+        }
+    };
+
+    const handleDeleteReplyClick = async (replyId: number) => {
+        const result = await Swal.fire({
+            title: 'Xóa phản hồi?',
+            text: "Bạn có chắc chắn muốn xóa phản hồi này không?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Xóa',
+            cancelButtonText: 'Hủy',
+            customClass: { confirmButton: 'bg-red-500 text-white px-6 py-2.5 rounded-xl font-bold mx-3 hover:bg-red-600', cancelButton: 'bg-gray-200 text-gray-700 px-6 py-2.5 rounded-xl font-bold mx-3 hover:bg-gray-300' },
+            buttonsStyling: false
+        });
+
+        if (result.isConfirmed) {
+            try {
+                await axios.delete(`http://localhost:8080/api/reviews/reply/${replyId}`, { headers: { Authorization: `Bearer ${token}` } });
+                Toast.fire({ icon: 'success', title: 'Đã xóa phản hồi!' });
+                // Cập nhật lại UI tạm thời mà không cần fetch
+                setUserReviews(prev => prev.map(r => ({ ...r, replies: r.replies.filter((rep: any) => rep.id !== replyId) })));
+            } catch (error: any) {
+                Toast.fire({ icon: 'error', title: error.response?.data?.message || "Lỗi khi xóa phản hồi" });
+            }
         }
     };
 
@@ -606,6 +705,10 @@ export default function Profile() {
                                         setReviewFiles([]);
                                         setIsReviewModalOpen(true);
                                     }}
+                                    onDeleteReviewClick={handleDeleteReview}
+                                    onReplyReviewSubmit={handleReplyReviewSubmit}
+                                    onEditReplySubmit={handleEditReplySubmit}
+                                    onDeleteReplyClick={handleDeleteReplyClick}
                                 />
                             )}
 
@@ -730,38 +833,78 @@ export default function Profile() {
                                         </tbody>
                                     </table>
                                 </div>
-                                {selectedOrder.promoCode && (
-                                    <div className="mt-4 flex justify-between items-center bg-emerald-50 p-3.5 rounded-xl border border-emerald-100">
-                                        <div className="flex items-center gap-2 text-emerald-700">
-                                            <span className="material-symbols-outlined text-[20px]">local_activity</span>
-                                            <span className="font-semibold text-sm">Mã giảm giá: <span className="font-bold px-2 py-1 bg-white rounded-md ml-1 border border-emerald-200 shadow-sm">{selectedOrder.promoCode}</span></span>
-                                        </div>
-                                        <span className="font-bold text-emerald-700">
-                                            -{selectedOrder.discount?.toLocaleString('vi-VN')}đ
-                                        </span>
+                                 {selectedOrder.promotions && selectedOrder.promotions.length > 0 && (
+                                    <div className="mt-4 space-y-2">
+                                        {selectedOrder.promotions.map((promo: any, idx: number) => {
+                                            const discountVal = promo.discountAmount || promo.discount_amount || 0;
+                                            const isShipping = promo.promotionCode?.toUpperCase().includes('SHIP');
+                                            return (
+                                                <div key={idx} className={`flex justify-between items-center p-3.5 rounded-xl border ${isShipping ? 'bg-blue-50 border-blue-100' : 'bg-emerald-50 border-emerald-100'}`}>
+                                                    <div className={`flex items-center gap-2 ${isShipping ? 'text-blue-700' : 'text-emerald-700'}`}>
+                                                        <span className="material-symbols-outlined text-[20px]">
+                                                            {isShipping ? 'local_shipping' : 'local_activity'}
+                                                        </span>
+                                                        <span className="font-semibold text-sm">
+                                                            {isShipping ? 'Mã vận chuyển:' : 'Mã ưu đãi:'} <span className={`font-bold px-2 py-1 bg-white rounded-md ml-1 border shadow-sm ${isShipping ? 'border-blue-200' : 'border-emerald-200'}`}>{promo.promotionCode}</span>
+                                                        </span>
+                                                    </div>
+                                                    <span className={`font-bold ${isShipping ? 'text-blue-700' : 'text-emerald-700'}`}>
+                                                        -{discountVal.toLocaleString('vi-VN')}đ
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 )}
-
-                                {/* TỔNG TIỀN */}
-                                <div className="mt-6 pt-4 border-t border-gray-100 flex flex-col items-end space-y-2">
-                                    <div className="flex justify-between w-full sm:w-1/2 text-gray-600 text-sm">
-                                        <span>Tạm tính:</span>
-                                        <span className="font-semibold">{selectedOrderSubtotal.toLocaleString('vi-VN')}đ</span>
-                                    </div>
-                                    {/* Phí vận chuyển */}
-                                    <div className="flex justify-between w-full sm:w-1/2 text-gray-600 text-sm">
-                                        <span>Phí vận chuyển:</span>
-                                        <span className="font-semibold">{selectedOrder.shippingFee ? selectedOrder.shippingFee.toLocaleString('vi-VN') + 'đ' : '0đ'}</span>
-                                    </div>
-                                    {selectedOrder.promoCode && (
-                                        <div className="flex justify-between w-full sm:w-1/2 text-emerald-600 text-sm">
-                                            <span>Giảm giá:</span>
-                                            <span className="font-semibold">-{selectedOrderDiscount.toLocaleString('vi-VN')}đ</span>
+                                {/* TỔNG TIỀN VÀ THANH TOÁN */}
+                                <div className="mt-6 pt-6 border-t border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative">
+                                    {/* Logo in chìm Đã thanh toán */}
+                                    {(selectedOrder.paymentMethod?.toUpperCase() === 'VNPAY' || selectedOrder.status === 'Đã giao') && (
+                                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.08] pointer-events-none transform -rotate-12 select-none z-0">
+                                            <div className="border-8 border-emerald-600 rounded-3xl p-6 flex flex-col items-center justify-center">
+                                                <span className="font-black text-4xl sm:text-5xl text-emerald-600 tracking-widest uppercase">Đã thanh toán</span>
+                                            </div>
                                         </div>
                                     )}
-                                    <div className="flex justify-between w-full sm:w-1/2 text-lg pt-2 border-t border-gray-100">
-                                        <span className="font-bold text-gray-800">Tổng cộng:</span>
-                                        <span className="font-black text-primary">{selectedOrderFinalTotal.toLocaleString('vi-VN')}đ</span>
+
+                                    {/* Trạng thái thanh toán (Bên trái) */}
+                                    <div className="flex flex-col items-start w-full md:w-auto bg-gray-50 p-5 rounded-xl border border-gray-200 relative z-10">
+                                        {(selectedOrder.paymentMethod?.toUpperCase() === 'VNPAY' || selectedOrder.status === 'Đã giao') ? (
+                                            <div className="flex flex-col items-start gap-3">
+                                                <span className="text-sm font-black px-4 py-2 bg-emerald-100 text-emerald-700 rounded-full border border-emerald-200 flex items-center gap-2 shadow-sm">
+                                                    <span className="material-symbols-outlined text-[20px]">check_circle</span> Đã thanh toán
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col items-start gap-3">
+                                                <span className="text-sm font-black px-4 py-2 bg-orange-100 text-orange-700 rounded-full border border-orange-200 flex items-center gap-2 shadow-sm">
+                                                    <span className="material-symbols-outlined text-[20px]">schedule</span> Chưa thanh toán
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Phần Tạm tính & Tổng cộng (Bên phải) */}
+                                    <div className="flex flex-col w-full md:w-1/2 lg:w-1/3 gap-2 relative z-10">
+                                        <div className="flex justify-between text-gray-600 text-sm">
+                                            <span>Tạm tính:</span>
+                                            <span className="font-semibold">{selectedOrderSubtotal.toLocaleString('vi-VN')}đ</span>
+                                        </div>
+                                        {/* Phí vận chuyển */}
+                                        <div className="flex justify-between text-gray-600 text-sm">
+                                            <span>Phí vận chuyển:</span>
+                                            <span className="font-semibold">{selectedOrder.shippingFee ? selectedOrder.shippingFee.toLocaleString('vi-VN') + 'đ' : '0đ'}</span>
+                                        </div>
+                                        {selectedOrderDiscount > 0 && (
+                                            <div className="flex justify-between text-emerald-600 text-sm">
+                                                <span>Giảm giá:</span>
+                                                <span className="font-semibold">-{selectedOrderDiscount.toLocaleString('vi-VN')}đ</span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between text-lg pt-2 border-t border-gray-100">
+                                            <span className="font-bold text-gray-800">Tổng cộng:</span>
+                                            <span className="font-black text-primary">{selectedOrderFinalTotal.toLocaleString('vi-VN')}đ</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -829,6 +972,14 @@ export default function Profile() {
                             </div>
 
                             <form onSubmit={handleSubmitReview} className="space-y-6">
+                                {isEditReviewMode && (
+                                    <div className="bg-orange-50 border border-orange-100 text-orange-600 px-4 py-3 rounded-xl text-sm flex items-start gap-2">
+                                        <span className="material-symbols-outlined text-[20px] shrink-0">error</span>
+                                        <p>
+                                            Mỗi đánh giá chỉ được chỉnh sửa tối đa 2 lần. Số lần chỉnh sửa còn lại của bạn là <strong>{2 - (reviewProduct.editCount || 0)}</strong> lần.
+                                        </p>
+                                    </div>
+                                )}
                                 {/* Đánh giá sao */}
                                 <div className="flex flex-col items-center justify-center space-y-3">
                                     <p className="font-bold text-gray-700">Bạn cảm thấy sản phẩm này thế nào?</p>

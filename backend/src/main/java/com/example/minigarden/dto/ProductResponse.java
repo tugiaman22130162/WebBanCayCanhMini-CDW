@@ -18,6 +18,7 @@ public class ProductResponse {
     private String categoryName;
     private List<String> images;
     private ProductDetailResponse details;
+    private Integer soldCount;
 
     private Double discountValue;
     private String discountType;

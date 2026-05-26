@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import axios from "axios";
 import { useAuth } from "../../context/AuthContext";
 import { showSuccessToast, showErrorToast } from "../../utils/ToastUtils";
+import Swal from "sweetalert2";
 
 interface ProductReviewsProp {
     productId: number;
@@ -23,8 +24,16 @@ export default function ProductReview({ productId, productRating, initialTotalRe
     const [reviewsList, setReviewsList] = useState<any[]>([]);
     
     // State kiểm tra user có quyền đánh giá không
-    const { isLoggedIn, token } = useAuth();
+    const { isLoggedIn, token, user } = useAuth();
     const [eligibleOrderItemId, setEligibleOrderItemId] = useState<number | null>(null);
+    const [hasBoughtProduct, setHasBoughtProduct] = useState(false);
+
+    // State trả lời đánh giá (dành cho Admin hoặc Người đã mua hàng)
+    const [replyingReviewId, setReplyingReviewId] = useState<number | null>(null);
+    const [replyText, setReplyText] = useState("");
+    const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+    const [editingReplyId, setEditingReplyId] = useState<number | null>(null);
+    const [editReplyText, setEditReplyText] = useState("");
 
     // Hàm fetch danh sách review từ Backend
     const fetchReviews = async () => {
@@ -46,7 +55,7 @@ export default function ProductReview({ productId, productRating, initialTotalRe
                 editCount: r.editCount || 0,
                 content: r.comment,
                 images: r.reviewImages || [],
-                reply: r.reply // Nếu có
+                replies: r.replies?.map((rep: any) => ({...rep})) || []
             }));
             setReviewsList(formattedReviews);
         } catch (error) {
@@ -68,21 +77,25 @@ export default function ProductReview({ productId, productRating, initialTotalRe
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 
-                // Tìm orderItem thỏa mãn: Thuộc đơn Đã Giao, Cùng productId, Chưa đánh giá
                 let foundOrderItemId = null;
+                let bought = false;
+                
                 for (const order of response.data) {
                     if (order.status === 'DELIVERED') {
-                        const unreviewedItem = order.items.find((item: any) => 
-                            (item.product?.id === productId || item.productId === productId) && 
-                            !item.isReviewed
+                        const itemInOrder = order.items.find((item: any) => 
+                            (item.product?.id === productId || item.productId === productId)
                         );
-                        if (unreviewedItem) {
-                            foundOrderItemId = unreviewedItem.id;
-                            break; // Lấy 1 orderItem hợp lệ đầu tiên tìm thấy
+                        
+                        if (itemInOrder) {
+                            bought = true;
+                            if (!itemInOrder.isReviewed) {
+                                foundOrderItemId = itemInOrder.id;
+                            }
                         }
                     }
                 }
                 setEligibleOrderItemId(foundOrderItemId);
+                setHasBoughtProduct(bought);
             } catch (error) {
                 console.error("Lỗi kiểm tra quyền đánh giá:", error);
             }
@@ -164,6 +177,79 @@ export default function ProductReview({ productId, productRating, initialTotalRe
         } catch (error: any) {
             console.error("Lỗi khi gửi đánh giá:", error);
             showErrorToast(error.response?.data?.message || 'Lỗi khi gửi đánh giá', 2000);
+        }
+    };
+
+    const handleReplySubmit = async (e: React.FormEvent, reviewId: number) => {
+        e.preventDefault();
+        if (!replyText.trim()) return;
+
+        setIsSubmittingReply(true);
+        try {
+            await axios.post("http://localhost:8080/api/reviews/reply", {
+                reviewId,
+                comment: replyText.trim()
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            showSuccessToast("Gửi phản hồi thành công!", 2000);
+            setReplyingReviewId(null);
+            setReplyText("");
+            fetchReviews();
+        } catch (error: any) {
+            console.error("Lỗi khi gửi phản hồi:", error);
+            showErrorToast(error.response?.data?.message || "Lỗi khi gửi phản hồi", 2000);
+        } finally {
+            setIsSubmittingReply(false);
+        }
+    };
+
+    const handleEditReplySubmit = async (e: React.FormEvent, replyId: number) => {
+        e.preventDefault();
+        if (!editReplyText.trim()) return;
+        setIsSubmittingReply(true);
+        try {
+            await axios.put(`http://localhost:8080/api/reviews/reply/${replyId}`, {
+                comment: editReplyText.trim()
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            showSuccessToast("Cập nhật phản hồi thành công!", 2000);
+            setEditingReplyId(null);
+            setEditReplyText("");
+            fetchReviews();
+        } catch (error: any) {
+            showErrorToast(error.response?.data?.message || "Lỗi khi cập nhật phản hồi", 2000);
+        } finally {
+            setIsSubmittingReply(false);
+        }
+    };
+
+    const handleDeleteReply = async (replyId: number) => {
+        const result = await Swal.fire({
+            title: 'Xóa phản hồi?',
+            text: "Bạn có chắc chắn muốn xóa phản hồi này không?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Xóa',
+            cancelButtonText: 'Hủy',
+            customClass: {
+                confirmButton: 'bg-red-500 text-white px-6 py-2.5 rounded-xl font-bold mx-3 hover:bg-red-600',
+                cancelButton: 'bg-gray-200 text-gray-700 px-6 py-2.5 rounded-xl font-bold mx-3 hover:bg-gray-300'
+            },
+            buttonsStyling: false
+        });
+
+        if (result.isConfirmed) {
+            try {
+                await axios.delete(`http://localhost:8080/api/reviews/reply/${replyId}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                showSuccessToast("Đã xóa phản hồi!", 2000);
+                fetchReviews();
+            } catch (error: any) {
+                showErrorToast(error.response?.data?.message || "Lỗi khi xóa phản hồi", 2000);
+            }
         }
     };
 
@@ -336,19 +422,107 @@ export default function ProductReview({ productId, productRating, initialTotalRe
                                 </div>
                             )}
 
-                            {review.reply && (
-                                <div className="mt-5 flex gap-3 md:gap-4">
-                                    <div className="w-1 md:w-1.5 bg-gray-200 rounded-full shrink-0"></div>
-                                    <div className="flex-1 bg-emerald-50/50 rounded-2xl p-4 md:p-5 border border-emerald-100">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">MG</div>
-                                            <div>
-                                                <p className="text-sm font-bold text-emerald-800">Phản hồi từ {review.reply.shopName}</p>
-                                                <p className="text-xs text-gray-500 font-medium">{review.reply.date}</p>
+                            {/* Nút phản hồi dành cho Admin hoặc User đã mua sản phẩm */}
+                            {(user?.role === 'ADMIN' || hasBoughtProduct) && (
+                                <button 
+                                    onClick={() => { setReplyingReviewId(review.id); setReplyText(""); }}
+                                    className="text-xs text-primary font-bold mt-3 flex items-center gap-1 bg-primary/5 px-3 py-1.5 rounded-lg w-fit transition-colors hover:bg-primary/10"
+                                >
+                                    <span className="material-symbols-outlined text-[16px]">reply</span> Phản hồi đánh giá này
+                                </button>
+                            )}
+
+                            {/* Form phản hồi */}
+                            {replyingReviewId === review.id && (
+                                <form 
+                                    onSubmit={(e) => handleReplySubmit(e, review.id)}
+                                    className="mt-3 bg-gray-50 p-4 rounded-xl border border-gray-200 animate-in fade-in"
+                                >
+                                    <textarea
+                                        value={replyText}
+                                        onChange={(e) => setReplyText(e.target.value)}
+                                        placeholder={user?.role === 'ADMIN' ? "Nhập nội dung phản hồi với tư cách Quản trị viên..." : "Nhập bình luận phản hồi của bạn..."}
+                                        required
+                                        rows={3}
+                                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none text-sm"
+                                    />
+                                    <div className="flex justify-end gap-2 mt-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setReplyingReviewId(null)}
+                                            className="px-4 py-1.5 text-xs font-bold text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+                                        >
+                                            Hủy
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={isSubmittingReply}
+                                            className="px-4 py-1.5 text-xs font-bold text-white bg-primary rounded-lg hover:bg-[#2f5146] transition-colors disabled:opacity-50 flex items-center gap-1 shadow-sm"
+                                        >
+                                            {isSubmittingReply && <span className="material-symbols-outlined animate-spin text-[14px]">autorenew</span>}
+                                            {isSubmittingReply ? "Đang gửi..." : "Gửi phản hồi"}
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+
+                            {review.replies && review.replies.length > 0 && (
+                                <div className="mt-5 space-y-4">
+                                    {review.replies.map((reply: any, idx: number) => (
+                                        <div key={idx} className="flex gap-3 md:gap-4">
+                                            <div className="w-1 md:w-1.5 bg-gray-200 rounded-full shrink-0"></div>
+                                            <div className={`flex-1 ${reply.isAdmin ? 'bg-emerald-50/50 border-emerald-100' : 'bg-gray-50 border-gray-200'} rounded-2xl p-4 md:p-5 border`}>
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <div className="flex items-center gap-3">
+                                                        {reply.avatar ? (
+                                                            <img src={reply.avatar} alt={reply.shopName} className={`w-8 h-8 rounded-full object-cover shadow-sm border ${reply.isAdmin ? 'border-emerald-200' : 'border-gray-300'}`} />
+                                                        ) : (
+                                                            <div className={`w-8 h-8 rounded-full ${reply.isAdmin ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'} flex items-center justify-center font-bold text-xs shrink-0 shadow-sm`}>
+                                                                {reply.shopName.charAt(0).toUpperCase()}
+                                                            </div>
+                                                        )}
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className={`material-symbols-outlined ${reply.isAdmin ? 'text-emerald-600' : 'text-gray-400'} text-[18px]`}>reply</span>
+                                                            <p className={`text-sm font-bold ${reply.isAdmin ? 'text-emerald-800' : 'text-gray-700'}`}>{reply.isAdmin ? reply.shopName : `Phản hồi từ ${reply.shopName}`}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right ml-auto shrink-0 flex items-start gap-3">
+                                                        <div className="flex flex-col items-end">
+                                                            <span className="text-xs text-gray-500 font-medium block">{reply.date}</span>
+                                                            {(reply.editCount || 0) > 0 && reply.updatedAt && (
+                                                                <span className="text-[10px] text-gray-400 font-medium block mt-0.5">(Đã sửa: {reply.updatedAt})</span>
+                                                            )}
+                                                        </div>
+                                                        {/* Nút hành động cho phản hồi */}
+                                                        {(user?.id === reply.userId || user?.role === 'ADMIN') && editingReplyId !== reply.id && (
+                                                            <div className="flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
+                                                                {user?.id === reply.userId && (!reply.editCount || reply.editCount < 2) && (
+                                                                    <button onClick={() => { setEditingReplyId(reply.id); setEditReplyText(reply.content); }} className="text-gray-400 hover:text-primary transition-colors"><span className="material-symbols-outlined text-[16px]">edit</span></button>
+                                                                )}
+                                                                <button onClick={() => handleDeleteReply(reply.id)} className="text-gray-400 hover:text-red-500 transition-colors"><span className="material-symbols-outlined text-[16px]">delete</span></button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                
+                                                {editingReplyId === reply.id ? (
+                                                    <form onSubmit={(e) => handleEditReplySubmit(e, reply.id)} className="mt-2 pl-11">
+                                                        <textarea required rows={2} value={editReplyText} onChange={(e) => setEditReplyText(e.target.value)} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none text-sm" />
+                                                        <div className="flex justify-end gap-2 mt-2">
+                                                            <button type="button" onClick={() => setEditingReplyId(null)} className="px-3 py-1.5 text-xs font-bold text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">
+                                                                Hủy
+                                                            </button>
+                                                            <button type="submit" disabled={isSubmittingReply} className="px-3 py-1.5 text-xs font-bold text-white bg-primary rounded-lg hover:bg-[#2f5146] transition-colors shadow-sm flex items-center gap-1">
+                                                                {isSubmittingReply ? <span className="material-symbols-outlined animate-spin text-[14px]">autorenew</span> : "Cập nhật"}
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                ) : (
+                                                    <p className="text-sm text-gray-700 font-medium leading-relaxed pl-11">{reply.content}</p>
+                                                )}
                                             </div>
                                         </div>
-                                        <p className="text-sm text-gray-700 font-medium leading-relaxed pl-11">{review.reply.content}</p>
-                                    </div>
+                                    ))}
                                 </div>
                             )}
                         </div>

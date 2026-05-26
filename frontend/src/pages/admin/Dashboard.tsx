@@ -1,38 +1,131 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import Swal from "sweetalert2";
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import AdminHeader from "../../components/admin/AdminHeader";
 import AdminSidebar from "../../components/admin/AdminSidebar";
+import { showSuccessToast, showErrorToast } from "../../utils/ToastUtils";
+import { useNavigate } from "react-router-dom";
 
-// --- Mock Data ---
-const recentOrders = [
-    { id: "1001", customer: "Nguyễn Văn A", date: "20/04/2026", total: 450000, status: "PENDING", statusLabel: "Chờ xác nhận", statusColor: "bg-yellow-100 text-yellow-700" },
-    { id: "1002", customer: "Trần Thị B", date: "19/04/2026", total: 1200000, status: "SHIPPING", statusLabel: "Đang giao", statusColor: "bg-purple-100 text-purple-700" },
-    { id: "1003", customer: "Lê Văn C", date: "18/04/2026", total: 250000, status: "DELIVERED", statusLabel: "Đã giao", statusColor: "bg-emerald-100 text-emerald-700" },
-    { id: "1004", customer: "Phạm Thị D", date: "18/04/2026", total: 600000, status: "CANCELLED", statusLabel: "Đã hủy", statusColor: "bg-red-100 text-red-700" },
-    { id: "1005", customer: "Hoàng Văn E", date: "17/04/2026", total: 350000, status: "DELIVERED", statusLabel: "Đã giao", statusColor: "bg-emerald-100 text-emerald-700" },
-    { id: "1006", customer: "Vũ Thị F", date: "17/04/2026", total: 850000, status: "PENDING", statusLabel: "Chờ xác nhận", statusColor: "bg-yellow-100 text-yellow-700" },
-    { id: "1007", customer: "Đặng Văn G", date: "16/04/2026", total: 150000, status: "SHIPPING", statusLabel: "Đang giao", statusColor: "bg-purple-100 text-purple-700" },
-];
+const getStatusLabel = (status: string) => {
+    switch (status) {
+        case 'PENDING': return 'Chờ xác nhận';
+        case 'CONFIRMED': return 'Đã xác nhận';
+        case 'SHIPPING': return 'Đang giao';
+        case 'DELIVERED': return 'Đã giao';
+        case 'CANCELLED': return 'Đã hủy';
+        default: return status;
+    }
+};
 
-const categoryStats = [
-    { name: "Sen đá", count: 450, percentage: 45, color: "bg-gradient-to-r from-emerald-400 to-emerald-600", image: "https://images.unsplash.com/photo-1459411552884-841db9b3cc2a?w=100&h=100&fit=crop" },
-    { name: "Terrarium", count: 300, percentage: 30, color: "bg-gradient-to-r from-cyan-400 to-blue-500", image: "https://images.unsplash.com/photo-1528698827591-e19ccd7bc23d?w=100&h=100&fit=crop" },
-    { name: "Cây để bàn", count: 250, percentage: 25, color: "bg-gradient-to-r from-amber-400 to-orange-500", image: "https://images.unsplash.com/photo-1485955900006-10f4d324d411?w=100&h=100&fit=crop" },
-];
-
-const chartData = [
-    { label: "T1", value: 40 },
-    { label: "T2", value: 65 },
-    { label: "T3", value: 45 },
-    { label: "T4", value: 80 },
-    { label: "T5", value: 55 },
-    { label: "T6", value: 90 },
-];
+const getStatusColor = (status: string) => {
+    switch (status) {
+        case 'PENDING': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+        case 'CONFIRMED': return 'bg-blue-100 text-blue-700 border-blue-200';
+        case 'SHIPPING': return 'bg-purple-100 text-purple-700 border-purple-200';
+        case 'DELIVERED': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+        case 'CANCELLED': return 'bg-red-100 text-red-700 border-red-200';
+        default: return 'bg-gray-100 text-gray-700 border-gray-200';
+    }
+};
 
 export default function Dashboard() {
+    const navigate = useNavigate();
     const [currentPage, setCurrentPage] = useState(1);
+    
+    // State quản lý bộ lọc thời gian
+    const [timeRange, setTimeRange] = useState<'all' | '7days' | '30days' | '6months' | '1year' | 'quarter' | 'custom'>('all');
+    const [customStartDate, setCustomStartDate] = useState<string>("");
+    const [customEndDate, setCustomEndDate] = useState<string>("");
+
+    // State lưu dữ liệu thống kê từ API
+    const [stats, setStats] = useState({
+        totalRevenue: 0,
+        totalUsers: 0,
+        totalOrders: 0,
+        pendingOrders: 0,
+        totalProducts: 0,
+        recentOrders: [] as any[],
+        categoryStats: [] as any[],
+        revenueGrowthData: [] as any[],
+        userGrowthData: [] as any[],
+        transactionStats: { success: 0, failed: 0, total: 0 }
+    });
+
+    useEffect(() => {
+        fetchDashboardStats();
+    }, [timeRange, customStartDate, customEndDate]);
+
+    const fetchDashboardStats = async () => {
+        if (timeRange === 'custom' && (!customStartDate || !customEndDate)) {
+            return; // Đợi đến khi chọn đủ 2 ngày
+        }
+        try {
+            const token = localStorage.getItem("token");
+            let url = `http://localhost:8080/api/dashboard?timeRange=${timeRange}`;
+            if (timeRange === 'custom') {
+                url += `&startDate=${customStartDate}&endDate=${customEndDate}`;
+            }
+            const response = await axios.get(url, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setStats(response.data);
+        } catch (error) {
+            console.error("Lỗi tải thống kê Dashboard:", error);
+        }
+    };
+
+    const handleExportReport = async () => {
+        try {
+            Swal.fire({
+                toast: true,
+                position: 'bottom',
+                title: 'Đang xuất báo cáo Excel...',
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+                customClass: { popup: 'mb-6 rounded-full shadow-lg border border-gray-100', title: 'text-sm font-bold text-gray-700' }
+            });
+
+            const token = localStorage.getItem('token');
+            let url = `http://localhost:8080/api/dashboard/export?timeRange=${timeRange}`;
+            if (timeRange === 'custom') {
+                url += `&startDate=${customStartDate}&endDate=${customEndDate}`;
+            }
+
+            const response = await axios.get(url, {
+                responseType: 'blob', 
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            const objectUrl = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = objectUrl;
+            link.setAttribute('download', `Bao_Cao_Thong_Ke_${new Date().toISOString().slice(0, 10)}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(objectUrl);
+            
+            Swal.close();
+
+            Swal.fire({ toast: true, position: 'bottom', icon: 'success', title: 'Xuất báo cáo thành công!', timer: 2000, showConfirmButton: false, customClass: { popup: 'mb-6 rounded-full shadow-lg border border-gray-100', title: 'text-sm font-bold text-gray-700' } });
+            showSuccessToast('Xuất báo cáo thành công!', 2000);
+        } catch (error) {
+            console.error("Lỗi khi xuất báo cáo:", error);
+            Swal.fire({ toast: true, position: 'bottom', icon: 'error', title: 'Có lỗi xảy ra khi xuất báo cáo!', timer: 2000, showConfirmButton: false, customClass: { popup: 'mb-6 rounded-full shadow-lg border border-gray-100', title: 'text-sm font-bold text-gray-700' } });
+            showErrorToast('Có lỗi xảy ra khi xuất báo cáo!', 2000);
+        }
+    };
+
     const itemsPerPage = 4;
-    const totalPages = Math.ceil(recentOrders.length / itemsPerPage);
-    const currentOrders = recentOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    const totalPages = Math.ceil(stats.recentOrders.length / itemsPerPage);
+    const currentOrders = stats.recentOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+    const txTotal = stats.transactionStats.total || 0;
+    const txSuccessPct = txTotal === 0 ? 0 : Math.round((stats.transactionStats.success / txTotal) * 100);
+    const txFailedPct = txTotal === 0 ? 0 : Math.round((stats.transactionStats.failed / txTotal) * 100);
 
     return (
         <div className="h-screen bg-background text-on-surface flex overflow-hidden font-[Plus_Jakarta_Sans]">
@@ -45,17 +138,56 @@ export default function Dashboard() {
                 <AdminHeader />
 
                 {/* SCROLLABLE AREA */}
-                <main className="p-8 flex-1 overflow-y-auto">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
+                <main className="p-8 flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                         <h2 className="text-4xl font-extrabold text-gray-800">Tổng Quan</h2>
+                        
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-end gap-3 w-full md:w-auto">
+                            <select 
+                                value={timeRange}
+                                onChange={(e) => setTimeRange(e.target.value as any)}
+                                className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm font-semibold text-gray-700 shadow-sm min-w-[180px] appearance-none cursor-pointer"
+                                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundPosition: `right 12px center`, backgroundRepeat: `no-repeat`, backgroundSize: `16px 16px` }}
+                            >
+                                <option value="all">Tất cả thời gian</option>
+                                <option value="7days">7 ngày qua</option>
+                                <option value="30days">30 ngày qua</option>
+                                <option value="6months">6 tháng qua</option>
+                                <option value="1year">1 năm qua</option>
+                                <option value="quarter">Trong quý này</option>
+                                <option value="custom">Tùy chỉnh thời gian</option>
+                            </select>
+                            
+                            {timeRange === 'custom' && (
+                                <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-300 w-full sm:w-auto">
+                                    <input 
+                                        type="date" 
+                                        value={customStartDate}
+                                        onChange={(e) => setCustomStartDate(e.target.value)}
+                                        className="w-full sm:w-auto px-3 py-2 bg-white border border-gray-200 rounded-xl outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm font-medium text-gray-700 shadow-sm"
+                                    />
+                                    <span className="text-gray-400 font-bold">-</span>
+                                    <input 
+                                        type="date" 
+                                        value={customEndDate}
+                                        onChange={(e) => setCustomEndDate(e.target.value)}
+                                        className="w-full sm:w-auto px-3 py-2 bg-white border border-gray-200 rounded-xl outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm font-medium text-gray-700 shadow-sm"
+                                    />
+                                </div>
+                            )}
+                            
+                            <button onClick={handleExportReport} className="px-4 py-2.5 flex items-center gap-2 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-[#2f5146] transition-colors shadow-sm whitespace-nowrap">
+                                <span className="material-symbols-outlined text-[18px]">download</span> Xuất báo cáo
+                            </button>
+                        </div>
                     </div>
 
                     {/* 1. STATS CARDS */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                         <div className="bg-white p-6 rounded-2xl flex items-center justify-between shadow-sm border border-gray-50">
                             <div>
-                                <p className="text-sm font-semibold text-gray-500 mb-1">Doanh thu tháng</p>
-                                <h3 className="text-2xl font-black text-gray-800">24.500.000đ</h3>
+                                <p className="text-sm font-semibold text-gray-500 mb-1">Doanh thu</p>
+                                <h3 className="text-2xl font-black text-gray-800">{stats.totalRevenue.toLocaleString('vi-VN')}đ</h3>
                             </div>
                             <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
                                 <span className="material-symbols-outlined text-2xl">payments</span>
@@ -65,7 +197,7 @@ export default function Dashboard() {
                         <div className="bg-white p-6 rounded-2xl flex items-center justify-between shadow-sm border border-gray-50">
                             <div>
                                 <p className="text-sm font-semibold text-gray-500 mb-1">Tổng khách hàng</p>
-                                <h3 className="text-2xl font-black text-gray-800">1,240</h3>
+                                <h3 className="text-2xl font-black text-gray-800">{stats.totalUsers}</h3>
                             </div>
                             <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
                                 <span className="material-symbols-outlined text-2xl">group</span>
@@ -74,8 +206,8 @@ export default function Dashboard() {
 
                         <div className="bg-white p-6 rounded-2xl flex items-center justify-between shadow-sm border border-gray-50">
                             <div>
-                                <p className="text-sm font-semibold text-gray-500 mb-1">Đơn hàng mới</p>
-                                <h3 className="text-2xl font-black text-gray-800">45</h3>
+                                <p className="text-sm font-semibold text-gray-500 mb-1">Tổng đơn hàng</p>
+                                <h3 className="text-2xl font-black text-gray-800">{stats.totalOrders}</h3>
                             </div>
                             <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center">
                                 <span className="material-symbols-outlined text-2xl">shopping_bag</span>
@@ -84,8 +216,8 @@ export default function Dashboard() {
 
                         <div className="bg-white p-6 rounded-2xl flex items-center justify-between shadow-sm border border-gray-50">
                             <div>
-                                <p className="text-sm font-semibold text-gray-500 mb-1">Tồn kho cảnh báo</p>
-                                <h3 className="text-2xl font-black text-red-500">12</h3>
+                                <p className="text-sm font-semibold text-gray-500 mb-1">Đơn chờ xác nhận</p>
+                                <h3 className="text-2xl font-black text-red-500">{stats.pendingOrders}</h3>
                             </div>
                             <div className="w-12 h-12 bg-red-50 text-red-500 rounded-xl flex items-center justify-center">
                                 <span className="material-symbols-outlined text-2xl">inventory_2</span>
@@ -93,46 +225,98 @@ export default function Dashboard() {
                         </div>
                     </div>
 
-                    {/* 2. CHARTS & CATEGORY PROGRESS */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                        {/* Biểu đồ doanh thu (Giả lập bằng CSS Flexbox) */}
-                        <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-50">
-                            <h3 className="text-lg font-bold text-gray-800 mb-6">Thống kê doanh thu (6 tháng qua)</h3>
-                            <div className="h-64 flex items-end justify-between gap-2 sm:gap-6 pt-4">
-                                {chartData.map((data, index) => (
-                                    <div key={index} className="flex flex-col items-center flex-1 group">
-                                        {/* Tooltip khi hover */}
-                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold text-white bg-gray-800 px-2 py-1 rounded mb-2 whitespace-nowrap">
-                                            {data.value} Tr
-                                        </div>
-                                        {/* Cột biểu đồ */}
-                                        <div className="w-full max-w-[40px] bg-primary/20 group-hover:bg-primary transition-colors rounded-t-lg relative" style={{ height: `${data.value}%` }}></div>
-                                        {/* Nhãn trục X */}
-                                        <span className="text-sm font-semibold text-gray-500 mt-3">{data.label}</span>
-                                    </div>
-                                ))}
+                    {/* 2. CHARTS (DOANH THU & NGƯỜI DÙNG) */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                        {/* Biểu đồ doanh thu */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-50 flex flex-col">
+                            <h3 className="text-lg font-bold text-gray-800 mb-6">Tăng trưởng doanh thu</h3>
+                            <div className="h-[250px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={stats.revenueGrowthData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} tickFormatter={(value) => value >= 1000000 ? `${value / 1000000}Tr` : value >= 1000 ? `${value / 1000}k` : value} />
+                                        <Tooltip 
+                                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                                            formatter={(value: any) => [`${Number(value).toLocaleString('vi-VN')}đ`, 'Doanh thu']}
+                                        />
+                                        <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
                             </div>
                         </div>
 
-                        {/* Thống kê danh mục sản phẩm (Progress bar) */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-50">
-                            <h3 className="text-lg font-bold text-gray-800 mb-6">Tỷ lệ danh mục</h3>
+                        {/* Biểu đồ người dùng */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-50 flex flex-col">
+                            <h3 className="text-lg font-bold text-gray-800 mb-6">Tăng trưởng người dùng mới</h3>
+                            <div className="h-[250px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={stats.userGrowthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barSize={32}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+                                        <Tooltip 
+                                            cursor={{ fill: '#f3f4f6' }}
+                                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                                            formatter={(value: any) => [value, 'Người dùng']}
+                                        />
+                                        <Bar dataKey="value" fill="#3b82f6" radius={[6, 6, 6, 6]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 3. CHARTS (GIAO DỊCH & DANH MỤC) */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                        {/* Giao dịch (Biểu đồ tròn) */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-50 flex flex-col items-center justify-center">
+                            <h3 className="text-lg font-bold text-gray-800 mb-6 w-full text-left">Tỷ lệ giao dịch</h3>
+                            <div 
+                                className="w-48 h-48 rounded-full flex items-center justify-center relative shadow-inner"
+                                style={{ background: `conic-gradient(#10b981 0% ${txSuccessPct}%, #ef4444 ${txSuccessPct}% 100%)` }}
+                            >
+                                <div className="w-32 h-32 bg-white rounded-full flex flex-col items-center justify-center shadow-sm">
+                                    <span className="text-2xl font-black text-gray-800">{txTotal}</span>
+                                    <span className="text-xs text-gray-500 font-medium">Tổng giao dịch</span>
+                                </div>
+                            </div>
+                            <div className="flex justify-center gap-6 mt-8 w-full">
+                                <div className="flex items-center gap-2">
+                                    <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
+                                    <span className="text-sm font-semibold text-gray-600">Thành công ({txSuccessPct}%)</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                                    <span className="text-sm font-semibold text-gray-600">Thất bại ({txFailedPct}%)</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Thống kê danh mục */}
+                        <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-50">
+                            <h3 className="text-lg font-bold text-gray-800 mb-6">Thống kê sản phẩm theo danh mục</h3>
                             <div className="space-y-6">
-                                {categoryStats.map((category, index) => (
+                                {stats.categoryStats.map((category: any, index: number) => (
                                     <div key={index} className="flex items-center gap-4">
-                                        <img src={category.image} alt={category.name} className="w-12 h-12 rounded-lg object-cover shadow-sm border border-gray-100" />
+                                        <img src={category.image || "https://images.unsplash.com/photo-1459411552884-841db9b3cc2a?w=100&h=100&fit=crop"} alt={category.name} className="w-12 h-12 rounded-lg object-cover shadow-sm border border-gray-100" />
                                         <div className="flex-1">
                                             <div className="flex justify-between text-sm font-semibold text-gray-700 mb-1">
                                                 <span>{category.name}</span>
-                                                <span>{category.percentage}%</span>
+                                                <span>{category.count} sản phẩm ({category.percentage}%)</span>
                                             </div>
-                                            <div className="w-full bg-gray-200 rounded-full h-2.5">
+                                            <div className="w-full bg-gray-100 rounded-full h-2.5">
                                                 <div 
                                                     className={`h-2.5 rounded-full ${category.color}`} 
                                                     style={{ width: `${category.percentage}%` }}
                                                 ></div>
                                             </div>
-                                            <p className="text-xs text-gray-500 mt-1">{category.count} sản phẩm</p>
                                         </div>
                                     </div>
                                 ))}
@@ -140,13 +324,13 @@ export default function Dashboard() {
                         </div>
                     </div>
 
-                    {/* 3. RECENT ORDERS LIST */}
+                    {/* 4. RECENT ORDERS LIST */}
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-50 overflow-hidden">
                         <div className="p-6 border-b flex justify-between items-center">
                             <h3 className="text-lg font-bold text-gray-800">Đơn hàng gần đây</h3>
-                            <button className="text-sm font-semibold text-primary hover:underline">Xem tất cả</button>
+                            <button onClick={() => navigate('/admin/orders')} className="text-sm font-semibold text-primary hover:underline">Xem tất cả</button>
                         </div>
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full">
                             <table className="w-full min-w-[700px]">
                                 <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold">
                                     <tr>
@@ -159,15 +343,15 @@ export default function Dashboard() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {currentOrders.map((order, index) => (
+                                    {currentOrders.map((order: any, index: number) => (
                                         <tr key={index} className="border-t border-gray-50 hover:bg-gray-50 transition">
                                             <td className="p-4 pl-6 font-bold text-primary">#{order.id}</td>
                                             <td className="p-4 font-semibold text-gray-800">{order.customer}</td>
                                             <td className="p-4 text-sm text-gray-600">{order.date}</td>
                                             <td className="p-4 text-right font-bold text-gray-800">{order.total.toLocaleString('vi-VN')}đ</td>
                                             <td className="p-4 text-center">
-                                                <span className={`text-xs font-bold px-3 py-1 rounded-full ${order.statusColor}`}>
-                                                    {order.statusLabel}
+                                                <span className={`text-xs font-bold px-3 py-1 border rounded-full ${getStatusColor(order.status)}`}>
+                                                    {getStatusLabel(order.status)}
                                                 </span>
                                             </td>
                                             <td className="p-4 pr-6 text-right">

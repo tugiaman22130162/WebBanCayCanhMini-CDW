@@ -53,7 +53,7 @@ export default function MyOrders({ orders, onViewDetails, onViewHistory }: MyOrd
                 <h2 className="text-2xl font-bold text-gray-800">Đơn Hàng Của Tôi</h2>
                 <button
                     onClick={onViewHistory}
-                    className="text-sm font-bold text-primary hover:text-primary-container transition-colors hover:underline"
+                    className="text-sm font-bold text-primary hover:text-primary-container transition-colors"
                 >Lịch sử mua hàng</button>
             </div>
 

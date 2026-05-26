@@ -104,9 +104,10 @@ export default function Cart() {
             fetchCart(); // Cập nhật lại list sau khi thành công
             // Báo cho Header biết giỏ hàng thay đổi
             window.dispatchEvent(new Event("cartUpdated"));
-        } catch (error) {
+        } catch (error: any) {
             console.error("Lỗi cập nhật số lượng:", error);
-            Swal.fire("Lỗi", "Không thể cập nhật số lượng", "error");
+            const errorMessage = error.response?.data?.message || error.response?.data || "Sản phẩm không đủ số lượng trong kho!";
+            Swal.fire("Thông báo", typeof errorMessage === 'string' ? errorMessage : "Sản phẩm không đủ số lượng", "warning");
         }
     };
 
