@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 
 interface MyReviewsProps {
     userReviews: any[];
@@ -12,7 +13,10 @@ interface MyReviewsProps {
 }
 
 export default function MyReviews({ userReviews, pendingReviews, onReviewClick, onEditReviewClick, onDeleteReviewClick, onReplyReviewSubmit, onEditReplySubmit, onDeleteReplyClick }: MyReviewsProps) {
-    const [reviewFilter, setReviewFilter] = useState<'pending' | 'completed'>('pending');
+    const [searchParams] = useSearchParams();
+    const tabQuery = searchParams.get("tab");
+
+    const [reviewFilter, setReviewFilter] = useState<'pending' | 'completed'>(tabQuery === 'reviewed' ? 'completed' : 'pending');
     const [replyingReviewId, setReplyingReviewId] = useState<number | null>(null);
     const [replyText, setReplyText] = useState("");
     const [isSubmittingReply, setIsSubmittingReply] = useState(false);
@@ -22,6 +26,12 @@ export default function MyReviews({ userReviews, pendingReviews, onReviewClick, 
     // Phân trang
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 5;
+
+    useEffect(() => {
+        if (tabQuery === 'reviewed') {
+            setReviewFilter('completed');
+        }
+    }, [tabQuery]);
 
     // Reset trang về 1 mỗi khi chuyển Tab (Chưa đánh giá / Đã đánh giá)
     useEffect(() => {

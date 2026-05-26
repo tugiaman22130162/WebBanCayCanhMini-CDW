@@ -407,7 +407,7 @@ public class ReviewService {
             String msg = (replier.getRole() != null && "ADMIN".equals(replier.getRole().name()))
                     ? "Cửa hàng đã phản hồi đánh giá của bạn về sản phẩm " + review.getProduct().getName()
                     : "Khách hàng " + replier.getFullName() + " đã phản hồi đánh giá của bạn về sản phẩm " + review.getProduct().getName();
-            notificationService.createUserNotification(review.getUser_id(), msg, "/profile/reviews", NotificationType.REVIEW);
+            notificationService.createUserNotification(review.getUser_id(), msg, "/profile/reviews?tab=reviewed", NotificationType.REVIEW);
         }
 
         // Tạo thông báo cho Admin nếu người phản hồi là User
