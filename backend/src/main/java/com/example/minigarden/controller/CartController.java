@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import com.example.minigarden.dto.AddToCartRequest;
 import com.example.minigarden.dto.CartResponse;
 import com.example.minigarden.service.CartService;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/cart")
@@ -18,27 +19,43 @@ public class CartController {
 
     @PostMapping("/add")
     public ResponseEntity<?> addToCart(@RequestBody AddToCartRequest request) {
-        String result = cartService.addToCart(request);
-        return ResponseEntity.ok(result);
+        try {
+            String result = cartService.addToCart(request);
+            return ResponseEntity.ok(Map.of("message", result));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 
     // Lấy danh sách giỏ hàng
     @GetMapping("/{userId}")
-    public ResponseEntity<CartResponse> getCart(@PathVariable Integer userId) {
-        return ResponseEntity.ok(cartService.getCart(userId));
+    public ResponseEntity<?> getCart(@PathVariable Integer userId) {
+        try {
+            return ResponseEntity.ok(cartService.getCart(userId));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 
     // Tăng giảm số lượng
     @PutMapping("/update/{cartItemId}")
-    public ResponseEntity<String> updateQuantity(@PathVariable Integer cartItemId, @RequestParam int delta) { 
-        cartService.updateCartItemQuantity(cartItemId, delta);
-        return ResponseEntity.ok("Cập nhật số lượng thành công");
+    public ResponseEntity<?> updateQuantity(@PathVariable Integer cartItemId, @RequestParam int delta) { 
+        try {
+            cartService.updateCartItemQuantity(cartItemId, delta);
+            return ResponseEntity.ok(Map.of("message", "Cập nhật số lượng thành công"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 
     // Xóa một sản phẩm khỏi giỏ
     @DeleteMapping("/remove/{cartItemId}")
-    public ResponseEntity<String> removeCartItem(@PathVariable Integer cartItemId) {
-        cartService.removeCartItem(cartItemId);
-        return ResponseEntity.ok("Xóa sản phẩm thành công");
+    public ResponseEntity<?> removeCartItem(@PathVariable Integer cartItemId) {
+        try {
+            cartService.removeCartItem(cartItemId);
+            return ResponseEntity.ok(Map.of("message", "Xóa sản phẩm thành công"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 }

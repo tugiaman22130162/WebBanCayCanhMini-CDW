@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import Swal from "sweetalert2";
 import { showSuccessToast, showErrorToast } from "../../utils/ToastUtils";
 
 type OrderStatus = 'PENDING' | 'CONFIRMED' | 'SHIPPING' | 'DELIVERED' | 'CANCELLED';
@@ -15,18 +16,20 @@ interface OrderItem {
 interface OrderDetail {
     id: number;
     orderCode: string;
-    receiver_name: string;
+    receiverName: string;
     phone: string;
     address: string;
     note: string;
-    total_price: number;
+    totalPrice: number;
     status: OrderStatus;
-    created_at: string;
-    updatedAt?: string;
-    items: OrderItem[];
+    createdAt: string;
     paymentMethod: string;
-    shippingFee: number;
-    discountAmount: number;
+    items: OrderItem[];
+    estimatedDeliveryTimeFrom?: string;
+    estimatedDeliveryTimeTo?: string;
+    promotions?: any[];
+    shippingFee?: number;
+    discountAmount?: number;
 }
 
 interface OrderDetailModalProps {
@@ -68,43 +71,20 @@ export default function OrderDetailModal({ isOpen, onClose, orderId, onSuccess }
     useEffect(() => {
         if (isOpen && orderId) {
             setIsLoading(true);
-            const fetchOrderDetail = async () => {
-                try {
-                    const token = localStorage.getItem("token");
-                    const response = await axios.get(`http://localhost:8080/api/orders/${orderId}`, {
-                        headers: { Authorization: `Bearer ${token}` }
-                    });
-                    const data = response.data;
-                    setOrder({
-                        id: data.id,
-                        orderCode: data.orderCode || data.id.toString(),
-                        receiver_name: data.receiverName,
-                        phone: data.phone,
-                        address: data.address,
-                        note: data.note || "",
-                        total_price: data.totalPrice,
-                        status: data.status,
-                        created_at: data.createdAt,
-                        updatedAt: data.updatedAt,
-                        paymentMethod: data.paymentMethod || "N/A", // Lấy paymentMethod từ API
-                        shippingFee: data.shippingFee || 0,
-                        discountAmount: data.discountAmount || 0,
-                        items: data.items.map((item: any) => ({
-                            id: item.id,
-                            product_name: item.product_name,
-                            price: item.price,
-                            quantity: item.quantity,
-                            subtotal: item.subtotal
-                        }))
-                    });
-                } catch (error) {
-                    console.error("Lỗi khi tải chi tiết đơn hàng:", error);
-                    showErrorToast("Không thể tải thông tin chi tiết đơn hàng!", 3000);
-                } finally {
-                    setIsLoading(false);
-                }
-            };
-            fetchOrderDetail();
+            const token = localStorage.getItem("token");
+            axios.get(`http://localhost:8080/api/orders/${orderId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            .then(response => {
+                setOrder(response.data);
+                setSelectedStatus(response.data.status);
+                setIsLoading(false);
+            })
+            .catch(error => {
+                console.error("Lỗi khi tải chi tiết đơn hàng:", error);
+                setOrder(null);
+                setIsLoading(false);
+            });
         } else {
             setOrder(null);
             setIsEditingStatus(false);
@@ -113,26 +93,55 @@ export default function OrderDetailModal({ isOpen, onClose, orderId, onSuccess }
 
     const handleUpdateStatus = async () => {
         if (!order || selectedStatus === order.status) return;
+        
+        let noteToAppend = "";
+        if (selectedStatus === 'CANCELLED') {
+            const { value: text, isConfirmed } = await Swal.fire({
+                input: 'textarea',
+                inputLabel: 'Lý do hủy đơn hàng',
+                inputPlaceholder: 'Nhập lý do hủy ở đây...',
+                inputAttributes: {
+                    'aria-label': 'Nhập lý do hủy ở đây'
+                },
+                showCancelButton: true,
+                confirmButtonText: 'Xác nhận hủy',
+                cancelButtonText: 'Hủy',
+                inputValidator: (value) => {
+                    if (!value) {
+                        return 'Vui lòng nhập lý do hủy!'
+                    }
+                },
+                customClass: {
+                    input: 'overflow-y-auto resize-y [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full',
+                    confirmButton: 'bg-red-500 text-white px-4 py-2 rounded-lg font-bold mx-2',
+                    cancelButton: 'bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-bold mx-2'
+                },
+                buttonsStyling: false
+            });
+
+            if (!isConfirmed) {
+                return;
+            }
+            noteToAppend = text;
+        }
 
         setIsUpdating(true);
         try {
             const token = localStorage.getItem("token");
-            await axios.put(`http://localhost:8080/api/orders/${order.id}/status`, {}, {
-                params: { status: selectedStatus },
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
+            await axios.put(`http://localhost:8080/api/orders/${order.id}/status?status=${selectedStatus}${noteToAppend ? `&note=${encodeURIComponent(noteToAppend)}` : ''}`, null, {
+                headers: { Authorization: `Bearer ${token}` }
             });
-
+            
             // Cập nhật lại UI
             setOrder({ ...order, status: selectedStatus });
             setIsEditingStatus(false);
-            showSuccessToast("Cập nhật trạng thái thành công!", 2000);
-
+            showSuccessToast("Cập nhật trạng thái thành công!", 3000);
+            
             if (onSuccess) onSuccess(); // Báo cho component cha tải lại danh sách đơn hàng
-        } catch (error) {
+            onClose(); // Tự động đóng Modal sau khi lưu thành công
+        } catch (error: any) {
             console.error("Lỗi khi cập nhật trạng thái:", error);
-            showErrorToast("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng.", 3000);
+            showErrorToast(error.response?.data?.message || "Lỗi khi cập nhật trạng thái", 3000);
         } finally {
             setIsUpdating(false);
         }
@@ -143,27 +152,27 @@ export default function OrderDetailModal({ isOpen, onClose, orderId, onSuccess }
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
-
+                
                 {/* HEADER */}
                 <div className="p-6 border-b flex justify-between items-center bg-gray-50">
                     <div>
-                        <h3 className="text-xl font-bold text-gray-800">Chi tiết đơn hàng #{order?.orderCode || orderId}</h3>
+                        <h3 className="text-xl font-bold text-gray-800">Chi tiết đơn hàng {order?.orderCode || `#${orderId}`}</h3>
                         {order && (
-                            <>
-                                <p className="text-sm text-gray-500 mt-1">
-                                    Ngày đặt: {new Date(order.created_at).toLocaleString('vi-VN')}
+                            <div className="mt-1 space-y-1">
+                                <p className="text-sm text-gray-500">
+                                    Ngày đặt: {new Date(order.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} &nbsp; {new Date(order.createdAt).toLocaleDateString('vi-VN')}
                                 </p>
-                                {order.status === 'DELIVERED' && order.updatedAt && (
-                                    <p className="text-sm text-gray-500 mt-1">
-                                        Ngày giao: {new Date(order.updatedAt).toLocaleString('vi-VN')}
+                                {order.status !== 'CANCELLED' && order.status !== 'DELIVERED' && order.estimatedDeliveryTimeFrom && order.estimatedDeliveryTimeTo && (
+                                    <p className="text-sm text-gray-500">
+                                        Dự kiến giao: <span className="font-semibold text-gray-800">{new Date(order.estimatedDeliveryTimeFrom).toLocaleDateString('vi-VN')} - {new Date(order.estimatedDeliveryTimeTo).toLocaleDateString('vi-VN')}</span>
                                     </p>
                                 )}
-                                {order.status === 'CANCELLED' && order.updatedAt && (
-                                    <p className="text-sm text-gray-500 mt-1">
-                                        Ngày hủy: {new Date(order.updatedAt).toLocaleString('vi-VN')}
+                                {order.status === 'DELIVERED' && order.estimatedDeliveryTimeFrom && order.estimatedDeliveryTimeTo && (
+                                    <p className="text-sm text-gray-500">
+                                        Ngày nhận hàng: <span className="font-semibold text-gray-800">{new Date(order.estimatedDeliveryTimeFrom).toLocaleDateString('vi-VN')} - {new Date(order.estimatedDeliveryTimeTo).toLocaleDateString('vi-VN')}</span>
                                     </p>
                                 )}
-                            </>
+                            </div>
                         )}
                     </div>
                     <button onClick={onClose} className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50">
@@ -172,7 +181,7 @@ export default function OrderDetailModal({ isOpen, onClose, orderId, onSuccess }
                 </div>
 
                 {/* CONTENT */}
-                <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+                <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full">
                     {isLoading ? (
                         <div className="flex flex-col items-center justify-center h-full text-gray-500 gap-3">
                             <span className="material-symbols-outlined animate-spin text-4xl text-primary">autorenew</span>
@@ -198,18 +207,23 @@ export default function OrderDetailModal({ isOpen, onClose, orderId, onSuccess }
                                             onChange={(e) => setSelectedStatus(e.target.value as OrderStatus)}
                                             className="px-3 py-1.5 border border-gray-300 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm font-semibold text-gray-700"
                                         >
-                                            <option value="PENDING">Chờ xác nhận</option>
-                                            <option value="CONFIRMED">Đã xác nhận</option>
-                                            <option value="SHIPPING">Đang giao</option>
-                                            <option value="DELIVERED">Đã giao</option>
-                                            <option value="CANCELLED">Đã hủy</option>
+                                            <option value={order.status}>{getStatusLabel(order.status)}</option>
+                                            {order.paymentMethod?.toUpperCase() === 'VNPAY' ? (
+                                                order.status !== 'DELIVERED' && <option value="DELIVERED">Đã giao</option>
+                                            ) : (
+                                                <>
+                                                    {order.status !== 'CONFIRMED' && <option value="CONFIRMED">Đã xác nhận</option>}
+                                                    {order.status !== 'DELIVERED' && <option value="DELIVERED">Đã giao</option>}
+                                                    {order.status === 'PENDING' && <option value="CANCELLED">Đã hủy</option>}
+                                                </>
+                                            )}
                                         </select>
                                     )}
                                 </div>
                                 <div className="flex gap-2">
                                     {!isEditingStatus ? (
-                                        <button
-                                            onClick={() => { setSelectedStatus(order.status); setIsEditingStatus(true); }}
+                                        <button 
+                                            onClick={() => { setSelectedStatus(order.status); setIsEditingStatus(true); }} 
                                             className="px-4 py-2 text-sm font-bold bg-primary text-white rounded-lg hover:bg-[#2f5146] transition-colors shadow-sm"
                                         >
                                             Cập nhật trạng thái
@@ -234,28 +248,15 @@ export default function OrderDetailModal({ isOpen, onClose, orderId, onSuccess }
                                     Thông tin giao hàng
                                 </h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div><p className="text-xs text-gray-500 uppercase font-bold mb-1">Người nhận</p><p className="font-semibold text-gray-800">{order.receiver_name}</p></div>
+                                    <div><p className="text-xs text-gray-500 uppercase font-bold mb-1">Người nhận</p><p className="font-semibold text-gray-800">{order.receiverName}</p></div>
                                     <div><p className="text-xs text-gray-500 uppercase font-bold mb-1">Số điện thoại</p><p className="font-semibold text-gray-800">{order.phone}</p></div>
                                     <div className="md:col-span-2"><p className="text-xs text-gray-500 uppercase font-bold mb-1">Địa chỉ giao hàng</p><p className="font-semibold text-gray-800">{order.address}</p></div>
+                                    <div className="md:col-span-2"><p className="text-xs text-gray-500 uppercase font-bold mb-1">Ghi chú</p><p className="font-semibold text-gray-800 bg-yellow-50 p-3 rounded-lg border border-yellow-100 text-sm whitespace-pre-line">{order.note || "Không có ghi chú"}</p></div>
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
                                     <div>
                                         <p className="text-xs text-gray-500 uppercase font-bold mb-1">Phương thức thanh toán</p>
-                                        <div className="flex items-center gap-2">
-                                            {order.paymentMethod?.toUpperCase() === 'VNPAY' ? (
-                                                <>
-                                                    <img src="https://vinadesign.vn/uploads/thumbnails/800/2023/05/vnpay-logo-vinadesign-25-12-59-16.jpg" alt="VNPAY" className="w-6 h-6 object-contain" />
-                                                    <span className="font-semibold text-gray-800">Ví điện tử VNPAY</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <span className="material-symbols-outlined text-[#406D5E] text-[20px]">payments</span>
-                                                    <span className="font-semibold text-gray-800">Thanh toán khi nhận hàng (COD)</span>
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Ghi chú của khách</p>
-                                        <p className="font-semibold text-gray-800 bg-yellow-50 p-3 rounded-lg border border-yellow-100 text-sm">{order.note || "Không có ghi chú"}</p>
+                                        <p className="font-semibold text-gray-800">{order.paymentMethod?.toUpperCase() === 'VNPAY' ? 'Ví điện tử VNPAY' : 'Thanh toán khi nhận hàng (COD)'}</p>
                                     </div>
                                 </div>
                             </div>
@@ -266,7 +267,7 @@ export default function OrderDetailModal({ isOpen, onClose, orderId, onSuccess }
                                     <span className="material-symbols-outlined text-primary text-[20px]">shopping_basket</span>
                                     Sản phẩm đã đặt
                                 </h4>
-                                <div className="overflow-x-auto">
+                                <div className="overflow-x-auto [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full">
                                     <table className="w-full">
                                         <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold">
                                             <tr><th className="text-left p-3 rounded-l-lg">Sản phẩm</th><th className="text-right p-3">Đơn giá</th><th className="text-center p-3">Số lượng</th><th className="text-right p-3 rounded-r-lg">Thành tiền</th></tr>
@@ -279,26 +280,65 @@ export default function OrderDetailModal({ isOpen, onClose, orderId, onSuccess }
                                     </table>
                                 </div>
 
+                                {order.promotions && order.promotions.length > 0 && (
+                                    <div className="mt-4 space-y-2">
+                                        {order.promotions.map((promo: any, idx: number) => {
+                                            const isShipping = promo.promotionCode?.toUpperCase().includes('SHIP');
+                                            // Tự động lấy phí ship (với mã vận chuyển) hoặc tổng giảm (với mã sản phẩm) nếu giá trị bị 0
+                                            const discountVal = promo.discountAmount || promo.discount_amount || (isShipping ? order.shippingFee : order.discountAmount) || 0;
+                                            return (
+                                                <div key={idx} className={`flex justify-between items-center p-3.5 rounded-xl border ${isShipping ? 'bg-blue-50 border-blue-100' : 'bg-emerald-50 border-emerald-100'}`}>
+                                                    <div className={`flex items-center gap-2 ${isShipping ? 'text-blue-700' : 'text-emerald-700'}`}>
+                                                        <span className="material-symbols-outlined text-[20px]">
+                                                            {isShipping ? 'local_shipping' : 'local_activity'}
+                                                        </span>
+                                                        <span className="font-semibold text-sm">
+                                                            {isShipping ? 'Mã vận chuyển:' : 'Mã giảm giá:'} <span className={`font-bold px-2 py-1 bg-white rounded-md ml-1 border shadow-sm ${isShipping ? 'border-blue-200' : 'border-emerald-200'}`}>{promo.promotionCode}</span>
+                                                        </span>
+                                                    </div>
+                                                    <span className={`font-bold ${isShipping ? 'text-blue-700' : 'text-emerald-700'}`}>
+                                                        -{discountVal.toLocaleString('vi-VN')}đ
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                
                                 {/* Tổng tiền */}
                                 <div className="mt-4 pt-4 border-t flex justify-end">
-                                    <div className="w-full md:w-1/2 space-y-2">
-                                        <div className="flex justify-between text-gray-600">
+                                    <div className="w-full md:w-1/2 flex flex-col space-y-2">
+                                        <div className="flex justify-between text-gray-600 text-sm">
                                             <span>Tạm tính:</span>
+                                            <span className="font-semibold">{order.items.reduce((sum, item) => sum + item.subtotal, 0).toLocaleString('vi-VN')}đ</span>
+                                        </div>
+                                        <div className="flex justify-between text-gray-600 text-sm">
+                                            <span>Phí vận chuyển:</span>
                                             <span className="font-semibold">
-                                                {(order.items.reduce((sum, item) => sum + item.subtotal, 0)).toLocaleString('vi-VN')}đ
+                                                {(() => {
+                                                    const shippingPromo = order.promotions?.find((p: any) => p.promotionCode?.toUpperCase().includes('SHIP'));
+                                                    const shippingPromoDiscount = shippingPromo ? (shippingPromo.discountAmount || shippingPromo.discount_amount || order.shippingFee || 0) : 0;
+                                                    const displayShippingFee = order.shippingFee && order.shippingFee > 0 ? order.shippingFee : shippingPromoDiscount;
+                                                    return displayShippingFee ? displayShippingFee.toLocaleString('vi-VN') + 'đ' : '0đ';
+                                                })()}
                                             </span>
                                         </div>
-                                        <div className="flex justify-between text-gray-600">
-                                            <span>Phí vận chuyển:</span>
-                                            <span className="font-semibold">{order.shippingFee.toLocaleString('vi-VN')}đ</span>
-                                        </div>
-                                        {order.discountAmount > 0 && (
-                                            <div className="flex justify-between text-emerald-600">
-                                                <span>Giảm giá:</span>
-                                                <span className="font-semibold">-{order.discountAmount.toLocaleString('vi-VN')}đ</span>
+                                        {order.promotions && order.promotions.length > 0 && (
+                                            <div className="flex justify-between text-emerald-600 text-sm">
+                                                <span>Tổng giảm giá:</span>
+                                                <span className="font-semibold">
+                                                    -{order.promotions.reduce((sum: number, p: any) => {
+                                                        const isShipping = p.promotionCode?.toUpperCase().includes('SHIP');
+                                                        const pDiscount = p.discountAmount || p.discount_amount || (isShipping ? order.shippingFee : order.discountAmount) || 0;
+                                                        return sum + Number(pDiscount);
+                                                    }, 0).toLocaleString('vi-VN')}đ
+                                                </span>
                                             </div>
                                         )}
-                                        <div className="flex justify-between text-lg border-t pt-2 mt-2"><span className="font-bold text-gray-800">Tổng cộng:</span><span className="font-black text-emerald-600">{order.total_price.toLocaleString('vi-VN')}đ</span></div>
+                                        <div className="flex justify-between text-lg pt-3 mt-1 border-t border-gray-200">
+                                            <span className="font-bold text-gray-800">Tổng cộng:</span>
+                                            <span className="font-black text-primary">{order.totalPrice.toLocaleString('vi-VN')}đ</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

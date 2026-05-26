@@ -9,9 +9,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tiptap/extension-image": "^3.23.6",
+    "@tiptap/pm": "^3.23.6",
+    "@tiptap/react": "^3.23.6",
+    "@tiptap/starter-kit": "^3.23.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.14.0"
+    "react-router-dom": "^7.14.0",
+    "recharts": "^3.8.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.18",

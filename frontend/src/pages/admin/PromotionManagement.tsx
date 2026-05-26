@@ -198,14 +198,14 @@ export default function PromotionManagement() {
             });
 
             const token = localStorage.getItem('token');
-            await axios.post('http://localhost:8080/api/promotions/import', formData, {
+            const response = await axios.post('http://localhost:8080/api/promotions/import', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                     'Authorization': `Bearer ${token}` 
                 }
             });
             Swal.close();
-            showSuccessToast('Nhập dữ liệu thành công!', 2000);
+            showSuccessToast('success', response.data.message || 'Nhập dữ liệu thành công!');
             fetchPromotions();
         } catch (error: any) {
             Swal.close();
@@ -256,7 +256,7 @@ export default function PromotionManagement() {
             <div className="flex-1 flex flex-col overflow-hidden">
                 <AdminHeader />
 
-                <main className="p-6 md:p-8 flex-1 overflow-y-auto">
+                <main className="p-6 md:p-8 flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
                         <h2 className="text-4xl font-extrabold text-gray-800">Quản Lý Khuyến Mãi</h2>
                         
@@ -297,7 +297,7 @@ export default function PromotionManagement() {
                                             </div>
                                         </div>
 
-                                        <div className="p-5 space-y-6 max-h-[60vh] overflow-y-auto">
+                                        <div className="p-5 space-y-6 max-h-[60vh] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full">
                                             <div>
                                                 <label className="block text-xs font-bold uppercase text-gray-500 mb-3">Loại khuyến mãi</label>
                                                 <div className="space-y-2">
@@ -385,7 +385,7 @@ export default function PromotionManagement() {
 
                     {/* TABLE */}
                     <div className="bg-white rounded-b-2xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full">
                             <table className="w-full min-w-[900px]">
                                 <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold">
                                     <tr>

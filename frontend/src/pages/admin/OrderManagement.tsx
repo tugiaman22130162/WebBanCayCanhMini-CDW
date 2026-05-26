@@ -1,9 +1,12 @@
-import React, { useState, useMemo, useEffect } from "react";
-import axios from "axios";
+import React, { useState, useMemo } from "react";
 import AdminHeader from "../../components/admin/AdminHeader";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import OrderDetailModal from "../../components/admin/OrderDetailModal";
 import { useSearchParams } from "react-router-dom";
+import axios from "axios";
+import { useEffect } from "react";
+import Swal from "sweetalert2";
+import { showSuccessToast, showErrorToast } from "../../utils/ToastUtils";
 
 // Khai báo Type dựa trên Entity Orders của Backend
 type OrderStatus = 'PENDING' | 'CONFIRMED' | 'SHIPPING' | 'DELIVERED' | 'CANCELLED';
@@ -11,13 +14,12 @@ type OrderStatus = 'PENDING' | 'CONFIRMED' | 'SHIPPING' | 'DELIVERED' | 'CANCELL
 type Order = {
     id: number;
     orderCode: string;
-    receiver_name: string;
+    receiverName: string;
     phone: string;
     address: string;
-    total_price: number;
+    totalPrice: number;
     status: OrderStatus;
-    created_at: string;
-    updatedAt?: string;
+    createdAt: string;
     items_count: number; // Tổng số lượng sản phẩm trong đơn
 };
 
@@ -47,66 +49,94 @@ const getStatusColor = (status: OrderStatus) => {
 export default function OrderManagement() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>('ALL');
-
+    
     const [searchParams] = useSearchParams();
     const searchTerm = searchParams.get("search") || "";
 
-    // State quản lý Modal Chi tiết
-    const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
-    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-
     // State phân trang
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 5;
-
-    const fetchOrders = async () => {
-        setIsLoading(true);
-        try {
-            const token = localStorage.getItem("token");
-            const response = await axios.get("http://localhost:8080/api/orders", {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const fetchedOrders = response.data.map((o: any) => ({
-                id: o.id,
-                orderCode: o.orderCode || o.id.toString(),
-                receiver_name: o.receiverName,
-                phone: o.phone,
-                address: o.address,
-                total_price: o.totalPrice,
-                status: o.status,
-                created_at: o.createdAt,
-                updatedAt: o.updatedAt,
-                items_count: o.items ? o.items.reduce((acc: number, item: any) => acc + item.quantity, 0) : 0
-            }));
-            setOrders(fetchedOrders);
-        } catch (error) {
-            console.error("Lỗi khi tải danh sách đơn hàng:", error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchOrders();
-    }, []);
+    const itemsPerPage = 10;
 
     useEffect(() => {
         setCurrentPage(1);
     }, [searchTerm, statusFilter]);
 
+    useEffect(() => {
+        fetchOrders();
+    }, [searchTerm]);
+
+    const fetchOrders = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const token = localStorage.getItem("token");
+            let url = `http://localhost:8080/api/orders`;
+            const params: any = { keyword: searchTerm || null };
+            
+            const response = await axios.get(url, {
+                headers: { Authorization: `Bearer ${token}` },
+                params
+            });
+            setOrders(response.data);
+        } catch (err) {
+            console.error("Lỗi khi tải danh sách đơn hàng:", err);
+            setError("Không thể tải danh sách đơn hàng.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+
+    // State quản lý Modal Chi tiết
+    const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
     // Lọc danh sách theo trạng thái
     const filteredOrders = useMemo(() => {
         return orders.filter(order => {
-            const matchSearch = searchTerm === "" ||
-                order.orderCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                order.receiver_name.toLowerCase().includes(searchTerm.toLowerCase());
             const matchStatus = statusFilter === 'ALL' || order.status === statusFilter;
-            return matchSearch && matchStatus;
+            return matchStatus;
         });
-    }, [orders, statusFilter, searchTerm]);
+    }, [orders, statusFilter]);
 
-    // Phân trang
+    const handleExport = async () => {
+        try {
+            Swal.fire({
+                toast: true,
+                position: 'bottom',
+                title: 'Đang xuất file Excel...',
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+                customClass: { popup: 'mb-6 rounded-full shadow-lg border border-gray-100', title: 'text-sm font-bold text-gray-700' }
+            });
+
+            const token = localStorage.getItem('token');
+            const response = await axios.get('http://localhost:8080/api/orders/export', {
+                responseType: 'blob', 
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Danh_Sach_Don_Hang_${Date.now()}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            Swal.close();
+            showSuccessToast('Xuất file Excel thành công!', 2000);
+        } catch (error) {
+            Swal.close();
+            showErrorToast('Có lỗi xảy ra khi xuất file!', 2000);
+        }
+    };
+
+    // Tính toán dữ liệu cho trang hiện tại
     const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
     const currentOrders = filteredOrders.slice(
         (currentPage - 1) * itemsPerPage,
@@ -116,7 +146,7 @@ export default function OrderManagement() {
     // Thống kê
     const totalOrders = orders.length;
     const pendingOrders = orders.filter(o => o.status === 'PENDING').length;
-    const revenue = orders.filter(o => o.status === 'DELIVERED').reduce((sum, o) => sum + o.total_price, 0);
+    const revenue = orders.filter(o => o.status === 'DELIVERED').reduce((sum, o) => sum + o.totalPrice, 0);
 
     return (
         <div className="h-screen bg-background text-on-surface flex overflow-hidden font-[Plus_Jakarta_Sans]">
@@ -130,6 +160,12 @@ export default function OrderManagement() {
                     {/* HEADER */}
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
                         <h2 className="text-4xl font-extrabold text-gray-800">Quản Lý Đơn Hàng</h2>
+                        
+                        <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0 justify-end">
+                            <button onClick={handleExport} className="px-4 py-3 rounded-xl bg-white flex items-center gap-2 hover:bg-gray-50 transition shadow-sm border border-gray-100 text-sm font-semibold text-gray-700">
+                                <span className="material-symbols-outlined text-[18px]">download</span> Xuất
+                            </button>
+                        </div>
                     </div>
 
                     {/* STATS CARDS */}
@@ -186,55 +222,33 @@ export default function OrderManagement() {
                                         <th className="text-left p-4">Mã ĐH</th>
                                         <th className="text-left p-4">Khách hàng</th>
                                         <th className="text-left p-4">Ngày đặt</th>
-                                        {statusFilter === 'DELIVERED' && <th className="text-left p-4">Ngày giao</th>}
-                                        {statusFilter === 'CANCELLED' && <th className="text-left p-4">Ngày hủy</th>}
                                         <th className="text-right p-4">Tổng tiền</th>
                                         <th className="text-center p-4">Trạng thái</th>
-                                        <th className="text-center p-4">Hành động</th>
+                                        <th className="text-right p-4">Hành động</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {isLoading ? (
-                                        <tr><td colSpan={statusFilter === 'DELIVERED' || statusFilter === 'CANCELLED' ? 7 : 6} className="p-8 text-center text-gray-500 font-medium">Đang tải dữ liệu...</td></tr>
+                                        <tr><td colSpan={6} className="p-8 text-center text-gray-500">Đang tải đơn hàng...</td></tr>
+                                    ) : error ? (
+                                        <tr><td colSpan={6} className="p-8 text-center text-red-500">{error}</td></tr>
                                     ) : filteredOrders.length === 0 ? (
-                                        <tr><td colSpan={statusFilter === 'DELIVERED' || statusFilter === 'CANCELLED' ? 7 : 6} className="p-8 text-center text-gray-500">Không có đơn hàng nào.</td></tr>
+                                        <tr><td colSpan={6} className="p-8 text-center text-gray-500">Không có đơn hàng nào khớp với bộ lọc.</td></tr>
                                     ) : (
                                         currentOrders.map((order) => (
                                             <tr key={order.id} className="border-t border-gray-50 hover:bg-gray-50 transition">
                                                 <td className="p-4 font-bold text-primary">{order.orderCode}</td>
                                                 <td className="p-4">
-                                                    <p className="font-bold text-gray-800">{order.receiver_name}</p>
+                                                    <p className="font-bold text-gray-800">{order.receiverName}</p>
                                                     <p className="text-xs text-gray-500">{order.phone}</p>
                                                 </td>
-                                                <td className="p-4 text-sm text-gray-600">
-                                                    {new Date(order.created_at).toLocaleString('vi-VN')}
-                                                </td>
-                                                {statusFilter === 'DELIVERED' && (
-                                                    <td className="p-4 text-sm text-gray-600">
-                                                        {order.updatedAt ? (
-                                                            <span className="text-emerald-600 font-semibold">{new Date(order.updatedAt).toLocaleString('vi-VN')}</span>
-                                                        ) : (
-                                                            <span className="text-gray-400">-</span>
-                                                        )}
-                                                    </td>
-                                                )}
-                                                {statusFilter === 'CANCELLED' && (
-                                                    <td className="p-4 text-sm text-gray-600">
-                                                        {order.updatedAt ? (
-                                                            <span className="text-red-600 font-semibold">{new Date(order.updatedAt).toLocaleString('vi-VN')}</span>
-                                                        ) : (
-                                                            <span className="text-gray-400">-</span>
-                                                        )}
-                                                    </td>
-                                                )}
-                                                <td className="p-4 text-right font-bold text-emerald-600">{order.total_price.toLocaleString('vi-VN')}đ</td>
+                                                <td className="p-4 text-sm text-gray-600">{new Date(order.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} &nbsp; {new Date(order.createdAt).toLocaleDateString('vi-VN')}</td>
+                                                <td className="p-4 text-right font-bold text-emerald-600">{order.totalPrice.toLocaleString('vi-VN')}đ</td>
                                                 <td className="p-4 text-center">
                                                     <span className={`text-xs font-bold px-3 py-1 rounded-full border ${getStatusColor(order.status)}`}>{getStatusLabel(order.status)}</span>
                                                 </td>
-                                                <td className="p-4 text-center space-x-2">
-                                                    <button
-                                                        onClick={() => { setSelectedOrderId(order.id); setIsDetailModalOpen(true); }}
-                                                        className="w-8 h-8 inline-flex items-center justify-center text-gray-400 hover:text-primary hover:bg-primary/10 rounded-full transition-colors" title="Xem chi tiết">
+                                                <td className="p-4 text-right space-x-2">
+                                                    <button onClick={() => { setSelectedOrderId(order.id); setIsDetailModalOpen(true); }} className="w-8 h-8 inline-flex items-center justify-center text-gray-400 hover:text-primary hover:bg-primary/10 rounded-full transition-colors" title="Xem chi tiết">
                                                         <span className="material-symbols-outlined text-[20px]">visibility</span>
                                                     </button>
                                                 </td>

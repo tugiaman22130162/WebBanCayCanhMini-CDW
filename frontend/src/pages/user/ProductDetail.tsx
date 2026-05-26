@@ -41,7 +41,7 @@ export default function ProductDetail() {
                     id: data.id,
                     name: data.name,
                     price: data.price || 0,
-                    soldCount: 350,
+                    soldCount: data.soldCount || data.sold_count || 0,
                     category: data.categoryName || data.category?.name || data.category || "Chưa phân loại",
                     categoryId: data.categoryId || data.category?.id || null,
                     images: data.images?.length > 0 ? data.images : ["https://images.unsplash.com/photo-1614594975525-e45190c55d40?w=1080&h=1080&q=80&fit=crop"],
