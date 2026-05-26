@@ -859,7 +859,7 @@ export default function Profile() {
                                 {/* TỔNG TIỀN VÀ THANH TOÁN */}
                                 <div className="mt-6 pt-6 border-t border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative">
                                     {/* Logo in chìm Đã thanh toán */}
-                                    {selectedOrder.paymentMethod?.toUpperCase() === 'VNPAY' && (
+                                    {(selectedOrder.paymentMethod?.toUpperCase() === 'VNPAY' || selectedOrder.status === 'Đã giao') && (
                                         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.08] pointer-events-none transform -rotate-12 select-none z-0">
                                             <div className="border-8 border-emerald-600 rounded-3xl p-6 flex flex-col items-center justify-center">
                                                 <span className="font-black text-4xl sm:text-5xl text-emerald-600 tracking-widest uppercase">Đã thanh toán</span>
@@ -869,7 +869,7 @@ export default function Profile() {
 
                                     {/* Trạng thái thanh toán (Bên trái) */}
                                     <div className="flex flex-col items-start w-full md:w-auto bg-gray-50 p-5 rounded-xl border border-gray-200 relative z-10">
-                                        {selectedOrder.paymentMethod?.toUpperCase() === 'VNPAY' ? (
+                                        {(selectedOrder.paymentMethod?.toUpperCase() === 'VNPAY' || selectedOrder.status === 'Đã giao') ? (
                                             <div className="flex flex-col items-start gap-3">
                                                 <span className="text-sm font-black px-4 py-2 bg-emerald-100 text-emerald-700 rounded-full border border-emerald-200 flex items-center gap-2 shadow-sm">
                                                     <span className="material-symbols-outlined text-[20px]">check_circle</span> Đã thanh toán
