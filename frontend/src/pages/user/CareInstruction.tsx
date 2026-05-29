@@ -8,10 +8,10 @@ export default function CareInstruction() {
                 {/* Hero Section */}
                 <div className="relative pt-[84px] h-[350px] flex items-center justify-center overflow-hidden">
                     <div className="absolute inset-0 z-0">
-                        <img 
-                            src="/images/about.png" 
-                            alt="Care Instructions" 
-                            className="w-full h-full object-cover" 
+                        <img
+                            src="/images/about.png"
+                            alt="Care Instructions"
+                            className="w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-black/60"></div>
                     </div>
@@ -25,7 +25,7 @@ export default function CareInstruction() {
 
                 {/* Content Section */}
                 <div className="max-w-5xl mx-[20px] lg:mx-auto mt-16 space-y-16">
-                    
+
                     {/* Mục 1: Terrarium */}
                     <div className="bg-white rounded-3xl p-8 md:p-10 shadow-sm border border-gray-100 flex flex-col md:flex-row gap-10 hover:shadow-md transition-shadow">
                         <div className="md:w-1/3 flex flex-col items-center text-center">
@@ -132,6 +132,43 @@ export default function CareInstruction() {
                                 </h3>
                                 <p className="text-gray-600 text-sm leading-relaxed">
                                     Dùng khăn mềm, ẩm lau nhẹ bề mặt lá 1-2 tuần/lần để cây quang hợp tốt hơn. Có thể bổ sung phân bón dạng lỏng hoặc viên nén mỗi tháng một lần.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Mục 4: Cây treo Aesthetic */}
+                    <div className="bg-white rounded-3xl p-8 md:p-10 shadow-sm border border-gray-100 flex flex-col md:flex-row gap-10 hover:shadow-md transition-shadow">
+                        <div className="md:w-1/3 flex flex-col items-center text-center">
+                            <div className="w-24 h-24 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center mb-6">
+                                <span className="material-symbols-outlined text-5xl">spa</span>
+                            </div>
+                            <h2 className="text-2xl font-bold text-primary mb-2">Cây Treo Aesthetic</h2>
+                            <p className="text-gray-500 text-sm">Hợp decor bàn học, phòng ngủ, quán cà phê</p>
+                        </div>
+                        <div className="md:w-2/3 grid sm:grid-cols-2 gap-8">
+                            <div>
+                                <h3 className="font-bold text-gray-800 flex items-center gap-2 mb-2">
+                                    <span className="material-symbols-outlined text-blue-500">water</span> Tưới nước
+                                </h3>
+                                <p className="text-gray-600 text-sm leading-relaxed">
+                                    Tưới 2-3 lần/tuần. Vì chậu treo trên cao thường mau khô đất hơn, hãy kiểm tra thường xuyên. Khuyến khích phun sương lên mặt lá để tăng độ ẩm và làm sạch bụi.
+                                </p>
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-gray-800 flex items-center gap-2 mb-2">
+                                    <span className="material-symbols-outlined text-yellow-500">light_mode</span> Ánh sáng
+                                </h3>
+                                <p className="text-gray-600 text-sm leading-relaxed">
+                                    Ưa ánh sáng gián tiếp hoặc ánh sáng tán xạ. Đặt ở nơi thoáng mát gần cửa sổ, tránh ánh nắng trực tiếp gay gắt vào buổi trưa khiến lá bị cháy, héo.
+                                </p>
+                            </div>
+                            <div className="sm:col-span-2">
+                                <h3 className="font-bold text-gray-800 flex items-center gap-2 mb-2">
+                                    <span className="material-symbols-outlined text-purple-500">content_cut</span> Cắt tỉa & Chăm sóc
+                                </h3>
+                                <p className="text-gray-600 text-sm leading-relaxed">
+                                    Thường xuyên cắt tỉa các nhánh mọc quá dài hoặc lá vàng úa để giữ form dáng đẹp cho cây. Nên xoay chậu định kỳ 1-2 tuần/lần để cây nhận được ánh sáng đều và phát triển cân đối các mặt.
                                 </p>
                             </div>
                         </div>
