@@ -127,14 +127,16 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, productId
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            const files = Array.from(e.target.files);
-            if (files.length > 5) {
-                showErrorToast("Chỉ được phép chọn tối đa 5 ảnh.", 3000);
+            const newFiles = Array.from(e.target.files);
+            const totalImages = imagePreviews.length + newFiles.length;
+
+            if (totalImages > 5) {
+                showErrorToast(`Chỉ được phép có tối đa 5 ảnh. Bạn đã có ${imagePreviews.length} ảnh.`, 3000);
                 return;
             }
-            setImageFiles(files);
-            // Hiển thị ảnh preview thay thế cho ảnh hiện tại
-            setImagePreviews(files.map(f => URL.createObjectURL(f)));
+
+            setImageFiles(prev => [...prev, ...newFiles]);
+            setImagePreviews(prev => [...prev, ...newFiles.map(f => URL.createObjectURL(f))]);
         }
     };
 
@@ -144,12 +146,18 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, productId
         try {
             const formData = new FormData();
 
-            // Chỉ đính kèm ảnh mới nếu người dùng có chọn ảnh
+            // Đính kèm các ảnh mới được chọn
             if (imageFiles.length > 0) {
                 imageFiles.forEach((file) => {
                     formData.append("images", file);
                 });
             }
+
+            // Gửi danh sách các ảnh cũ cần giữ lại (những ảnh không phải là blob)
+            const keptImages = imagePreviews
+                .filter(url => !url.startsWith('blob:'))
+                .join(',');
+            formData.append('keptImages', keptImages);
 
             // Tạo Payload chứa thông tin Products & ProductDetails
             const productPayload = {
@@ -180,7 +188,10 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, productId
                 new Blob([JSON.stringify(productPayload)], { type: "application/json" })
             );
 
-            await axios.put(`http://localhost:8080/api/products/${productId}`, formData);
+            const token = localStorage.getItem("token");
+            await axios.put(`http://localhost:8080/api/products/${productId}`, formData, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
 
             showSuccessToast("Cập nhật sản phẩm thành công!", 2000);
             onClose();
@@ -259,12 +270,12 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, productId
                                 </div>
                                 
                                 <p className="text-xs text-orange-600 font-semibold bg-orange-50 p-3 rounded-lg border border-orange-100 leading-relaxed">
-                                    * Để trống nếu bạn muốn giữ nguyên hình ảnh cũ. Chọn ảnh mới sẽ thay thế toàn bộ ảnh hiện tại.
+                                    * Bạn có thể thêm ảnh mới vào danh sách hiện tại. Tổng số ảnh không được vượt quá 5.
                                 </p>
                                 
-                                <div className={`relative border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center gap-3 transition-colors ${imageFiles.length >= 5 ? 'border-gray-200 bg-gray-50' : 'border-gray-300 hover:border-primary hover:bg-primary/5 cursor-pointer'}`}>
-                                    <input type="file" multiple accept="image/*" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" disabled={imageFiles.length >= 5} title={imageFiles.length >= 5 ? "Đã đạt tối đa 5 ảnh" : "Chọn ảnh"} />
-                                    <div className={`w-14 h-14 rounded-full flex items-center justify-center ${imageFiles.length >= 5 ? 'bg-gray-200 text-gray-400' : 'bg-primary/10 text-primary'}`}>
+                                <div className={`relative border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center gap-3 transition-colors ${imagePreviews.length >= 5 ? 'border-gray-200 bg-gray-50' : 'border-gray-300 hover:border-primary hover:bg-primary/5 cursor-pointer'}`}>
+                                    <input type="file" multiple accept="image/*" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" disabled={imagePreviews.length >= 5} title={imagePreviews.length >= 5 ? "Đã đạt tối đa 5 ảnh" : "Chọn ảnh"} />
+                                    <div className={`w-14 h-14 rounded-full flex items-center justify-center ${imagePreviews.length >= 5 ? 'bg-gray-200 text-gray-400' : 'bg-primary/10 text-primary'}`}>
                                         <span className="material-symbols-outlined text-2xl">cloud_upload</span>
                                     </div>
                                     <div className="text-center">
