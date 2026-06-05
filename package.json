@@ -4,6 +4,8 @@
     "@cloudinary/url-gen": "^1.22.0",
     "axios": "^1.15.1",
     "framer-motion": "^12.38.0",
-    "sweetalert2": "^11.26.24"
+    "html2canvas": "^1.4.1",
+    "sweetalert2": "^11.26.24",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz"
   }
 }

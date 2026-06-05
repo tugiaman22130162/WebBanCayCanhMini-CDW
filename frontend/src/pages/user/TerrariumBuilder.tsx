@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import html2canvas from "html2canvas";
 import Header from "../../components/user/Header";
 import Footer from "../../components/user/Footer";
 import axios from "axios";
@@ -11,7 +12,7 @@ import { showSuccessToast, showErrorToast } from "../../utils/ToastUtils";
 type ContainerType = { id: string; name: string; price: number; cssStyle: string; description: string; };
 type SoilType = { id: string; name: string; price: number; cssStyle: string; };
 type Plant = { id: string; name: string; price: number; image: string; light: string; humidity: string; careLevel: string; maxPerContainer?: number; }
-type PlantInstance = Plant & { instanceId: string };
+type PlantInstance = Plant & { instanceId: string; x?: number; y?: number; };
 
 const TerrariumBuilder: React.FC = () => {
     const [containers, setContainers] = useState<ContainerType[]>([]);
@@ -24,10 +25,14 @@ const TerrariumBuilder: React.FC = () => {
     const [selectedPlants, setSelectedPlants] = useState<PlantInstance[]>([]);
     const [zoomLevel, setZoomLevel] = useState(1);
     const [designNote, setDesignNote] = useState("");
-    const [designImageFile, setDesignImageFile] = useState<File | null>(null);
-    const [designImagePreview, setDesignImagePreview] = useState<string>("");
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSubmittingPending, setIsSubmittingPending] = useState(false);
+    const [isSubmittingDraft, setIsSubmittingDraft] = useState(false);
+    const [editingDraftId, setEditingDraftId] = useState<number | null>(null);
     const [isFetching, setIsFetching] = useState(true);
+
+    const [isMyDesignsModalOpen, setIsMyDesignsModalOpen] = useState(false);
+    const [myDesigns, setMyDesigns] = useState<any[]>([]);
+    const [isLoadingDesigns, setIsLoadingDesigns] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
     const { isLoggedIn, isLoading } = useAuth();
@@ -84,8 +89,131 @@ const TerrariumBuilder: React.FC = () => {
         });
     }, []);
 
+    const fetchMyDesigns = async () => {
+        setIsLoadingDesigns(true);
+        try {
+            const token = localStorage.getItem("token");
+            const res = await axios.get("http://localhost:8080/api/terrariums/my-designs", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setMyDesigns(res.data);
+        } catch (error) {
+            console.error("Lỗi tải danh sách thiết kế của tôi:", error);
+            if (isLoggedIn) {
+                showErrorToast("Có lỗi khi tải danh sách thiết kế", 2000);
+            }
+        } finally {
+            setIsLoadingDesigns(false);
+        }
+    };
+
+    // --- XỬ LÝ GỬI BẢN NHÁP ---
+    const handleSubmitDraft = async (designId: number) => {
+        try {
+            const token = localStorage.getItem("token");
+            await axios.put(`http://localhost:8080/api/terrariums/${designId}/submit-draft`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            showSuccessToast("Đã gửi yêu cầu thiết kế thành công!", 2500);
+            fetchMyDesigns(); // Tải lại danh sách thiết kế để cập nhật trạng thái
+        } catch (error) {
+            console.error("Lỗi gửi bản nháp:", error);
+            showErrorToast("Có lỗi xảy ra khi gửi bản nháp.", 2500);
+        }
+    };
+
+    // --- XỬ LÝ XÓA BẢN NHÁP ---
+    const handleDeleteDraft = async (designId: number) => {
+        const result = await Swal.fire({
+            title: 'Xóa bản nháp?',
+            text: "Bạn có chắc chắn muốn xóa bản nháp này không?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Đồng ý xóa',
+            cancelButtonText: 'Hủy',
+            buttonsStyling: false,
+            customClass: {
+                confirmButton: 'bg-red-500 text-white font-bold py-2.5 px-6 rounded-xl shadow-md hover:bg-red-600 transition-all mx-2',
+                cancelButton: 'bg-gray-200 text-gray-700 font-bold py-2.5 px-6 rounded-xl shadow-md hover:bg-gray-300 transition-all mx-2',
+                popup: 'bg-surface rounded-xl shadow-2xl border border-outline-variant',
+                title: 'text-gray-800 font-bold text-2xl'
+            }
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const token = localStorage.getItem("token");
+                await axios.delete(`http://localhost:8080/api/terrariums/${designId}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                showSuccessToast("Đã xóa bản nháp thành công!", 2000);
+                if (editingDraftId === designId) {
+                    setEditingDraftId(null);
+                    setDesignNote("");
+                }
+                fetchMyDesigns();
+            } catch (error) {
+                console.error("Lỗi xóa bản nháp:", error);
+                showErrorToast("Có lỗi xảy ra khi xóa bản nháp.", 2500);
+            }
+        }
+    };
+
+    // --- XỬ LÝ SỬA BẢN NHÁP ---
+    const handleEditDraft = (design: any) => {
+        setEditingDraftId(design.id);
+        setDesignNote(design.userNote || "");
+
+        // Tìm và chọn Bình
+        const container = containers.find(c => c.name === design.containerName);
+        if (container) setSelectedContainer(container);
+
+        // Tìm và chọn Đất
+        const soil = soils.find(s => s.name === design.soilName);
+        if (soil) setSelectedSoil(soil);
+
+        // Phân tích danh sách Cây và Tọa độ (nếu có)
+        const parsedPlants: PlantInstance[] = [];
+        if (design.plantPositions) {
+            // Tải lại cây kèm tọa độ chính xác đã lưu
+            const positions = design.plantPositions.split(';');
+            positions.forEach((pos: string) => {
+                const [pName, xStr, yStr] = pos.split('|');
+                const foundPlant = plants.find(p => p.name === pName);
+                if (foundPlant) {
+                    parsedPlants.push({
+                        ...foundPlant,
+                        instanceId: `${foundPlant.id}-${Date.now()}-${Math.random()}`,
+                        x: parseFloat(xStr) || 0,
+                        y: parseFloat(yStr) || 15
+                    });
+                }
+            });
+        } else if (design.plants) {
+            // Bản nháp cũ chưa có tọa độ
+            const plantEntries = design.plants.split(', ');
+            plantEntries.forEach((entry: string) => {
+                const match = entry.match(/^(\d+)x\s+(.+)$/);
+                if (match) {
+                    const count = parseInt(match[1], 10);
+                    const pName = match[2];
+                    const foundPlant = plants.find(p => p.name === pName);
+                    if (foundPlant) {
+                        for (let i = 0; i < count; i++) {
+                            parsedPlants.push({ ...foundPlant, instanceId: `${foundPlant.id}-${Date.now()}-${Math.random()}`, x: 0, y: 15 });
+                        }
+                    }
+                }
+            });
+        }
+        setSelectedPlants(parsedPlants);
+        setIsMyDesignsModalOpen(false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     // Tham chiếu để giới hạn khu vực kéo thả
     const constraintsRef = useRef<HTMLDivElement>(null);
+    const terrariumCaptureRef = useRef<HTMLDivElement>(null);
 
     // --- XỬ LÝ LỰA CHỌN CÂY ---
     const handleAddPlant = (plant: Plant) => {
@@ -126,8 +254,8 @@ const TerrariumBuilder: React.FC = () => {
             });
             return;
         }
-        
-        const newPlantInstance: PlantInstance = { ...plant, instanceId: `${plant.id}-${Date.now()}-${Math.random()}` };
+
+        const newPlantInstance: PlantInstance = { ...plant, instanceId: `${plant.id}-${Date.now()}-${Math.random()}`, x: 0, y: 15 };
         setSelectedPlants([...selectedPlants, newPlantInstance]);
     };
 
@@ -148,7 +276,7 @@ const TerrariumBuilder: React.FC = () => {
     const careInfo = selectedPlants.length > 0 ? selectedPlants[0] : null;
 
     // --- XỬ LÝ THÊM VÀO GIỎ HÀNG ---
-    const handleSaveDesign = async () => {
+    const handleSaveOrSubmit = async (status: 'PENDING' | 'DRAFT') => {
         const token = localStorage.getItem("token");
         if (!token) {
             Swal.fire({
@@ -174,13 +302,15 @@ const TerrariumBuilder: React.FC = () => {
             return;
         }
 
-        setIsSubmitting(true);
+        if (status === 'PENDING') setIsSubmittingPending(true);
+        else setIsSubmittingDraft(true);
         try {
             const plantNames = selectedPlants.reduce((acc, p) => {
                 acc[p.name] = (acc[p.name] || 0) + 1;
                 return acc;
             }, {} as Record<string, number>);
             const plantsStr = Object.entries(plantNames).map(([name, count]) => `${count}x ${name}`).join(", ");
+            const positionsStr = selectedPlants.map(p => `${p.name}|${p.x ?? 0}|${p.y ?? 15}`).join(';');
 
             const payload = {
                 containerName: selectedContainer?.name,
@@ -188,30 +318,51 @@ const TerrariumBuilder: React.FC = () => {
                 soilName: selectedSoil?.name,
                 soilPrice: selectedSoil?.price,
                 plants: plantsStr,
+                plantPositions: positionsStr, // Gửi tọa độ lên backend
                 plantsPrice: selectedPlants.reduce((sum, p) => sum + p.price, 0),
                 totalPrice: totalPrice,
-                userNote: designNote
+                userNote: designNote,
+                status: status // <-- Gửi trạng thái lên backend
             };
 
             const formData = new FormData();
             formData.append("design", new Blob([JSON.stringify(payload)], { type: "application/json" }));
-            if (designImageFile) {
-                formData.append("image", designImageFile);
+
+            // Chụp ảnh thiết kế hiện tại và gửi lên
+            if (terrariumCaptureRef.current) {
+                const canvas = await html2canvas(terrariumCaptureRef.current, {
+                    backgroundColor: null, // Nền trong suốt
+                    useCORS: true,
+                    scale: 2 // Tăng độ phân giải ảnh chụp
+                });
+                const imageBlob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+                if (imageBlob) {
+                    formData.append("image", imageBlob, "terrarium-design.png");
+                }
             }
 
-            await axios.post("http://localhost:8080/api/terrariums", formData, {
+            const url = editingDraftId
+                ? `http://localhost:8080/api/terrariums/${editingDraftId}`
+                : "http://localhost:8080/api/terrariums";
+            const method = editingDraftId ? axios.put : axios.post;
+
+            await method(url, formData, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
-            showSuccessToast("Đã gửi yêu cầu thiết kế thành công!", 2500);
-            setDesignNote("");
-            setDesignImageFile(null);
-            setDesignImagePreview("");
+            if (status === 'PENDING') {
+                showSuccessToast(editingDraftId ? "Cập nhật và gửi yêu cầu thành công!" : "Đã gửi yêu cầu thiết kế thành công!", 2500);
+                setDesignNote("");
+                setEditingDraftId(null); // Trở về trạng thái tạo mới
+            } else {
+                showSuccessToast(editingDraftId ? "Cập nhật bản nháp thành công!" : "Lưu bản nháp thành công!", 2000);
+            }
         } catch (error) {
             console.error("Lỗi lưu thiết kế:", error);
-            showErrorToast("Lỗi gửi bản thiết kế. Vui lòng thử lại sau.", 2500);
+            showErrorToast(status === 'PENDING' ? "Lỗi gửi bản thiết kế. Vui lòng thử lại sau." : "Lỗi lưu bản nháp.", 2500);
         } finally {
-            setIsSubmitting(false);
+            if (status === 'PENDING') setIsSubmittingPending(false);
+            else setIsSubmittingDraft(false);
         }
     };
 
@@ -253,8 +404,17 @@ const TerrariumBuilder: React.FC = () => {
                             Thiết Kế Terrarium
                         </h1>
                         <p className="text-sm text-gray-500 font-medium">
-                            Tự tay tạo nên hệ sinh thái thu nhỏ của riêng bạn
+                            {editingDraftId ? `Đang chỉnh sửa bản nháp #${editingDraftId}` : 'Tự tay tạo nên hệ sinh thái thu nhỏ của riêng bạn'}
                         </p>
+                        {editingDraftId && (
+                            <button
+                                onClick={() => { setEditingDraftId(null); setDesignNote(""); }}
+                                className="mt-2 text-xs font-bold text-red-500 hover:text-red-700 transition-colors w-fit flex items-center gap-1"
+                            >
+                                <span className="material-symbols-outlined text-[20px]">cancel</span>
+                                Hủy chỉnh sửa (Tạo mới)
+                            </button>
+                        )}
                     </div>
 
                     {/* Chọn Bình */}
@@ -344,31 +504,6 @@ const TerrariumBuilder: React.FC = () => {
                             onChange={(e) => setDesignNote(e.target.value)}
                             className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm resize-none"
                         ></textarea>
-                        <div className="mt-4">
-                            <label className="block text-sm font-bold text-gray-800 mb-2">Ảnh minh họa ý tưởng</label>
-                            <div className="flex items-center gap-4">
-                                {designImagePreview && (
-                                    <div className="relative w-20 h-20 rounded-xl border border-gray-200 overflow-hidden shadow-sm group">
-                                        <img src={designImagePreview} alt="Preview" className="w-full h-full object-cover" />
-                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                            <button
-                                                type="button"
-                                                onClick={() => { setDesignImageFile(null); setDesignImagePreview(""); }}
-                                                className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-600 transition-colors"
-                                                title="Xóa ảnh"
-                                            >
-                                                <span className="material-symbols-outlined text-sm">delete</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                                <div className="relative flex-1 h-20 rounded-xl border-2 border-dashed border-gray-300 hover:border-primary flex flex-col items-center justify-center bg-gray-50 hover:bg-primary/5 cursor-pointer transition-colors">
-                                    <input type="file" accept="image/*" onChange={(e) => { if (e.target.files && e.target.files[0]) { setDesignImageFile(e.target.files[0]); setDesignImagePreview(URL.createObjectURL(e.target.files[0])); } }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                    <span className="material-symbols-outlined text-gray-400">add_a_photo</span>
-                                    <span className="text-xs text-gray-500 mt-1 font-medium">Tải ảnh lên</span>
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
                     {/* Tổng tiền & Đặt hàng */}
@@ -379,10 +514,19 @@ const TerrariumBuilder: React.FC = () => {
                                 {totalPrice.toLocaleString('vi-VN')}đ
                             </p>
                         </div>
-                        <button onClick={handleSaveDesign} disabled={isSubmitting} className="w-full py-4 rounded-xl bg-primary text-white font-bold text-lg shadow-md hover:bg-[#2f5146] hover:shadow-lg transition-all active:scale-[0.98] flex justify-center items-center gap-2 disabled:bg-gray-400">
-                            {isSubmitting ? <span className="material-symbols-outlined animate-spin">autorenew</span> : <span className="material-symbols-outlined">save</span>}
-                            {isSubmitting ? "Đang gửi..." : "Gửi yêu cầu thiết kế"}
+                        <button onClick={() => handleSaveOrSubmit('PENDING')} disabled={isSubmittingPending || isSubmittingDraft} className="w-full py-4 rounded-xl bg-primary text-white font-bold text-lg shadow-md hover:bg-[#2f5146] hover:shadow-lg transition-all active:scale-[0.98] flex justify-center items-center gap-2 disabled:bg-gray-400">
+                            {isSubmittingPending ? <span className="material-symbols-outlined animate-spin">autorenew</span> : <span className="material-symbols-outlined">send</span>}
+                            {isSubmittingPending ? "Đang gửi..." : "Gửi Yêu Cầu Thiết Kế"}
                         </button>
+                        <div className="flex gap-3 mt-3">
+                            <button onClick={() => handleSaveOrSubmit('DRAFT')} disabled={isSubmittingPending || isSubmittingDraft} className="flex-1 py-3 rounded-xl bg-white border border-gray-200 text-gray-700 font-bold text-base shadow-sm hover:bg-gray-50 transition-all active:scale-[0.98] flex justify-center items-center gap-2 disabled:bg-gray-400">
+                                {isSubmittingDraft ? <span className="material-symbols-outlined animate-spin text-lg">autorenew</span> : <span className="material-symbols-outlined text-lg">draft</span>}
+                                {isSubmittingDraft ? "Đang lưu..." : (editingDraftId ? "Cập nhật Nháp" : "Lưu Nháp")}
+                            </button>
+                            <button onClick={() => { setIsMyDesignsModalOpen(true); fetchMyDesigns(); }} className="w-14 h-14 shrink-0 rounded-xl bg-white border border-gray-200 text-gray-600 flex items-center justify-center hover:bg-gray-50 transition-colors shadow-sm" title="Bộ sưu tập thiết kế">
+                                <span className="material-symbols-outlined">collections_bookmark</span>
+                            </button>
+                        </div>
                     </div>
                 </aside>
 
@@ -410,7 +554,7 @@ const TerrariumBuilder: React.FC = () => {
                     </div>
 
                     {/* TERRARIUM MOCKUP */}
-                    <div className="relative flex items-end justify-center mx-auto h-[460px] w-full transition-transform duration-300 ease-out" style={{ transform: `scale(${zoomLevel})` }}>
+                    <div ref={terrariumCaptureRef} className="relative flex items-end justify-center mx-auto h-[460px] w-full transition-transform duration-300 ease-out" style={{ transform: `scale(${zoomLevel})` }}>
 
                         {/* Bóng đổ dưới đáy bình (Realism: 2 lớp bóng, 1 đậm ở giữa, 1 nhạt lan tỏa) */}
                         <div className="absolute bottom-4 w-[160px] h-6 bg-black/30 blur-md rounded-[100%] pointer-events-none" />
@@ -444,10 +588,19 @@ const TerrariumBuilder: React.FC = () => {
                                             dragElastic={0.1}
                                             dragMomentum={false}
                                             whileDrag={{ scale: 1.15, cursor: "grabbing" }}
-                                            initial={{ y: 50, opacity: 0, scale: 0.8 }}
-                                            animate={{ y: 15, opacity: 1, scale: 1 }}
+                                            initial={{ x: 0, y: 50, opacity: 0, scale: 0.8 }}
+                                            animate={{ x: plant.x ?? 0, y: plant.y ?? 15, opacity: 1, scale: 1 }}
                                             exit={{ y: 50, opacity: 0, scale: 0.8 }}
                                             transition={{ type: 'spring', bounce: 0.4, duration: 0.6 }}
+                                            onDragEnd={(e: any, info: any) => {
+                                                const newPlants = [...selectedPlants];
+                                                newPlants[index] = {
+                                                    ...newPlants[index],
+                                                    x: (plant.x ?? 0) + (info.offset.x / zoomLevel),
+                                                    y: (plant.y ?? 15) + (info.offset.y / zoomLevel)
+                                                };
+                                                setSelectedPlants(newPlants);
+                                            }}
                                             className="w-24 sm:w-32 object-contain origin-bottom drop-shadow-[0_15px_10px_rgba(0,0,0,0.5)] pointer-events-auto cursor-grab"
                                             style={{
                                                 gridArea: '1 / 1',
@@ -503,6 +656,134 @@ const TerrariumBuilder: React.FC = () => {
                 </aside>
             </main>
 
+            {/* MODAL DANH SÁCH THIẾT KẾ ĐÃ LƯU */}
+            {isMyDesignsModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                        <div className="p-5 border-b flex justify-between items-center bg-gray-50 shrink-0">
+                            <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
+                                <span className="material-symbols-outlined text-primary">collections_bookmark</span>
+                                Bộ sưu tập thiết kế của tôi
+                            </h3>
+                            <button onClick={() => setIsMyDesignsModalOpen(false)} className="text-gray-400 hover:text-red-500 transition-colors">
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto bg-gray-50/50 flex-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full">
+                            {isLoadingDesigns ? (
+                                <div className="flex flex-col items-center justify-center py-10 gap-3 text-gray-500">
+                                    <span className="material-symbols-outlined animate-spin text-4xl text-primary">autorenew</span>
+                                    <p className="font-medium">Đang tải thiết kế...</p>
+                                </div>
+                            ) : myDesigns.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-12 gap-3 text-gray-500">
+                                    <span className="material-symbols-outlined text-6xl text-gray-300">inventory_2</span>
+                                    <p className="font-medium text-lg text-gray-600">Bạn chưa có thiết kế nào.</p>
+                                    <p className="text-sm">Hãy tự tay tạo nên một bình Terrarium thật đẹp nhé!</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {myDesigns.map(design => (
+                                        <div key={design.id} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col">
+                                            <div className="p-4 border-b border-gray-100 flex justify-between items-start bg-gray-50/50">
+                                                <div>
+                                                    <p className="font-bold text-gray-800">Thiết kế #{design.id}</p>
+                                                    <p className="text-xs text-gray-500 mt-1">{new Date(design.createdAt).toLocaleString('vi-VN')}</p>
+                                                </div>
+                                                <span className={`text-xs font-bold px-3 py-1 rounded-full border ${design.status === 'PENDING' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                                        design.status === 'DRAFT' ? 'bg-gray-100 text-gray-600 border-gray-200' :
+                                                            design.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                                                design.status === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-200' :
+                                                                    'bg-blue-50 text-blue-700 border-blue-200'
+                                                    }`}>
+                                                    {design.status === 'PENDING' ? 'Đang chờ duyệt' :
+                                                        design.status === 'DRAFT' ? 'Bản nháp' :
+                                                            design.status === 'APPROVED' ? 'Đã duyệt' :
+                                                                design.status === 'REJECTED' ? 'Bị từ chối' :
+                                                                    'Khách đã đặt'}
+                                                </span>
+                                            </div>
+                                            <div className="p-4 flex-1 flex flex-col gap-3">
+                                                <div className="flex gap-3 items-center">
+                                                    <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center shrink-0">
+                                                        <span className="material-symbols-outlined text-gray-400">category</span>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-gray-500 font-bold uppercase">Bình</p>
+                                                        <p className="text-sm font-semibold text-gray-800">{design.containerName}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-3 items-center">
+                                                    <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center shrink-0">
+                                                        <span className="material-symbols-outlined text-amber-600">landscape</span>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-gray-500 font-bold uppercase">Đất Nền</p>
+                                                        <p className="text-sm font-semibold text-gray-800">{design.soilName}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-3 items-start">
+                                                    <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center shrink-0">
+                                                        <span className="material-symbols-outlined text-emerald-600">potted_plant</span>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-gray-500 font-bold uppercase mb-0.5">Cây</p>
+                                                        <p className="text-sm font-semibold text-gray-800 line-clamp-2">{design.plants}</p>
+                                                    </div>
+                                                </div>
+                                                {design.userNote && (
+                                                    <div className="mt-2 bg-yellow-50 p-3 rounded-xl border border-yellow-100">
+                                                        <p className="text-xs text-yellow-800 font-bold mb-1">Ghi chú:</p>
+                                                        <p className="text-sm text-yellow-700">{design.userNote}</p>
+                                                    </div>
+                                                )}
+                                                {design.userImage && (
+                                                    <div className="mt-2">
+                                                        <p className="text-xs text-gray-500 font-bold mb-1">Ảnh đính kèm:</p>
+                                                        <img src={design.userImage} alt="User design" className="w-20 h-20 object-cover rounded-lg border border-gray-200" />
+                                                    </div>
+                                                )}
+                                                {design.adminReply && (
+                                                    <div className="mt-2 bg-red-50 p-3 rounded-xl border border-red-100">
+                                                        <p className="text-xs text-red-800 font-bold mb-1">Phản hồi từ Admin:</p>
+                                                        <p className="text-sm text-red-700">{design.adminReply}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="p-4 border-t border-gray-100 flex flex-col gap-3 bg-gray-50/30">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-sm font-bold text-gray-500">Tổng tiền:</span>
+                                                    <span className="text-xl font-black text-primary">{design.totalPrice.toLocaleString('vi-VN')}đ</span>
+                                                </div>
+                                                {design.status === 'DRAFT' && (
+                                                    <div className="flex gap-2 mt-1">
+                                                        <button onClick={() => handleEditDraft(design)} className="flex-1 py-2.5 bg-white border border-gray-200 text-gray-700 text-sm font-bold rounded-xl shadow-sm hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
+                                                            <span className="material-symbols-outlined text-[18px]">edit</span>
+                                                            Chỉnh sửa
+                                                        </button>
+                                                        <button onClick={() => handleSubmitDraft(design.id)} className="flex-1 py-2.5 bg-primary text-white text-sm font-bold rounded-xl shadow-sm hover:bg-[#2f5146] transition-colors flex items-center justify-center gap-2">
+                                                            <span className="material-symbols-outlined text-[18px]">send</span>
+                                                            Gửi yêu cầu
+                                                        </button>
+                                                        <button onClick={() => handleDeleteDraft(design.id)} className="px-3 bg-red-50 text-red-500 rounded-xl shadow-sm hover:bg-red-100 transition-colors flex items-center justify-center" title="Xóa bản nháp">
+                                                            <span className="material-symbols-outlined text-[20px]">delete</span>
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-5 border-t border-gray-100 flex justify-end bg-white shrink-0">
+                            <button onClick={() => setIsMyDesignsModalOpen(false)} className="px-6 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-bold hover:bg-gray-50 transition-colors">
+                                Đóng
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <Footer />
         </div>
     );

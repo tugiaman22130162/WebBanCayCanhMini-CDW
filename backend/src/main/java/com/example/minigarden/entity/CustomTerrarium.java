@@ -30,6 +30,9 @@ public class CustomTerrarium {
     private String plants; // Tên các loại cây, cách nhau bằng dấu phẩy
     private Double plantsPrice;
 
+    @Column(columnDefinition = "TEXT")
+    private String plantPositions;
+
     private Double totalPrice;
     private String userNote;
     private String adminReply;
