@@ -77,6 +77,7 @@ const AdminHeader: React.FC = () => {
         if (location.pathname.includes("/profile")) return "Hồ sơ cá nhân";
         if (location.pathname.includes("/reviews")) return "Quản lý đánh giá";
         if (location.pathname.includes("/blogs")) return "Quản lý bài viết";
+        if (location.pathname.includes("/terrariums")) return "Quản lý Terrarium";
         return "Tổng quan";
     };
 

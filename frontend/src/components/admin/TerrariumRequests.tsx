@@ -14,8 +14,10 @@ export default function TerrariumRequests() {
             const response = await axios.get("http://localhost:8080/api/terrariums", {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            // Sắp xếp mới nhất lên đầu
-            const sortedData = response.data.sort((a: any, b: any) => 
+            
+            // Lọc bỏ Bản nháp (DRAFT) và Sắp xếp mới nhất lên đầu
+            const filteredData = response.data.filter((design: any) => design.status !== 'DRAFT');
+            const sortedData = filteredData.sort((a: any, b: any) => 
                 new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
             );
             setDesigns(sortedData);

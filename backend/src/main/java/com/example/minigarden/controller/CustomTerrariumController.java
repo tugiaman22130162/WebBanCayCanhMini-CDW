@@ -45,7 +45,10 @@ public class CustomTerrariumController {
             Authentication authentication) {
         User user = userRepository.findByEmail(authentication.getName()).orElseThrow();
         design.setUser(user);
-        design.setStatus(CustomTerrariumStatus.PENDING);
+        // Nếu không có trạng thái được gửi từ FE, mặc định là PENDING
+        if (design.getStatus() == null) {
+            design.setStatus(CustomTerrariumStatus.PENDING);
+        }
         design.setCreatedAt(LocalDateTime.now());
 
         if (image != null && !image.isEmpty()) {
@@ -57,11 +60,13 @@ public class CustomTerrariumController {
         CustomTerrarium saved = customTerrariumRepository.save(design);
         
         // Gửi thông báo cho Admin
-        notificationService.createNotification(
-                "Khách hàng " + user.getFullName() + " vừa gửi một yêu cầu duyệt thiết kế Terrarium mới.",
-                "/admin/terrariums",
-                NotificationType.TERRARIUM
-        );
+        if (saved.getStatus() == CustomTerrariumStatus.PENDING) {
+            notificationService.createNotification(
+                    "Khách hàng " + user.getFullName() + " vừa gửi một yêu cầu duyệt thiết kế Terrarium mới.",
+                    "/admin/terrariums",
+                    NotificationType.TERRARIUM
+            );
+        }
         
         return ResponseEntity.ok(Map.of("message", "Gửi yêu cầu thiết kế thành công!", "id", saved.getId()));
     }
@@ -77,9 +82,110 @@ public class CustomTerrariumController {
     // Dành cho Admin: Lấy tất cả thiết kế
     @GetMapping
     public ResponseEntity<List<Map<String, Object>>> getAllDesigns() {
-        List<CustomTerrarium> designs = customTerrariumRepository.findAll();
+        List<CustomTerrarium> designs = customTerrariumRepository.findByStatusNot(CustomTerrariumStatus.DRAFT);
         designs.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
         return ResponseEntity.ok(designs.stream().map(this::mapToDTO).collect(Collectors.toList()));
+    }
+
+    // Dành cho User: Cập nhật bản thiết kế (có thể từ DRAFT -> DRAFT hoặc DRAFT -> PENDING)
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateDesign(
+            @PathVariable Integer id,
+            @RequestPart("design") CustomTerrarium updatedDesign,
+            @RequestPart(value = "image", required = false) MultipartFile image,
+            Authentication authentication) {
+        User currentUser = userRepository.findByEmail(authentication.getName()).orElseThrow();
+        CustomTerrarium existingDesign = customTerrariumRepository.findById(Objects.requireNonNull(id)).orElseThrow();
+
+        // Kiểm tra quyền sở hữu
+        if (!existingDesign.getUser().getId().equals(currentUser.getId())) {
+            return ResponseEntity.status(403).body(Map.of("message", "Bạn không có quyền chỉnh sửa bản thiết kế này."));
+        }
+        
+        // Chỉ cho phép cập nhật nếu trạng thái hiện tại là DRAFT
+        if (existingDesign.getStatus() != CustomTerrariumStatus.DRAFT) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Chỉ có thể chỉnh sửa bản nháp. Để gửi yêu cầu, hãy sử dụng tính năng 'Gửi yêu cầu thiết kế' (nút riêng)."));
+        }
+
+        // Cập nhật các trường có thể thay đổi
+        existingDesign.setContainerName(updatedDesign.getContainerName());
+        existingDesign.setContainerPrice(updatedDesign.getContainerPrice());
+        existingDesign.setSoilName(updatedDesign.getSoilName());
+        existingDesign.setSoilPrice(updatedDesign.getSoilPrice());
+        existingDesign.setPlants(updatedDesign.getPlants());
+        existingDesign.setPlantPositions(updatedDesign.getPlantPositions());
+        existingDesign.setPlantsPrice(updatedDesign.getPlantsPrice());
+        existingDesign.setTotalPrice(updatedDesign.getTotalPrice());
+        existingDesign.setUserNote(updatedDesign.getUserNote());
+        existingDesign.setStatus(updatedDesign.getStatus()); // Có thể thay đổi trạng thái nếu người dùng Gửi yêu cầu
+
+        if (image != null && !image.isEmpty()) {
+            // Tùy chọn: Xóa ảnh cũ trên Cloudinary nếu có (để tiết kiệm dung lượng)
+            if (existingDesign.getUserImage() != null && !existingDesign.getUserImage().isEmpty()) {
+                cloudinaryService.deleteImage(existingDesign.getUserImage());
+            }
+            CloudinaryService.UploadedImage uploadedImage = cloudinaryService.uploadUserDesignImage(image);
+            existingDesign.setUserImage(uploadedImage.secureUrl());
+        }
+        CustomTerrarium saved = customTerrariumRepository.save(existingDesign);
+
+        // Gửi thông báo cho Admin nếu trạng thái chuyển từ DRAFT sang PENDING
+        if (saved.getStatus() == CustomTerrariumStatus.PENDING) {
+            notificationService.createNotification(
+                    "Khách hàng " + currentUser.getFullName() + " vừa gửi một yêu cầu duyệt thiết kế Terrarium mới (từ bản nháp được cập nhật).",
+                    "/admin/terrariums",
+                    NotificationType.TERRARIUM
+            );
+        }
+        return ResponseEntity.ok(Map.of("message", "Cập nhật bản thiết kế thành công!", "id", saved.getId()));
+    }
+
+    // Dành cho User: Gửi bản nháp thành yêu cầu (DRAFT -> PENDING)
+    @PutMapping("/{id}/submit-draft")
+    public ResponseEntity<?> submitDraft(@PathVariable Integer id, Authentication authentication) {
+        CustomTerrarium design = customTerrariumRepository.findById(Objects.requireNonNull(id)).orElseThrow();
+        User user = userRepository.findByEmail(authentication.getName()).orElseThrow();
+        
+        if (design.getStatus() != CustomTerrariumStatus.DRAFT) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Chỉ có thể gửi bản nháp!"));
+        }
+
+        design.setStatus(CustomTerrariumStatus.PENDING);
+        customTerrariumRepository.save(design);
+
+        // Gửi thông báo cho Admin
+        notificationService.createNotification(
+                "Khách hàng " + user.getFullName() + " vừa gửi một yêu cầu duyệt thiết kế Terrarium (từ bản nháp).",
+                "/admin/terrariums",
+                NotificationType.TERRARIUM
+        );
+
+        return ResponseEntity.ok(Map.of("message", "Gửi yêu cầu thiết kế thành công!"));
+    }
+
+    // Dành cho User: Xóa bản nháp
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteDraft(@PathVariable Integer id, Authentication authentication) {
+        User currentUser = userRepository.findByEmail(authentication.getName()).orElseThrow();
+        CustomTerrarium existingDesign = customTerrariumRepository.findById(Objects.requireNonNull(id)).orElseThrow();
+
+        // Kiểm tra quyền sở hữu
+        if (!existingDesign.getUser().getId().equals(currentUser.getId())) {
+            return ResponseEntity.status(403).body(Map.of("message", "Bạn không có quyền xóa bản thiết kế này."));
+        }
+        
+        // Chỉ cho phép xóa nếu trạng thái hiện tại là DRAFT
+        if (existingDesign.getStatus() != CustomTerrariumStatus.DRAFT) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Chỉ có thể xóa bản nháp."));
+        }
+
+        if (existingDesign.getUserImage() != null && !existingDesign.getUserImage().isEmpty()) {
+            cloudinaryService.deleteImage(existingDesign.getUserImage());
+        }
+        
+        customTerrariumRepository.delete(existingDesign);
+
+        return ResponseEntity.ok(Map.of("message", "Xóa bản nháp thành công!"));
     }
 
     // Dành cho Admin: Duyệt hoặc Từ chối thiết kế
@@ -110,6 +216,7 @@ public class CustomTerrariumController {
         map.put("soilName", design.getSoilName());
         map.put("soilPrice", design.getSoilPrice());
         map.put("plants", design.getPlants());
+        map.put("plantPositions", design.getPlantPositions());
         map.put("plantsPrice", design.getPlantsPrice());
         map.put("totalPrice", design.getTotalPrice());
         map.put("userNote", design.getUserNote());
