@@ -31,4 +31,7 @@ public class TerrariumComponent {
 
     @Column(name = "stock_quantity")
     private Integer stockQuantity;
+
+    @Column(name = "max_per_container")
+    private Integer maxPerContainer;
 }
