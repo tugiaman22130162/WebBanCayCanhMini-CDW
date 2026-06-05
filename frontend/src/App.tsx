@@ -34,6 +34,7 @@ import OAuth2Success from "./pages/user/OAuth2Success"
 import BlogManagement from "./pages/admin/BlogManagement"
 import ReviewManagement from "./pages/admin/ReviewManagement"
 import News from "./pages/user/News"
+import TerrariumManagement from "./pages/admin/TerrariumManagement"
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -87,6 +88,7 @@ export default function App() {
           <Route path="/admin/profile" element={<AdminProfile />} />
           <Route path="/admin/reviews" element={<ReviewManagement />} />
           <Route path="/admin/blogs" element={<BlogManagement />} />
+          <Route path="/admin/terrariums" element={<TerrariumManagement />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

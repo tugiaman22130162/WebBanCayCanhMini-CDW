@@ -209,7 +209,7 @@ export default function PromotionManagement() {
             fetchPromotions();
         } catch (error: any) {
             Swal.close();
-            showErrorToast(error.response?.data?.error || 'Vui lòng kiểm tra lại định dạng file!', 2000);
+            showErrorToast(error.response?.data?.message || error.response?.data?.error || 'Vui lòng kiểm tra lại định dạng file!', 3000);
         } finally {
             if (fileInputRef.current) fileInputRef.current.value = '';
         }

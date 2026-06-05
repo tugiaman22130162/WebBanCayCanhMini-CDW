@@ -6,7 +6,6 @@ import com.example.minigarden.entity.Products;
 import com.example.minigarden.entity.ReviewReply;
 import com.example.minigarden.entity.Reviews;
 import com.example.minigarden.entity.User;
-import com.example.minigarden.dto.ReviewResponse;
 import com.example.minigarden.entity.NotificationType;
 import com.example.minigarden.repository.OrderItemRepository;
 import com.example.minigarden.repository.ProductRepository;
@@ -317,7 +316,7 @@ public class ReviewService {
         return reviewsRepository.findAll()
             .stream()
                 .map(r -> {
-                    User user = userRepository.findById(r.getUser_id()).orElse(null);
+                    User user = r.getUser_id() != null ? userRepository.findById(Objects.requireNonNull(r.getUser_id())).orElse(null) : null;
                     String prodName = "Sản phẩm không tồn tại";
                     String imgUrl = "https://images.unsplash.com/photo-1614594975525-e45190c55d40?w=100&h=100&fit=crop";
                     if (r.getProduct() != null) {
@@ -422,7 +421,7 @@ public class ReviewService {
 
     @Transactional
     public void editReply(Integer replyId, String newComment, String email) {
-        ReviewReply reply = reviewReplyRepository.findById(replyId)
+        ReviewReply reply = reviewReplyRepository.findById(Objects.requireNonNull(replyId))
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy phản hồi"));
 
         User user = userRepository.findByEmail(email)
@@ -460,7 +459,7 @@ public class ReviewService {
 
     @Transactional
     public void deleteReply(Integer replyId, String email) {
-        ReviewReply reply = reviewReplyRepository.findById(replyId)
+        ReviewReply reply = reviewReplyRepository.findById(Objects.requireNonNull(replyId))
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy phản hồi"));
 
         User user = userRepository.findByEmail(email)
