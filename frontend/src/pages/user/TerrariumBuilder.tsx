@@ -1,74 +1,245 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Header from "../../components/user/Header";
 import Footer from "../../components/user/Footer";
+import axios from "axios";
+import Swal from "sweetalert2";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { showSuccessToast, showErrorToast } from "../../utils/ToastUtils";
 
-// --- DATA MẪU (MOCK DATA) ---
-const CONTAINERS = [
-    { id: 'round', name: 'Bình tròn', price: 150000, style: 'w-[280px] sm:w-[320px] h-[280px] sm:h-[320px] rounded-[160px]', desc: 'Bình tròn giúp giữ độ ẩm không khí cực tốt, hoàn hảo cho rêu và các loại cây ưa ẩm nhiệt đới.' },
-    { id: 'geo', name: 'Hình học', price: 250000, style: 'w-[260px] sm:w-[280px] h-[320px] sm:h-[360px] rounded-[40px]', desc: 'Thiết kế góc cạnh hiện đại, dễ thoát hơi nước, phù hợp với không gian tối giản và sen đá.' },
-    { id: 'tall', name: 'Bình trụ', price: 180000, style: 'w-[180px] sm:w-[200px] h-[360px] sm:h-[400px] rounded-t-[100px] rounded-b-[30px]', desc: 'Bình trụ cao phù hợp với các loại cây thân thẳng, tạo điểm nhấn thanh lịch.' }
-];
-
-const SOILS = [
-    { id: 's1', name: 'Đất nền mùn', price: 20000, color: '#5d4037' },
-    { id: 's2', name: 'Sỏi Akadama', price: 35000, color: '#d7ccc8' },
-    { id: 's3', name: 'Đá núi lửa', price: 40000, color: '#455a64' }
-];
-
-type Plant = { id: string; name: string; price: number; image: string; light: string; humidity: string; level: string; }
-const PLANTS: Plant[] = [
-    { id: 'p1', name: 'Cẩm Nhung xanh', price: 35000, image: '/images/cam_nhung_xanh.png', light: 'Trung bình', humidity: 'Cao', level: 'Dễ' },
-    { id: 'p2', name: 'Rêu đuôi chồn', price: 25000, image: '/images/reu_duoi_chon.png', light: 'Yếu', humidity: 'Rất cao', level: 'Trung bình' },
-    { id: 'p3', name: 'Cây trường sinh', price: 30000, image: '/images/cay_truong_sinh.png', light: 'Yếu', humidity: 'Cao', level: 'Dễ' },
-    { id: 'p4', name: 'Sen đá hồng', price: 40000, image: '/images/sen_da_hong.png', light: 'Mạnh', humidity: 'Thấp', level: 'Trung bình' }
-];
+type ContainerType = { id: string; name: string; price: number; cssStyle: string; description: string; };
+type SoilType = { id: string; name: string; price: number; cssStyle: string; };
+type Plant = { id: string; name: string; price: number; image: string; light: string; humidity: string; careLevel: string; maxPerContainer?: number; }
+type PlantInstance = Plant & { instanceId: string };
 
 const TerrariumBuilder: React.FC = () => {
-    // --- STATES ---
-    const [selectedContainer, setSelectedContainer] = useState(CONTAINERS[0]);
-    const [selectedSoil, setSelectedSoil] = useState(SOILS[0]);
-    const [selectedPlants, setSelectedPlants] = useState<Plant[]>([PLANTS[0]]);
+    const [containers, setContainers] = useState<ContainerType[]>([]);
+    const [soils, setSoils] = useState<SoilType[]>([]);
+    const [plants, setPlants] = useState<Plant[]>([]);
+
+    // --- SELECTED STATES ---
+    const [selectedContainer, setSelectedContainer] = useState<ContainerType | null>(null);
+    const [selectedSoil, setSelectedSoil] = useState<SoilType | null>(null);
+    const [selectedPlants, setSelectedPlants] = useState<PlantInstance[]>([]);
     const [zoomLevel, setZoomLevel] = useState(1);
     const [designNote, setDesignNote] = useState("");
-    
+    const [designImageFile, setDesignImageFile] = useState<File | null>(null);
+    const [designImagePreview, setDesignImagePreview] = useState<string>("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isFetching, setIsFetching] = useState(true);
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { isLoggedIn, isLoading } = useAuth();
+
+    // Chuyển hướng nếu chưa đăng nhập
+    useEffect(() => {
+        if (!isLoading && !isLoggedIn) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Yêu cầu đăng nhập',
+                text: 'Vui lòng đăng nhập để có thể sử dụng tính năng Tự thiết kế Terrarium bạn nhé!',
+                confirmButtonText: 'Đăng nhập ngay',
+                showCancelButton: true,
+                cancelButtonText: 'Đóng',
+                buttonsStyling: false,
+                customClass: {
+                    confirmButton: 'bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold py-2.5 px-6 rounded-full shadow-md hover:shadow-lg hover:scale-[1.02] transition-all mx-2',
+                    cancelButton: 'bg-error text-on-error font-bold py-2.5 px-6 rounded-full shadow-md hover:shadow-lg hover:scale-[1.02] transition-all mx-2',
+                    popup: 'bg-surface rounded-xl shadow-2xl border border-outline-variant',
+                    title: 'text-primary font-bold text-2xl',
+                    htmlContainer: 'text-on-surface-variant font-medium'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    navigate(`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`);
+                } else {
+                    navigate('/'); // Nếu bấm Đóng thì đưa về trang chủ để không kẹt ở Loading
+                }
+            });
+        }
+    }, [isLoading, isLoggedIn, navigate, location.pathname, location.search]);
+
+    // Lấy dữ liệu API
+    useEffect(() => {
+        setIsFetching(true);
+        axios.get("http://localhost:8080/api/terrarium-components").then(res => {
+            const data = Array.isArray(res.data) ? res.data : [];
+            const c = data.filter((x: any) => x.type === 'CONTAINER');
+            const s = data.filter((x: any) => x.type === 'SOIL');
+            const p = data.filter((x: any) => x.type === 'PLANT');
+
+            setContainers(c);
+            setSoils(s);
+            setPlants(p);
+
+            // Set Mặc định
+            if (c.length > 0) setSelectedContainer(c[0]);
+            if (s.length > 0) setSelectedSoil(s[0]);
+            if (p.length > 0) setSelectedPlants([{ ...p[0], instanceId: `${p[0].id}-${Date.now()}` }]);
+        }).catch(err => {
+            console.error("Lỗi tải tài nguyên thiết kế:", err);
+        }).finally(() => {
+            setIsFetching(false);
+        });
+    }, []);
+
     // Tham chiếu để giới hạn khu vực kéo thả
     const constraintsRef = useRef<HTMLDivElement>(null);
 
     // --- XỬ LÝ LỰA CHỌN CÂY ---
-    const handleTogglePlant = (plant: Plant) => {
-        if (selectedPlants.find(p => p.id === plant.id)) {
-            // Bỏ chọn nếu đã có
-            setSelectedPlants(selectedPlants.filter(p => p.id !== plant.id));
-        } else {
-            // Thêm mới (Giới hạn tối đa 3 cây)
-            if (selectedPlants.length >= 3) {
-                alert("Không gian bình có hạn! Bạn chỉ có thể chọn tối đa 3 cây.");
-                return;
-            }
-            setSelectedPlants([...selectedPlants, plant]);
+    const handleAddPlant = (plant: Plant) => {
+        const uniqueTypes = new Set(selectedPlants.map(p => p.id));
+        const currentQuantityOfThisPlant = selectedPlants.filter(p => p.id === plant.id).length;
+
+        if (!uniqueTypes.has(plant.id) && uniqueTypes.size >= 3) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Giới hạn loại cây',
+                text: 'Không gian bình có hạn! Bạn chỉ có thể chọn tối đa 3 LOẠI cây khác nhau.',
+                confirmButtonText: 'Đã hiểu',
+                buttonsStyling: false,
+                customClass: {
+                    confirmButton: 'bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold py-2.5 px-6 rounded-full shadow-md hover:shadow-lg hover:scale-[1.02] transition-all mx-2',
+                    popup: 'bg-surface rounded-xl shadow-2xl border border-outline-variant !w-auto',
+                    title: 'text-primary font-bold text-2xl',
+                    htmlContainer: 'text-on-surface-variant font-medium whitespace-nowrap px-4'
+                }
+            });
+            return;
+        }
+
+        const limit = plant.maxPerContainer || 1; // Mặc định 1 nếu Admin chưa cài đặt
+        if (currentQuantityOfThisPlant >= limit) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Giới hạn số lượng',
+                text: `Bạn chỉ có thể thêm tối đa ${limit} cây ${plant.name} vào bình này.`,
+                confirmButtonText: 'Đã hiểu',
+                buttonsStyling: false,
+                customClass: {
+                    confirmButton: 'bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold py-2.5 px-6 rounded-full shadow-md hover:shadow-lg hover:scale-[1.02] transition-all mx-2',
+                    popup: 'bg-surface rounded-xl shadow-2xl border border-outline-variant !w-auto',
+                    title: 'text-primary font-bold text-2xl',
+                    htmlContainer: 'text-on-surface-variant font-medium whitespace-nowrap px-4'
+                }
+            });
+            return;
+        }
+        
+        const newPlantInstance: PlantInstance = { ...plant, instanceId: `${plant.id}-${Date.now()}-${Math.random()}` };
+        setSelectedPlants([...selectedPlants, newPlantInstance]);
+    };
+
+    const handleRemovePlant = (plantId: string) => {
+        const index = selectedPlants.map(p => p.id).lastIndexOf(plantId);
+        if (index !== -1) {
+            const newPlants = [...selectedPlants];
+            newPlants.splice(index, 1);
+            setSelectedPlants(newPlants);
         }
     };
 
     // --- TÍNH TỔNG TIỀN ---
-    const totalPrice = selectedContainer.price + selectedSoil.price + selectedPlants.reduce((sum, p) => sum + p.price, 0);
+    const totalPrice = (selectedContainer?.price || 0) + (selectedSoil?.price || 0) + selectedPlants.reduce((sum, p) => sum + p.price, 0);
 
     // --- LẤY THÔNG TIN CHĂM SÓC ---
     // Hiển thị thông tin của cây đầu tiên được chọn, nếu không có thì để trống
     const careInfo = selectedPlants.length > 0 ? selectedPlants[0] : null;
 
     // --- XỬ LÝ THÊM VÀO GIỎ HÀNG ---
-    const handleAddToCart = () => {
-        const customTerrarium = {
-            container: selectedContainer.name,
-            soil: selectedSoil.name,
-            plants: selectedPlants.map(p => p.name).join(", "),
-            note: designNote,
-            total: totalPrice
-        };
-        console.log("Đã thêm Terrarium tự thiết kế vào giỏ:", customTerrarium);
-        alert("Đã thêm Terrarium thiết kế vào giỏ hàng thành công!\n" + (designNote ? `Ghi chú của bạn: ${designNote}` : ""));
+    const handleSaveDesign = async () => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Yêu cầu đăng nhập',
+                text: 'Vui lòng đăng nhập để lưu bản thiết kế Terrarium.',
+                confirmButtonText: 'Đăng nhập ngay',
+                showCancelButton: true,
+                cancelButtonText: 'Đóng',
+                buttonsStyling: false,
+                customClass: {
+                    confirmButton: 'bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold py-2.5 px-6 rounded-full shadow-md hover:shadow-lg hover:scale-[1.02] transition-all mx-2',
+                    cancelButton: 'bg-error text-on-error font-bold py-2.5 px-6 rounded-full shadow-md hover:shadow-lg hover:scale-[1.02] transition-all mx-2',
+                    popup: 'bg-surface rounded-xl shadow-2xl border border-outline-variant',
+                    title: 'text-primary font-bold text-2xl',
+                    htmlContainer: 'text-on-surface-variant font-medium'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    navigate("/login?redirect=/builder");
+                }
+            });
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            const plantNames = selectedPlants.reduce((acc, p) => {
+                acc[p.name] = (acc[p.name] || 0) + 1;
+                return acc;
+            }, {} as Record<string, number>);
+            const plantsStr = Object.entries(plantNames).map(([name, count]) => `${count}x ${name}`).join(", ");
+
+            const payload = {
+                containerName: selectedContainer?.name,
+                containerPrice: selectedContainer?.price,
+                soilName: selectedSoil?.name,
+                soilPrice: selectedSoil?.price,
+                plants: plantsStr,
+                plantsPrice: selectedPlants.reduce((sum, p) => sum + p.price, 0),
+                totalPrice: totalPrice,
+                userNote: designNote
+            };
+
+            const formData = new FormData();
+            formData.append("design", new Blob([JSON.stringify(payload)], { type: "application/json" }));
+            if (designImageFile) {
+                formData.append("image", designImageFile);
+            }
+
+            await axios.post("http://localhost:8080/api/terrariums", formData, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            showSuccessToast("Đã gửi yêu cầu thiết kế thành công!", 2500);
+            setDesignNote("");
+            setDesignImageFile(null);
+            setDesignImagePreview("");
+        } catch (error) {
+            console.error("Lỗi lưu thiết kế:", error);
+            showErrorToast("Lỗi gửi bản thiết kế. Vui lòng thử lại sau.", 2500);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
+
+    if (isLoading || !isLoggedIn || isFetching) {
+        return (
+            <div className="min-h-screen bg-[#F8F9F5] flex items-center justify-center">
+                <span className="material-symbols-outlined animate-spin text-4xl text-primary">autorenew</span>
+                <p className="ml-2 font-bold text-gray-500">Đang tải tài nguyên thiết kế...</p>
+            </div>
+        )
+    }
+
+    if (!selectedContainer || !selectedSoil || plants.length === 0) {
+        return (
+            <div className="bg-background text-on-surface font-body flex flex-col min-h-screen">
+                <Header />
+                <main className="pt-[85px] flex-1 flex flex-col items-center justify-center text-center px-4">
+                    <span className="material-symbols-outlined text-6xl text-gray-300 mb-4">inventory_2</span>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Chưa có nguyên liệu thiết kế</h2>
+                    <p className="text-gray-500">Hiện tại cửa hàng đang cập nhật các nguyên liệu. Bạn vui lòng quay lại sau nhé!</p>
+                    <button onClick={() => navigate('/products')} className="mt-6 px-6 py-3 bg-primary text-white font-bold rounded-xl shadow-md hover:bg-[#2f5146] transition-colors">
+                        Xem các sản phẩm khác
+                    </button>
+                </main>
+                <Footer />
+            </div>
+        )
+    }
 
     return (
         <div className="bg-background text-on-surface font-body flex flex-col min-h-screen">
@@ -93,11 +264,11 @@ const TerrariumBuilder: React.FC = () => {
                             <span className="text-xs font-bold text-primary">{selectedContainer.price.toLocaleString('vi-VN')}đ</span>
                         </div>
                         <div className="grid grid-cols-3 gap-3">
-                            {CONTAINERS.map(c => (
-                                <button 
-                                    key={c.id} 
+                            {containers.map(c => (
+                                <button
+                                    key={c.id}
                                     onClick={() => setSelectedContainer(c)}
-                                    className={`py-3 px-2 text-sm font-semibold rounded-xl transition-all border-2 ${selectedContainer.id === c.id ? 'border-primary bg-primary/5 text-primary' : 'border-gray-100 bg-gray-50 hover:border-gray-300 text-gray-600'}`}
+                                    className={`py-3 px-2 text-sm font-semibold rounded-xl transition-all border-2 ${selectedContainer?.id === c.id ? 'border-primary bg-primary/5 text-primary' : 'border-gray-100 bg-gray-50 hover:border-gray-300 text-gray-600'}`}
                                 >
                                     {c.name}
                                 </button>
@@ -112,12 +283,12 @@ const TerrariumBuilder: React.FC = () => {
                             <span className="text-xs font-bold text-primary">{selectedSoil.price.toLocaleString('vi-VN')}đ</span>
                         </div>
                         <div className="flex gap-4">
-                            {SOILS.map(s => (
+                            {soils.map(s => (
                                 <div key={s.id} className="flex flex-col items-center gap-2 cursor-pointer" onClick={() => setSelectedSoil(s)}>
-                                    <div 
-                                        className={`w-12 h-12 rounded-full shadow-inner transition-transform ${selectedSoil.id === s.id ? 'ring-4 ring-primary ring-offset-2 scale-110' : 'hover:scale-105'}`} 
-                                        style={{ backgroundColor: s.color }}
-                                        title={s.name}
+                                    <div
+                                        className={`w-12 h-12 rounded-full shadow-inner transition-transform ${selectedSoil?.id === s.id ? 'ring-4 ring-primary ring-offset-2 scale-110' : 'hover:scale-105'}`}
+                                        style={{ backgroundColor: s.cssStyle }}
+                                        title={s.name + ` (+${s.price.toLocaleString()}đ)`}
                                     />
                                 </div>
                             ))}
@@ -127,28 +298,34 @@ const TerrariumBuilder: React.FC = () => {
                     {/* Chọn Cây */}
                     <div>
                         <div className="flex justify-between items-center mb-3">
-                            <p className="text-sm font-bold text-gray-800">3. Chọn Cây Mini</p>
-                            <span className="text-xs font-bold text-primary">Tối đa 3 cây</span>
+                            <p className="text-sm font-bold text-gray-800">3. Chọn Cây Mini (Tối đa 3 loại)</p>
+                            <span className="text-xs font-bold text-primary">Đã chọn: {new Set(selectedPlants.map(p => p.id)).size}/3 loại</span>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                            {PLANTS.map(plant => {
-                                const isSelected = selectedPlants.some(p => p.id === plant.id);
+                            {plants.map(plant => {
+                                const quantity = selectedPlants.filter(p => p.id === plant.id).length;
                                 return (
-                                    <div 
-                                        key={plant.id} 
-                                        onClick={() => handleTogglePlant(plant)}
-                                        className={`relative rounded-2xl p-2 cursor-pointer transition-all border-2 bg-white ${isSelected ? 'border-primary shadow-md' : 'border-gray-100 hover:border-gray-300'}`}
+                                    <div
+                                        key={plant.id}
+                                        onClick={() => quantity === 0 && handleAddPlant(plant)}
+                                        className={`relative rounded-2xl p-2 transition-all border-2 bg-white ${quantity > 0 ? 'border-primary shadow-md' : 'border-gray-100 hover:border-gray-300 cursor-pointer'}`}
                                     >
                                         <div className="aspect-square bg-gray-50 rounded-xl flex items-center justify-center mb-2 overflow-hidden p-2">
                                             <img src={plant.image} alt={plant.name} className="w-full h-full object-contain drop-shadow-md" />
                                         </div>
                                         <p className="text-xs font-bold text-center text-gray-800 line-clamp-1">{plant.name}</p>
-                                        <p className="text-[10px] font-semibold text-center text-emerald-600">+{plant.price.toLocaleString('vi-VN')}đ</p>
-                                        
-                                        {/* Dấu check khi được chọn */}
-                                        {isSelected && (
-                                            <div className="absolute top-2 right-2 w-5 h-5 bg-primary text-white rounded-full flex items-center justify-center">
-                                                <span className="material-symbols-outlined text-[14px] font-bold">check</span>
+                                        <p className="text-[10px] font-semibold text-center text-emerald-600 mb-1">+{plant.price.toLocaleString('vi-VN')}đ</p>
+
+                                        {/* Bộ điều khiển số lượng */}
+                                        {quantity > 0 && (
+                                            <div className="absolute top-2 right-2 flex items-center bg-white border border-primary rounded-lg shadow-sm overflow-hidden z-10">
+                                                <button onClick={(e) => { e.stopPropagation(); handleRemovePlant(plant.id); }} className="w-6 h-6 flex items-center justify-center text-primary hover:bg-primary/10 transition-colors">
+                                                    <span className="material-symbols-outlined text-[14px] font-bold">remove</span>
+                                                </button>
+                                                <span className="w-4 text-center text-xs font-bold text-gray-800">{quantity}</span>
+                                                <button onClick={(e) => { e.stopPropagation(); handleAddPlant(plant); }} className="w-6 h-6 flex items-center justify-center text-primary hover:bg-primary/10 transition-colors">
+                                                    <span className="material-symbols-outlined text-[14px] font-bold">add</span>
+                                                </button>
                                             </div>
                                         )}
                                     </div>
@@ -167,6 +344,31 @@ const TerrariumBuilder: React.FC = () => {
                             onChange={(e) => setDesignNote(e.target.value)}
                             className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm resize-none"
                         ></textarea>
+                        <div className="mt-4">
+                            <label className="block text-sm font-bold text-gray-800 mb-2">Ảnh minh họa ý tưởng</label>
+                            <div className="flex items-center gap-4">
+                                {designImagePreview && (
+                                    <div className="relative w-20 h-20 rounded-xl border border-gray-200 overflow-hidden shadow-sm group">
+                                        <img src={designImagePreview} alt="Preview" className="w-full h-full object-cover" />
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <button
+                                                type="button"
+                                                onClick={() => { setDesignImageFile(null); setDesignImagePreview(""); }}
+                                                className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-600 transition-colors"
+                                                title="Xóa ảnh"
+                                            >
+                                                <span className="material-symbols-outlined text-sm">delete</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="relative flex-1 h-20 rounded-xl border-2 border-dashed border-gray-300 hover:border-primary flex flex-col items-center justify-center bg-gray-50 hover:bg-primary/5 cursor-pointer transition-colors">
+                                    <input type="file" accept="image/*" onChange={(e) => { if (e.target.files && e.target.files[0]) { setDesignImageFile(e.target.files[0]); setDesignImagePreview(URL.createObjectURL(e.target.files[0])); } }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                    <span className="material-symbols-outlined text-gray-400">add_a_photo</span>
+                                    <span className="text-xs text-gray-500 mt-1 font-medium">Tải ảnh lên</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Tổng tiền & Đặt hàng */}
@@ -177,18 +379,18 @@ const TerrariumBuilder: React.FC = () => {
                                 {totalPrice.toLocaleString('vi-VN')}đ
                             </p>
                         </div>
-                        <button onClick={handleAddToCart} className="w-full py-4 rounded-xl bg-primary text-white font-bold text-lg shadow-md hover:bg-[#2f5146] hover:shadow-lg transition-all active:scale-[0.98] flex justify-center items-center gap-2">
-                            <span className="material-symbols-outlined">shopping_bag</span>
-                            Thêm vào giỏ hàng
+                        <button onClick={handleSaveDesign} disabled={isSubmitting} className="w-full py-4 rounded-xl bg-primary text-white font-bold text-lg shadow-md hover:bg-[#2f5146] hover:shadow-lg transition-all active:scale-[0.98] flex justify-center items-center gap-2 disabled:bg-gray-400">
+                            {isSubmitting ? <span className="material-symbols-outlined animate-spin">autorenew</span> : <span className="material-symbols-outlined">save</span>}
+                            {isSubmitting ? "Đang gửi..." : "Gửi yêu cầu thiết kế"}
                         </button>
                     </div>
                 </aside>
 
                 {/* CENTER - PREVIEW (XEM TRƯỚC) */}
-                <section className="flex-1 relative bg-[#F8F9F5] flex items-center justify-center p-10 overflow-hidden min-h-[500px] lg:min-h-0">
+                <section className="flex-1 relative bg-[#DCE3DE] flex items-center justify-center p-10 overflow-hidden min-h-[500px] lg:min-h-0 shadow-inner">
                     {/* Hiệu ứng Ánh sáng nền */}
-                    <div className="absolute top-1/4 -left-20 w-80 h-80 bg-emerald-200/40 blur-[100px] rounded-full pointer-events-none" />
-                    <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-lime-200/30 blur-[100px] rounded-full pointer-events-none" />
+                    <div className="absolute top-1/4 -left-20 w-80 h-80 bg-emerald-300/40 blur-[100px] rounded-full pointer-events-none" />
+                    <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-lime-300/30 blur-[100px] rounded-full pointer-events-none" />
 
                     {/* Bộ điều khiển Zoom */}
                     <div className="absolute top-6 right-6 z-40 flex flex-col bg-white/80 backdrop-blur-md p-1.5 rounded-xl shadow-sm border border-gray-100">
@@ -209,14 +411,14 @@ const TerrariumBuilder: React.FC = () => {
 
                     {/* TERRARIUM MOCKUP */}
                     <div className="relative flex items-end justify-center mx-auto h-[460px] w-full transition-transform duration-300 ease-out" style={{ transform: `scale(${zoomLevel})` }}>
-                        
+
                         {/* Bóng đổ dưới đáy bình (Realism: 2 lớp bóng, 1 đậm ở giữa, 1 nhạt lan tỏa) */}
                         <div className="absolute bottom-4 w-[160px] h-6 bg-black/30 blur-md rounded-[100%] pointer-events-none" />
                         <div className="absolute bottom-2 w-[260px] h-12 bg-black/10 blur-xl rounded-[100%] pointer-events-none" />
 
                         {/* Hình dáng kính (Container) */}
-                        <div ref={constraintsRef} className={`relative bg-gradient-to-r from-white/20 via-white/5 to-white/20 border border-white/40 shadow-[inset_0_0_20px_rgba(255,255,255,0.4),inset_10px_0_40px_rgba(255,255,255,0.2),inset_-10px_0_30px_rgba(255,255,255,0.2),0_20px_40px_-10px_rgba(0,0,0,0.15)] backdrop-blur-md overflow-hidden flex flex-col justify-end transition-all duration-700 ease-in-out mb-10 ${selectedContainer.style}`}>
-                            
+                        <div ref={constraintsRef} className={`relative bg-gradient-to-r from-white/20 via-white/5 to-white/20 border-2 border-white/60 shadow-[inset_0_0_20px_rgba(255,255,255,0.6),inset_10px_0_40px_rgba(255,255,255,0.3),inset_-10px_0_30px_rgba(255,255,255,0.3),0_20px_40px_-10px_rgba(0,0,0,0.2)] backdrop-blur-md overflow-hidden flex flex-col justify-end transition-all duration-700 ease-in-out mb-10 ${selectedContainer.cssStyle}`}>
+
                             {/* Hiệu ứng phản chiếu của kính (Glare cong 3D) */}
                             <div className="absolute inset-y-0 left-[8%] w-[12%] bg-gradient-to-r from-white/40 to-transparent rounded-full blur-md pointer-events-none z-30 transform -skew-x-6" />
                             <div className="absolute inset-y-0 right-[5%] w-[8%] bg-gradient-to-l from-white/20 to-transparent rounded-full blur-sm pointer-events-none z-30" />
@@ -230,42 +432,42 @@ const TerrariumBuilder: React.FC = () => {
                             }} />
 
                             {/* Lớp Cây (Plants) - Nằm bên trong bình, trên lớp đất */}
-                            <div className="absolute bottom-[26%] left-0 w-full flex justify-center items-end px-4 z-20 pointer-events-none">
-                            <AnimatePresence>
-                                {selectedPlants.map((plant, index) => (
-                                    <motion.img
-                                        key={plant.id}
-                                        src={plant.image}
-                                        alt={plant.name}
-                                        drag
-                                        dragConstraints={constraintsRef}
-                                        dragElastic={0.1}
-                                        dragMomentum={false}
-                                        whileDrag={{ scale: 1.15, cursor: "grabbing" }}
-                                        initial={{ y: 50, opacity: 0, scale: 0.8 }}
+                            <div className="absolute bottom-[26%] left-0 w-full grid place-items-end justify-center px-4 z-20 pointer-events-none">
+                                <AnimatePresence>
+                                    {selectedPlants.map((plant, index) => (
+                                        <motion.img
+                                            key={plant.instanceId}
+                                            src={plant.image}
+                                            alt={plant.name}
+                                            drag
+                                            dragConstraints={constraintsRef}
+                                            dragElastic={0.1}
+                                            dragMomentum={false}
+                                            whileDrag={{ scale: 1.15, cursor: "grabbing" }}
+                                            initial={{ y: 50, opacity: 0, scale: 0.8 }}
                                             animate={{ y: 15, opacity: 1, scale: 1 }}
-                                        exit={{ y: 50, opacity: 0, scale: 0.8 }}
-                                        transition={{ type: 'spring', bounce: 0.4, duration: 0.6 }}
-                                        className="w-24 sm:w-32 object-contain origin-bottom drop-shadow-[0_15px_10px_rgba(0,0,0,0.5)] pointer-events-auto cursor-grab"
-                                            style={{ 
+                                            exit={{ y: 50, opacity: 0, scale: 0.8 }}
+                                            transition={{ type: 'spring', bounce: 0.4, duration: 0.6 }}
+                                            className="w-24 sm:w-32 object-contain origin-bottom drop-shadow-[0_15px_10px_rgba(0,0,0,0.5)] pointer-events-auto cursor-grab"
+                                            style={{
+                                                gridArea: '1 / 1',
                                                 zIndex: selectedPlants.length - index,
-                                            marginLeft: index > 0 ? '-30px' : '0',
-                                            filter: 'contrast(1.05) brightness(0.95)'
+                                                filter: 'contrast(1.05) brightness(0.95)'
                                             }}
-                                    />
-                                ))}
-                            </AnimatePresence>
-                        </div>
+                                        />
+                                    ))}
+                                </AnimatePresence>
+                            </div>
 
                             {/* Lớp Đất nền (Soil) - Có độ sâu 3D và vân đất */}
-                            <div 
-                                className="w-full h-[28%] transition-colors duration-700 z-10 relative shadow-[inset_0_20px_20px_-10px_rgba(0,0,0,0.6)]" 
-                                style={{ backgroundColor: selectedSoil.color }} 
+                            <div
+                                className="w-full h-[28%] transition-colors duration-700 z-10 relative shadow-[inset_0_20px_20px_-10px_rgba(0,0,0,0.6)]"
+                                style={{ backgroundColor: selectedSoil.cssStyle }}
                             >
                                 {/* Vân đất dạng nhiễu và bóng viền */}
                                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_transparent_50%,_rgba(0,0,0,0.8)_100%)] mix-blend-multiply opacity-80" />
                                 <div className="absolute inset-0 bg-[linear-gradient(45deg,rgba(0,0,0,0.2)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.2)_50%,rgba(0,0,0,0.2)_75%,transparent_75%,transparent)] bg-[length:4px_4px] opacity-20" />
-                                <div className="absolute top-0 w-full h-1.5 bg-black/40 blur-[1px]" /> 
+                                <div className="absolute top-0 w-full h-1.5 bg-black/40 blur-[1px]" />
                             </div>
                         </div>
                     </div>
@@ -282,7 +484,7 @@ const TerrariumBuilder: React.FC = () => {
                             <div className="space-y-3">
                                 <div className="flex justify-between items-center text-sm"><span className="text-emerald-700 font-medium">Ánh sáng:</span><span className="font-bold text-gray-800">{careInfo.light}</span></div>
                                 <div className="flex justify-between items-center text-sm"><span className="text-emerald-700 font-medium">Độ ẩm:</span><span className="font-bold text-gray-800">{careInfo.humidity}</span></div>
-                                <div className="flex justify-between items-center text-sm"><span className="text-emerald-700 font-medium">Mức độ:</span><span className="font-bold text-primary px-2 py-0.5 bg-white rounded-md shadow-sm">{careInfo.level}</span></div>
+                                <div className="flex justify-between items-center text-sm"><span className="text-emerald-700 font-medium">Mức độ:</span><span className="font-bold text-primary px-2 py-0.5 bg-white rounded-md shadow-sm">{careInfo.careLevel}</span></div>
                             </div>
                         ) : (
                             <p className="text-sm text-emerald-700 font-medium">Hãy chọn ít nhất 1 loại cây để xem thông tin chăm sóc chi tiết.</p>
@@ -295,12 +497,12 @@ const TerrariumBuilder: React.FC = () => {
                             Mẹo nhỏ
                         </h3>
                         <p className="text-sm text-gray-600 leading-relaxed font-medium">
-                            {selectedContainer.desc}
+                            {selectedContainer.description}
                         </p>
                     </div>
                 </aside>
             </main>
-            
+
             <Footer />
         </div>
     );

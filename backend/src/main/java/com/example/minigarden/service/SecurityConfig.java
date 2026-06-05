@@ -32,8 +32,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**", "/login/**", "/oauth2/**", "/error", "/api/chatbot/**", "/api/shipping/**", "/api/ghn/**", "/api/vnpay/**", "/api/blogs/**").permitAll()
-                        .requestMatchers( "/api/products/**", "/api/categories/**",
-                                "/api/terrarium/components")
+                        .requestMatchers( "/api/products/**", "/api/categories/**", "/api/terrarium-components/**")
                         .permitAll()
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2

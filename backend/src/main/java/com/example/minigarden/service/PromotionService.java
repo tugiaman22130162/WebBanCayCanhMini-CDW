@@ -482,6 +482,32 @@ public class PromotionService {
             List<Promotion> promotions = new ArrayList<>();
             Set<String> namesInFile = new HashSet<>();
 
+            // Tìm header để map cột động, tránh lỗi khi người dùng thiếu cột ID
+            Row headerRow = sheet.getRow(1);
+            int nameCol = 1, descCol = 2, typeCol = 3, discTypeCol = 5,
+                discValCol = 6, minOrderCol = 7, statusCol = 8, startCol = 9, endCol = 10, qtyCol = 11;
+            
+            if (headerRow != null) {
+                for (int j = 0; j < headerRow.getLastCellNum(); j++) {
+                    Cell cell = headerRow.getCell(j);
+                    if (cell != null) {
+                        try {
+                            String header = cell.getStringCellValue().trim();
+                            if (header.equalsIgnoreCase("Mã Khuyến Mãi")) nameCol = j;
+                            else if (header.equalsIgnoreCase("Mô Tả")) descCol = j;
+                            else if (header.equalsIgnoreCase("Loại KM")) typeCol = j;
+                            else if (header.equalsIgnoreCase("Loại Giảm Giá")) discTypeCol = j;
+                            else if (header.equalsIgnoreCase("Mức Giảm")) discValCol = j;
+                            else if (header.equalsIgnoreCase("Đơn Tối Thiểu")) minOrderCol = j;
+                            else if (header.equalsIgnoreCase("Trạng Thái")) statusCol = j;
+                            else if (header.equalsIgnoreCase("Ngày Bắt Đầu")) startCol = j;
+                            else if (header.equalsIgnoreCase("Ngày Kết Thúc")) endCol = j;
+                            else if (header.equalsIgnoreCase("Số Lượng")) qtyCol = j;
+                        } catch (Exception ignored) { }
+                    }
+                }
+            }
+
             // Đọc từ dòng 2 (bỏ qua Title và Header)
             for (int i = 2; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
@@ -491,14 +517,18 @@ public class PromotionService {
                 Promotion promotion = new Promotion();
 
                 // Cột 1: Mã Khuyến Mãi (Tên)
-                Cell nameCell = row.getCell(1);
+                Cell nameCell = nameCol != -1 ? row.getCell(nameCol) : null;
                 String name = "";
                 if (nameCell != null) {
                     try {
                         name = nameCell.getStringCellValue().trim();
                     } catch (Exception e) {
                         try {
-                            name = String.valueOf((int) nameCell.getNumericCellValue());
+                            if (nameCell.getNumericCellValue() == (int) nameCell.getNumericCellValue()) {
+                                name = String.valueOf((int) nameCell.getNumericCellValue());
+                            } else {
+                                name = String.valueOf(nameCell.getNumericCellValue());
+                            }
                         } catch (Exception ex) {
                         }
                     }
@@ -517,7 +547,7 @@ public class PromotionService {
                 promotion.setName(name);
 
                 // Cột 2: Mô tả
-                Cell descCell = row.getCell(2);
+                Cell descCell = descCol != -1 ? row.getCell(descCol) : null;
                 if (descCell != null) {
                     try {
                         promotion.setDescription(descCell.getStringCellValue());
@@ -526,7 +556,7 @@ public class PromotionService {
                 }
 
                 // Cột 3: Loại Khuyến Mãi
-                Cell typeCell = row.getCell(3);
+                Cell typeCell = typeCol != -1 ? row.getCell(typeCol) : null;
                 if (typeCell != null) {
                     try {
                         promotion.setType(PromotionType.valueOf(typeCell.getStringCellValue().trim().toUpperCase()));
@@ -536,7 +566,7 @@ public class PromotionService {
                 }
 
                 // Cột 5: Loại Giảm Giá
-                Cell discTypeCell = row.getCell(5);
+                Cell discTypeCell = discTypeCol != -1 ? row.getCell(discTypeCol) : null;
                 if (discTypeCell != null) {
                     try {
                         promotion.setDiscountType(
@@ -547,7 +577,7 @@ public class PromotionService {
                 }
 
                 // Cột 6: Mức giảm
-                Cell discValCell = row.getCell(6);
+                Cell discValCell = discValCol != -1 ? row.getCell(discValCol) : null;
                 if (discValCell != null) {
                     try {
                         promotion.setDiscountValue(BigDecimal.valueOf(discValCell.getNumericCellValue()));
@@ -562,7 +592,7 @@ public class PromotionService {
                     promotion.setDiscountValue(BigDecimal.ZERO);
 
                 // Cột 7: Đơn tối thiểu
-                Cell minOrderCell = row.getCell(7);
+                Cell minOrderCell = minOrderCol != -1 ? row.getCell(minOrderCol) : null;
                 if (minOrderCell != null) {
                     try {
                         promotion.setMinOrderValue(BigDecimal.valueOf(minOrderCell.getNumericCellValue()));
@@ -577,7 +607,7 @@ public class PromotionService {
                     promotion.setMinOrderValue(BigDecimal.ZERO);
 
                 // Cột 8: Trạng thái
-                Cell statusCell = row.getCell(8);
+                Cell statusCell = statusCol != -1 ? row.getCell(statusCol) : null;
                 if (statusCell != null) {
                     try {
                         promotion.setIsActive("Hoạt động".equalsIgnoreCase(statusCell.getStringCellValue().trim()));
@@ -588,7 +618,7 @@ public class PromotionService {
                     promotion.setIsActive(true);
 
                 // Cột 9: Ngày Bắt Đầu
-                Cell startDateCell = row.getCell(9);
+                Cell startDateCell = startCol != -1 ? row.getCell(startCol) : null;
                 if (startDateCell != null) {
                     try {
                         java.util.Date date = startDateCell.getDateCellValue();
@@ -606,7 +636,7 @@ public class PromotionService {
                 }
 
                 // Cột 10: Ngày Kết Thúc
-                Cell endDateCell = row.getCell(10);
+                Cell endDateCell = endCol != -1 ? row.getCell(endCol) : null;
                 if (endDateCell != null) {
                     try {
                         java.util.Date date = endDateCell.getDateCellValue();
@@ -623,7 +653,7 @@ public class PromotionService {
                 }
 
                 // Cột 11: Số lượng
-                Cell qtyCell = row.getCell(11);
+                Cell qtyCell = qtyCol != -1 ? row.getCell(qtyCol) : null;
                 if (qtyCell != null) {
                     try {
                         promotion.setQuantity((int) qtyCell.getNumericCellValue());

@@ -5,7 +5,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.minigarden.dto.AddToCartRequest;
-import com.example.minigarden.dto.CartResponse;
 import com.example.minigarden.service.CartService;
 import java.util.Map;
 

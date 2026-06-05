@@ -75,6 +75,44 @@ public class CloudinaryService {
         }
     }
 
+    // Upload anh thiet ke cua user len Cloudinary
+    public UploadedImage uploadUserDesignImage(MultipartFile file) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = cloudinary.uploader().upload(
+                    file.getBytes(),
+                    ObjectUtils.asMap(
+                            "folder", "minigarden/user_designs",
+                            "resource_type", "image"));
+
+            String publicId = (String) result.get("public_id");
+            String secureUrl = (String) result.get("secure_url");
+
+            return new UploadedImage(publicId, secureUrl);
+        } catch (IOException exception) {
+            throw new RuntimeException("Khong the upload anh thiet ke len Cloudinary", exception);
+        }
+    }
+
+    // Upload anh nguyen lieu Terrarium len Cloudinary
+    public UploadedImage uploadComponentImage(MultipartFile file) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = cloudinary.uploader().upload(
+                    file.getBytes(),
+                    ObjectUtils.asMap(
+                            "folder", "minigarden/components",
+                            "resource_type", "image"));
+
+            String publicId = (String) result.get("public_id");
+            String secureUrl = (String) result.get("secure_url");
+
+            return new UploadedImage(publicId, secureUrl);
+        } catch (IOException exception) {
+            throw new RuntimeException("Khong the upload anh nguyen lieu len Cloudinary", exception);
+        }
+    }
+
     // Xoa mot anh tren Cloudinary theo public_id.
     public void deleteImage(String publicId) {
         if (publicId == null || publicId.isBlank()) {

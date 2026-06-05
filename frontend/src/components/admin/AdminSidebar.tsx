@@ -11,6 +11,7 @@ const AdminSidebar: React.FC = () => {
         { name: "Sản phẩm", path: "/admin/products", icon: "inventory_2" },
         { name: "Danh mục", path: "/admin/categories", icon: "category" },
         { name: "Đơn hàng", path: "/admin/orders", icon: "receipt_long" },
+        { name: "Quản lý Terrarium", path: "/admin/terrariums", icon: "psychiatry" },
         { name: "Khuyến mãi", path: "/admin/promotions", icon: "campaign" },
         { name: "Thanh toán", path: "/admin/payments", icon: "payments" },
         {name: "Đánh giá", path: "/admin/reviews", icon: "star_rate" },

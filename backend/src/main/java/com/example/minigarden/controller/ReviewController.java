@@ -1,17 +1,14 @@
 package com.example.minigarden.controller;
 
 import com.example.minigarden.dto.ReviewReplyRequest;
-import com.example.minigarden.dto.ReviewResponse;
 import com.example.minigarden.service.ReviewService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.security.core.Authentication;
 
 import java.security.Principal;
-import java.util.List;
 import java.util.Map;
 
 @RestController
