@@ -35,6 +35,8 @@ import BlogManagement from "./pages/admin/BlogManagement"
 import ReviewManagement from "./pages/admin/ReviewManagement"
 import News from "./pages/user/News"
 import TerrariumManagement from "./pages/admin/TerrariumManagement"
+import Message from "./pages/user/Message"
+import AdminMessage from "./pages/admin/AdminMessage"
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -76,6 +78,7 @@ export default function App() {
           <Route path="/news/:id" element={<NewsDetail />} />
           <Route path="/oauth2/success" element={<OAuth2Success />} />
           <Route path="/news" element={<News />} />
+          <Route path="/message" element={<Message />} />
 
           {/* ADMIN */}
           <Route path="/admin/users" element={<UserManagement />} />
@@ -89,6 +92,7 @@ export default function App() {
           <Route path="/admin/reviews" element={<ReviewManagement />} />
           <Route path="/admin/blogs" element={<BlogManagement />} />
           <Route path="/admin/terrariums" element={<TerrariumManagement />} />
+          <Route path="/admin/messages" element={<AdminMessage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
