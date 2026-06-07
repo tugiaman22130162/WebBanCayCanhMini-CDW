@@ -57,6 +57,9 @@ dependencies {
     // Import và Export Excel
     implementation 'org.apache.poi:poi-ooxml:5.2.3'
 
+    //websocket
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+
 }
 
 tasks.named('test') {

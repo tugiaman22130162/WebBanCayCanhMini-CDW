@@ -16,6 +16,7 @@ const AdminSidebar: React.FC = () => {
         { name: "Thanh toán", path: "/admin/payments", icon: "payments" },
         {name: "Đánh giá", path: "/admin/reviews", icon: "star_rate" },
         {name: "Bài viết", path: "/admin/blogs", icon: "article" },
+         {name: "Tin nhắn", path: "/admin/messages", icon: "chat" },
     ];
 
     return (

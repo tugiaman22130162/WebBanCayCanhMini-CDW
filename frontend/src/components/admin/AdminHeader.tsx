@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from "react-router-do
 import { useAuth } from "../../context/AuthContext";
 import axios from "axios";
 import { showSuccessToast } from "../../utils/ToastUtils";
+import AdminHeaderMessages from "./AdminHeaderMessages";
 
 const AdminHeader: React.FC = () => {
     const location = useLocation();
@@ -78,6 +79,7 @@ const AdminHeader: React.FC = () => {
         if (location.pathname.includes("/reviews")) return "Quản lý đánh giá";
         if (location.pathname.includes("/blogs")) return "Quản lý bài viết";
         if (location.pathname.includes("/terrariums")) return "Quản lý Terrarium";
+        if (location.pathname.includes("/messages")) return "Tin nhắn hỗ trợ";
         return "Tổng quan";
     };
 
@@ -148,6 +150,7 @@ const AdminHeader: React.FC = () => {
 
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
+
     return (
         <>
             <style>
@@ -206,6 +209,8 @@ const AdminHeader: React.FC = () => {
                         search
                     </span>
                 </div>
+                
+                <AdminHeaderMessages user={user} />
 
                 {/* NÚT VÀ DROPDOWN THÔNG BÁO */}
                 <div ref={notifRef} className="relative">

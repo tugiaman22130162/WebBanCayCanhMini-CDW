@@ -128,4 +128,23 @@ public class CloudinaryService {
 
     public record UploadedImage(String publicId, String secureUrl) {
     }
+
+    // Upload hình ảnh trong chat lên Cloudinary
+    public UploadedImage uploadChatImage(MultipartFile file) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = cloudinary.uploader().upload(
+                    file.getBytes(),
+                    ObjectUtils.asMap(
+                            "folder", "minigarden/chats",
+                            "resource_type", "image"));
+
+            String publicId = (String) result.get("public_id");
+            String secureUrl = (String) result.get("secure_url");
+
+            return new UploadedImage(publicId, secureUrl);
+        } catch (IOException exception) {
+            throw new RuntimeException("Không thể upload ảnh chat lên Cloudinary", exception);
+        }
+    }
 }

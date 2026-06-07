@@ -7,7 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.List;
-
+import com.example.minigarden.entity.Role;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Integer> {
@@ -20,4 +20,6 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     int countByCreatedAtBetween(LocalDateTime startDate, LocalDateTime endDate);
 
     List<User> findByCreatedAtBetween(LocalDateTime startDate, LocalDateTime endDate);
+
+    List<User> findByRole(Role role);
 }
