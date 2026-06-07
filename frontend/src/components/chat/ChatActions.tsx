@@ -13,7 +13,6 @@ export default function ChatActions({ onSendImage, onSendSticker, onSendOrder, u
     const [stickerMenuOpen, setStickerMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
-    // Đóng menu khi click ra ngoài
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (menuRef.current && !menuRef.current.contains(event.target as Node)) {

@@ -62,11 +62,18 @@ export default function useChatWebSocket(user: any, isLoggedIn: boolean) {
                 if (!isMounted) return;
 
                 const formattedMsgs = res.data.map((msg: any) => ({
-                    id: msg.id, text: msg.content, type: msg.type || 'TEXT',
+                    id: msg.id,
+                    text: msg.content,
+                    type: msg.type || 'TEXT',
                     sender: String(msg.senderId) === String(user.id) ? 'USER' : 'ADMIN',
-                    timestamp: new Date(msg.createdAt), isDeleted: msg.deletedAt, isEdited: msg.isEdited,
-                    replyToMessageId: msg.replyToMessageId, reaction: msg.reaction,
-                    senderName: msg.senderName, senderAvatar: msg.senderAvatar
+                    timestamp: new Date(msg.createdAt),
+                    isDeleted: msg.deletedAt,
+                    isEdited: msg.isEdited,
+                    updatedAt: msg.updatedAt,
+                    replyToMessageId: msg.replyToMessageId,
+                    reaction: msg.reaction,
+                    senderName: msg.senderName,
+                    senderAvatar: msg.senderAvatar
                 }));
                 setMessages(formattedMsgs);
 
@@ -98,10 +105,12 @@ export default function useChatWebSocket(user: any, isLoggedIn: boolean) {
                     onConnect: () => {
                         stompClient!.subscribe(`/topic/conversation/${currentConversationId}`, (message) => {
                             const msg = JSON.parse(message.body);
-                            const newMsg: ChatMessage = {
-                                id: msg.id, text: msg.content, type: msg.type || 'TEXT',
+                            const newMsg: ChatMessage = { // Also add updatedAt here for consistency
+                                id: msg.id,
+                                text: msg.content,
+                                type: msg.type || 'TEXT',
                                 sender: msg.senderId === user.id ? 'USER' : 'ADMIN',
-                                timestamp: new Date(msg.createdAt), isDeleted: msg.deletedAt, isEdited: msg.isEdited,
+                                timestamp: new Date(msg.createdAt), isDeleted: msg.deletedAt, isEdited: msg.isEdited, updatedAt: msg.updatedAt,
                                 replyToMessageId: msg.replyToMessageId, reaction: msg.reaction,
                                 senderName: msg.senderName, senderAvatar: msg.senderAvatar
                             };
@@ -136,7 +145,8 @@ export default function useChatWebSocket(user: any, isLoggedIn: boolean) {
                         stompClient!.subscribe('/topic/conversation/update', (message) => {
                             const msg = JSON.parse(message.body);
                             setMessages(prev => prev.map(m => m.id === msg.id ? {
-                                ...m, text: msg.content, type: msg.type || 'TEXT', isDeleted: msg.deletedAt, isEdited: msg.isEdited,
+                                ...m, text: msg.content, type: msg.type || 'TEXT', isDeleted: msg.deletedAt, isEdited: msg.isEdited, 
+                                updatedAt: msg.updatedAt || msg.updated_at || new Date(),
                                 reaction: msg.reaction, senderName: msg.senderName, senderAvatar: msg.senderAvatar
                             } : m));
                         });

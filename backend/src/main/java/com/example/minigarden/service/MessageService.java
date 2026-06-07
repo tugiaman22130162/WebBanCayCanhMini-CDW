@@ -125,8 +125,8 @@ public class MessageService {
                 .reaction(message.getReaction())
                 .senderName(sender != null ? sender.getFullName() : "Unknown")
                 .senderAvatar(sender != null ? sender.getAvatar() : null)
-                .createdAt(message.getCreatedAt() != null ? message.getCreatedAt().toString() : null)
-                .updatedAt(message.getUpdatedAt() != null ? message.getUpdatedAt().toString() : null)
+                .createdAt(message.getCreatedAt() != null ? message.getCreatedAt() : null)
+                .updatedAt(message.getUpdatedAt() != null ? message.getUpdatedAt() : null)
                 .build();
     }
 

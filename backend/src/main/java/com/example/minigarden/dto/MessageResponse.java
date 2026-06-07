@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -22,8 +23,8 @@ public class MessageResponse {
     private Integer replyToMessageId;
     private String senderName; 
     private String senderAvatar; 
-    private String createdAt;
-    private String updatedAt; 
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt; 
 
     private String reaction; 
     private String imgUrl; 

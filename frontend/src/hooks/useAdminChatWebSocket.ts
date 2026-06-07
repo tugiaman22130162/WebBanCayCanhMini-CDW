@@ -102,8 +102,19 @@ export default function useAdminChatWebSocket(user: any) {
                             const actualMsgSenderId = msg.senderId || msg.sender_id;
                             
                             const newMsg: ChatMessage = {
-                                id: msg.id, text: msg.content, type: msg.type || 'TEXT', sender: String(actualMsgSenderId) === String(currentActiveId) ? 'ADMIN' : 'USER',
-                                timestamp: new Date(msg.createdAt || msg.created_at), isDeleted: msg.deletedAt || msg.deleted_at, isEdited: msg.isEdited || msg.is_edited, replyToMessageId: msg.replyToMessageId || msg.reply_to_message_id, reaction: msg.reaction, senderName: msg.senderName || msg.sender_name, senderAvatar: msg.senderAvatar || msg.sender_avatar
+                                id: msg.id, 
+                                text: msg.content, 
+                                type: msg.type || 'TEXT', 
+                                sender: String(actualMsgSenderId) === String(currentActiveId) ? 'ADMIN' : 'USER',
+                                timestamp: new Date(msg.createdAt || msg.created_at), 
+                                isDeleted: msg.deletedAt || msg.deleted_at, 
+                                isEdited: msg.isEdited || msg.is_edited, 
+                                updatedAt: msg.updatedAt || msg.updated_at,
+                                editedAt: msg.editedAt || msg.edited_at,
+                                replyToMessageId: msg.replyToMessageId || msg.reply_to_message_id, 
+                                reaction: msg.reaction, 
+                                senderName: msg.senderName || msg.sender_name, 
+                                senderAvatar: msg.senderAvatar || msg.sender_avatar
                             };
 
                             const isNewSticker = newMsg.type === 'STICKER' || isStickerUrl(newMsg.text);
@@ -138,7 +149,7 @@ export default function useAdminChatWebSocket(user: any) {
                         client!.subscribe('/topic/conversation/update', (message) => {
                             const msg = JSON.parse(message.body);
                             if (activeConvRef.current === msg.conversationId) {
-                                setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, text: msg.content, type: msg.type || 'TEXT', isDeleted: msg.deletedAt, isEdited: msg.isEdited, reaction: msg.reaction, senderName: msg.senderName, senderAvatar: msg.senderAvatar } : m));
+                                setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, text: msg.content, type: msg.type || 'TEXT', isDeleted: msg.deletedAt, isEdited: msg.isEdited, updatedAt: msg.updatedAt || msg.updated_at || new Date(), editedAt: msg.editedAt || msg.edited_at, reaction: msg.reaction, senderName: msg.senderName, senderAvatar: msg.senderAvatar } : m));
                             }
                         });
                     }
@@ -180,7 +191,11 @@ export default function useAdminChatWebSocket(user: any) {
             const formattedMsgs = res.data.map((msg: any) => ({
                 id: msg.id, text: msg.content, type: msg.type || 'TEXT',
                 sender: String(msg.senderId || msg.sender_id) === String(activeUserId) ? 'ADMIN' : 'USER',
-                timestamp: new Date(msg.createdAt || msg.created_at), isDeleted: msg.deletedAt || msg.deleted_at, isEdited: msg.isEdited || msg.is_edited,
+                timestamp: new Date(msg.createdAt || msg.created_at), 
+                isDeleted: msg.deletedAt || msg.deleted_at, 
+                isEdited: msg.isEdited || msg.is_edited,
+                updatedAt: msg.updatedAt || msg.updated_at,
+                editedAt: msg.editedAt || msg.edited_at,
                 replyToMessageId: msg.replyToMessageId || msg.reply_to_message_id, reaction: msg.reaction, senderName: msg.senderName || msg.sender_name, senderAvatar: msg.senderAvatar || msg.sender_avatar
             }));
             setMessages(formattedMsgs);

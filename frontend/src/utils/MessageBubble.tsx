@@ -30,10 +30,22 @@ export default function MessageBubble({
     const isSticker = !msg.isDeleted && (msg.type === 'STICKER' || isStickerUrl(msg.text));
     const isImage = !msg.isDeleted && msg.type === 'IMAGE';
     const isOrder = !msg.isDeleted && msg.type === 'ORDER';
+    const isLocation = !msg.isDeleted && msg.type === 'LOCATION';
 
     const [showHistory, setShowHistory] = useState(false);
     const [historyList, setHistoryList] = useState<any[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+    const safeParseDate = (dateVal: any): Date => {
+        if (!dateVal) return new Date();
+        if (Array.isArray(dateVal)) return new Date(dateVal[0], dateVal[1] - 1, dateVal[2], dateVal[3] || 0, dateVal[4] || 0, dateVal[5] || 0);
+        if (typeof dateVal === 'string') {
+            const parsed = new Date(dateVal.replace(' ', 'T'));
+            if (!isNaN(parsed.getTime())) return parsed;
+        }
+        return new Date(dateVal);
+    };
+
 
     const handleToggleHistory = async (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -94,12 +106,18 @@ export default function MessageBubble({
                                     {isLoadingHistory ? (
                                         <div className="text-center py-2"><span className="material-symbols-outlined animate-spin text-[20px] text-gray-400">autorenew</span></div>
                                     ) : historyList.length > 0 ? (
-                                        historyList.map((h: any, idx: number) => (
-                                            <div key={h.id} className={`${idx !== historyList.length - 1 ? 'border-b border-gray-200/50 pb-3' : ''}`}>
-                                                <p className="whitespace-pre-wrap font-medium">{h.oldContent}</p>
-                                                <p className="text-[10px] mt-1.5 text-gray-500">{h.editedAt ? new Date(h.editedAt).toLocaleString('vi-VN') : ''}</p>
-                                            </div>
-                                        ))
+                                        historyList.map((h: any, idx: number) => {
+                                            const originalTime = msg.timestamp || (msg as any).createdAt || (msg as any).created_at;
+                                            const oldTime = idx === historyList.length - 1 ? safeParseDate(originalTime) : safeParseDate(historyList[idx + 1].editedAt);
+                                            return (
+                                                <div key={h.id} className={`${idx !== historyList.length - 1 ? 'border-b border-gray-200/50 pb-3 mb-3' : ''}`}>
+                                                    <p className="whitespace-pre-wrap font-medium">{h.oldContent}</p>
+                                                    <p className="text-[10px] mt-1 text-gray-500">
+                                                        {oldTime ? `${oldTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} - ${oldTime.toLocaleDateString('vi-VN')}` : ''}
+                                                    </p>
+                                                </div>
+                                            );
+                                        })
                                     ) : (
                                         <p className="text-center py-2 text-gray-500">Không có lịch sử</p>
                                     )}
@@ -108,13 +126,13 @@ export default function MessageBubble({
                         )}
 
                         <div className={`flex items-center gap-2 group ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
-                            <div className={`relative p-3 text-[15px] leading-relaxed flex flex-col ${msg.reaction ? 'mb-3' : ''} ${msg.isDeleted ? 'bg-gray-100 text-gray-500 italic border border-gray-200 rounded-2xl' : (isSticker || isImage || isOrder) ? 'bg-transparent p-0' : isOwn ? 'bg-primary text-white rounded-[20px] rounded-br-sm shadow-sm' : 'bg-white text-gray-800 border border-gray-100 rounded-[20px] rounded-bl-sm shadow-sm'}`}>
+                            <div className={`relative p-3 text-[15px] leading-relaxed flex flex-col ${msg.reaction ? 'mb-3' : ''} ${msg.isDeleted ? 'bg-gray-100 text-gray-500 italic border border-gray-200 rounded-2xl' : (isSticker || isImage || isOrder || isLocation) ? 'bg-transparent p-0' : isOwn ? 'bg-primary text-white rounded-[20px] rounded-br-sm shadow-sm' : 'bg-white text-gray-800 border border-gray-100 rounded-[20px] rounded-bl-sm shadow-sm'}`}>
                                 
                                 {!msg.isDeleted && msg.replyToMessageId && (
-                                    <div className={`rounded-lg p-2 mb-2 text-xs border ${(isSticker || isImage || isOrder) ? 'bg-white border-gray-200 text-gray-600 shadow-sm mt-2' : isOwn ? 'bg-white/20 border-white/30 text-white' : 'bg-gray-50 border-gray-200 text-gray-600'}`}>
+                                    <div className={`rounded-lg p-2 mb-2 text-xs border ${(isSticker || isImage || isOrder || isLocation) ? 'bg-white border-gray-200 text-gray-600 shadow-sm mt-2' : isOwn ? 'bg-white/20 border-white/30 text-white' : 'bg-gray-50 border-gray-200 text-gray-600'}`}>
                                         <span className="font-bold">{replyToMsg?.sender === msg.sender ? 'Bạn' : (replyToMsg?.senderName || otherName)}: </span>
                                         <span className="truncate inline-block max-w-[150px] align-bottom">
-                                            {replyToMsg?.type === 'STICKER' ? '[Nhãn dán]' : replyToMsg?.type === 'IMAGE' ? '[Hình ảnh]' : replyToMsg?.type === 'ORDER' ? '[Đơn hàng]' : (replyToMsg?.text || 'Tin nhắn đã thu hồi')}
+                                            {replyToMsg?.type === 'STICKER' ? '[Nhãn dán]' : replyToMsg?.type === 'IMAGE' ? '[Hình ảnh]' : replyToMsg?.type === 'ORDER' ? '[Đơn hàng]' : replyToMsg?.type === 'LOCATION' ? '[Vị trí]' : (replyToMsg?.text || 'Tin nhắn đã thu hồi')}
                                         </span>
                                     </div>
                                 )}
@@ -125,23 +143,68 @@ export default function MessageBubble({
                                 <img src={msg.text} alt="Hình ảnh" className="max-w-[200px] sm:max-w-[250px] rounded-2xl object-cover shadow-sm border border-gray-100 cursor-pointer" />
                             ) : isOrder ? (
                                 <OrderMessageCard orderId={Number(msg.text.replace('ORDER:', ''))} />
+                            ) : isLocation ? (
+                                <div className="w-[200px] sm:w-[250px] flex flex-col gap-1">
+                                    <iframe
+                                        width="100%"
+                                        height="150"
+                                        className="rounded-2xl border border-gray-200 shadow-sm bg-gray-50"
+                                        loading="lazy"
+                                        src={`https://maps.google.com/maps?q=${msg.text}&hl=vi&z=15&output=embed`}
+                                    ></iframe>
+                                    <a href={`https://www.google.com/maps?q=${msg.text}`} target="_blank" rel="noreferrer" className={`text-[12px] font-medium hover:underline flex items-center justify-center gap-1 mt-1 ${isOwn ? 'text-gray-500' : 'text-primary'}`}><span className="material-symbols-outlined text-[14px]">map</span> Xem trên Google Maps</a>
+                                </div>
                             ) : (
                                 <p className="whitespace-pre-wrap">{msg.isDeleted ? 'Tin nhắn đã bị thu hồi' : highlightMatch(msg.text, searchMessageTerm)}</p>
                             )}
                             
-                            {!msg.isDeleted && (
-                                <div className={`flex items-center gap-1 mt-1.5 justify-end ${(isSticker || isImage || isOrder) ? 'text-gray-400 drop-shadow-md' : isOwn ? 'text-white/70' : 'text-gray-400'}`}>
-                                    {msg.isEdited && (
-                                        <span 
-                                            className="text-[10px] font-medium cursor-pointer hover:underline"
-                                            onClick={handleToggleHistory}
-                                        >
-                                            (Đã sửa)
-                                        </span>
-                                    )}
-                                    <p className="text-[11px] font-medium">{msg.timestamp.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</p>
-                                </div>
-                            )}
+                            {!msg.isDeleted && (() => {
+                                const editTime = msg.updatedAt || msg.editedAt || (msg as any).updated_at || (msg as any).edited_at;
+
+                                // --- START DEBUGGING BLOCK ---
+                                if (msg.isEdited) {
+                                    console.log(
+                                        `[DEBUG] Message ID ${msg.id} is edited. Raw editTime value:`,
+                                        editTime,
+                                        "| Full msg object:",
+                                        msg
+                                    );
+                                }
+                                // --- END DEBUGGING BLOCK ---
+                                
+                                const originalTime = msg.timestamp || (msg as any).createdAt || (msg as any).created_at;
+                                let displayTime = safeParseDate(originalTime);
+                                let tooltipText = undefined;
+                                
+                                // Nếu tin nhắn đã sửa và có tồn tại dữ liệu editTime
+                                if (msg.isEdited && editTime) {
+                                    let tempDate = safeParseDate(editTime);
+                                    if (!isNaN(tempDate.getTime())) {
+                                        tooltipText = `Gửi lúc ban đầu: ${displayTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`;
+                                        displayTime = tempDate; 
+                                    }
+                                } else if (msg.isEdited) {
+                                    tooltipText = `Gửi lúc ban đầu: ${displayTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`;
+                                }
+
+                                return (
+                                    <div className={`flex items-center gap-1 mt-1.5 justify-end ${(isSticker || isImage || isOrder || isLocation) ? 'text-gray-400 drop-shadow-md' : isOwn ? 'text-white/70' : 'text-gray-400'}`}>
+                                        {msg.isEdited && (
+                                            
+                                            <span 
+                                                className="text-[10px] font-medium cursor-pointer hover:underline"
+                                                onClick={handleToggleHistory}
+                                                title={tooltipText}
+                                            >
+                                                (Đã sửa)
+                                            </span>
+                                        )}
+                                        <p className="text-[11px] font-medium">
+                                            {displayTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                                        </p>
+                                    </div>
+                                );
+                            })()}
 
                             {!msg.isDeleted && msg.reaction && (
                                 <div className={`absolute -bottom-4 right-4 bg-white border border-gray-100 rounded-full px-1.5 py-0.5 text-[14px] shadow-sm z-20 cursor-pointer hover:scale-110 transition-transform`} onClick={() => onReact(msg.id, undefined)}>

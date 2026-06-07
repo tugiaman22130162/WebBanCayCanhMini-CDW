@@ -12,6 +12,8 @@ export type Message = {
     reaction?: string;
     senderName?: string;
     senderAvatar?: string;
+    updatedAt?: Date | string;
+    editedAt?: Date | string;
 };
 
 export type Conversation = {
