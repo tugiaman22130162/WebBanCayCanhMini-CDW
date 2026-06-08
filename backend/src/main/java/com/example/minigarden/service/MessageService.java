@@ -80,7 +80,7 @@ public class MessageService {
                 .oldContent(message.getContent())
                 .editedAt(java.time.LocalDateTime.now())
                 .build();
-        messageHistoryRepository.save(history);
+        messageHistoryRepository.save(Objects.requireNonNull(history));
 
         message.setContent(newContent);
         message.markAsEdited();
@@ -112,7 +112,7 @@ public class MessageService {
 
     // Hàm ánh xạ Entity sang DTO
     private MessageResponse mapToResponse(Message message) {
-        User sender = userRepository.findById(message.getSenderId()).orElse(null);
+        User sender = userRepository.findById(Objects.requireNonNull(message.getSenderId())).orElse(null);
         
         return MessageResponse.builder()
                 .id(message.getId())
@@ -160,7 +160,7 @@ public class MessageService {
         CloudinaryService.UploadedImage uploadedImage = cloudinaryService.uploadChatImage(file);
         String imgUrl = uploadedImage.secureUrl();
 
-        Conversation conversation = conversationRepository.findById(conversationId)
+        Conversation conversation = conversationRepository.findById(Objects.requireNonNull(conversationId))
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cuộc trò chuyện"));
 
         Message message = Message.builder()
@@ -172,7 +172,7 @@ public class MessageService {
                 .deletedAt(false)
                 .build();
 
-        Message savedMessage = messagesRepository.save(message);
+        Message savedMessage = messagesRepository.save(Objects.requireNonNull(message));
 
         conversation.updateLastMessage(savedMessage.getId());
         conversationRepository.save(conversation);
@@ -183,7 +183,7 @@ public class MessageService {
     //gửi đơn hàng
     @Transactional
     public MessageResponse sendOrder(Integer senderId, Integer conversationId, Integer referenceId) {
-        Conversation conversation = conversationRepository.findById(conversationId)
+        Conversation conversation = conversationRepository.findById(Objects.requireNonNull(conversationId))
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cuộc trò chuyện"));
 
         Message message = Message.builder()
@@ -196,7 +196,7 @@ public class MessageService {
                 .referenceId(referenceId)
                 .build();
 
-        Message savedMessage = messagesRepository.save(message);
+        Message savedMessage = messagesRepository.save(Objects.requireNonNull(message));
 
         conversation.updateLastMessage(savedMessage.getId());
         conversationRepository.save(conversation);

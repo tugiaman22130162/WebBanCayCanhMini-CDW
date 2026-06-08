@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/messages")
@@ -36,11 +37,11 @@ public class MessageController {
             @RequestBody SendMessageRequest request) {
         MessageResponse response = messageService.sendMessage(currentUser.getId(), request);
         
-        messagingTemplate.convertAndSend("/topic/conversation/" + request.getConversationId(), response);
+        messagingTemplate.convertAndSend("/topic/conversation/" + request.getConversationId(), Objects.requireNonNull(response));
         
         Map<String, Object> adminMsg = objectMapper.convertValue(response, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
         adminMsg.put("conversationId", request.getConversationId());
-        messagingTemplate.convertAndSend("/topic/admin/messages", adminMsg);
+        messagingTemplate.convertAndSend("/topic/admin/messages", Objects.requireNonNull(adminMsg));
         
         return ResponseEntity.ok(response);
     }
@@ -53,7 +54,7 @@ public class MessageController {
             @RequestBody Map<String, String> body) {
         MessageResponse response = messageService.editMessage(messageId, currentUser.getId(), body.get("content"));
         
-        messagingTemplate.convertAndSend("/topic/conversation/update", response);
+        messagingTemplate.convertAndSend("/topic/conversation/update", Objects.requireNonNull(response));
         
         return ResponseEntity.ok(response);
     }
@@ -66,7 +67,7 @@ public class MessageController {
         MessageResponse response = messageService.revokeMessage(messageId, currentUser.getId());
         
         // Bắn cập nhật qua WebSocket
-        messagingTemplate.convertAndSend("/topic/conversation/update", response);
+        messagingTemplate.convertAndSend("/topic/conversation/update", Objects.requireNonNull(response));
         
         return ResponseEntity.ok(response);
     }
@@ -86,7 +87,7 @@ public class MessageController {
                 "isTyping", isTyping
         );
  
-        messagingTemplate.convertAndSend("/topic/conversation/" + conversationId + "/typing", event);
+        messagingTemplate.convertAndSend("/topic/conversation/" + conversationId + "/typing", Objects.requireNonNull(event));
         
         return ResponseEntity.ok().build();
     }
@@ -115,11 +116,11 @@ public class MessageController {
             @RequestParam("conversationId") Integer conversationId) {
         MessageResponse response = messageService.sendImg(file, currentUser.getId(), conversationId);
         
-        messagingTemplate.convertAndSend("/topic/conversation/" + conversationId, response);
+        messagingTemplate.convertAndSend("/topic/conversation/" + conversationId, Objects.requireNonNull(response));
         
         Map<String, Object> adminMsg = objectMapper.convertValue(response, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
         adminMsg.put("conversationId", conversationId);
-        messagingTemplate.convertAndSend("/topic/admin/messages", adminMsg);
+        messagingTemplate.convertAndSend("/topic/admin/messages", Objects.requireNonNull(adminMsg));
         
         return ResponseEntity.ok(response);
     }
@@ -132,11 +133,11 @@ public class MessageController {
             @RequestParam("referenceId") Integer referenceId) {
         MessageResponse response = messageService.sendOrder(currentUser.getId(), conversationId, referenceId);
         
-        messagingTemplate.convertAndSend("/topic/conversation/" + conversationId, response);
+        messagingTemplate.convertAndSend("/topic/conversation/" + conversationId, Objects.requireNonNull(response));
         
         Map<String, Object> adminMsg = objectMapper.convertValue(response, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
         adminMsg.put("conversationId", conversationId);
-        messagingTemplate.convertAndSend("/topic/admin/messages", adminMsg);
+        messagingTemplate.convertAndSend("/topic/admin/messages", Objects.requireNonNull(adminMsg));
         
         return ResponseEntity.ok(response);
     }

@@ -88,7 +88,8 @@ export default function Header() {
             try {
                 const response = await axios.get("http://localhost:8080/api/products");
                 const filtered = response.data.filter((p: any) =>
-                    p.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
+                    p.name.toLowerCase().includes(searchQuery.trim().toLowerCase()) &&
+                    !p.name.startsWith("Terrarium Thiết Kế #")
                 );
                 setSearchResults(filtered.slice(0, 5)); // Chỉ hiển thị tối đa 5 kết quả gợi ý
                 setHasMoreResults(filtered.length > 5);

@@ -36,6 +36,23 @@ export default function ProductDetail() {
                 const response = await axios.get(`http://localhost:8080/api/products/${id}`);
                 const data = response.data;
                 
+                let designImage = null;
+                if (data.name && data.name.startsWith("Terrarium Thiết Kế #")) {
+                    try {
+                        const token = localStorage.getItem("token");
+                        if (token) {
+                            const designsRes = await axios.get("http://localhost:8080/api/terrariums/my-designs", {
+                                headers: { Authorization: `Bearer ${token}` }
+                            });
+                            const match = data.name.match(/Terrarium Thiết Kế #(\d+)/);
+                            if (match) {
+                                const design = designsRes.data.find((d: any) => d.id === parseInt(match[1]));
+                                if (design && design.userImage) designImage = design.userImage;
+                            }
+                        }
+                    } catch(e) {}
+                }
+
                 // Format dữ liệu API trả về để đưa vào giao diện
                 const formattedProduct = {
                     id: data.id,
@@ -44,7 +61,7 @@ export default function ProductDetail() {
                     soldCount: data.soldCount || data.sold_count || 0,
                     category: data.categoryName || data.category?.name || data.category || "Chưa phân loại",
                     categoryId: data.categoryId || data.category?.id || null,
-                    images: data.images?.length > 0 ? data.images : ["https://images.unsplash.com/photo-1614594975525-e45190c55d40?w=1080&h=1080&q=80&fit=crop"],
+                    images: designImage ? [designImage] : (data.images?.length > 0 ? data.images : ["https://images.unsplash.com/photo-1614594975525-e45190c55d40?w=1080&h=1080&q=80&fit=crop"]),
                     description: data.description || "Chưa có mô tả cho sản phẩm này.",
                     summary: {
                         light: data.details?.light || "Ánh sáng gián tiếp hoặc đèn huỳnh quang.",
@@ -96,7 +113,8 @@ export default function ProductDetail() {
                     const sameCategoryProducts = relatedRes.data.filter((item: any) => {
                         const itemCategory = item.categoryName || item.category?.name || item.category;
                         const currentCategory = data.categoryName || data.category?.name || data.category;
-                        return itemCategory === currentCategory && item.id !== data.id;
+                        return itemCategory === currentCategory && item.id !== data.id &&
+                            !item.name?.startsWith("Terrarium Thiết Kế #");
                     }).slice(0, 4); // Chỉ lấy tối đa 4 sản phẩm
 
                     const formattedRelated = sameCategoryProducts.map((item: any) => ({

@@ -47,6 +47,8 @@ public class OrderService {
     private final PromotionRepository promotionRepository;
     private final PaymentRepository paymentRepository;
     private final NotificationService notificationService;
+    private final CustomTerrariumRepository customTerrariumRepository;
+    private final TerrariumComponentRepository terrariumComponentRepository;
 
     public Order createOrder(Integer userId, OrderRequest request) {
 
@@ -251,6 +253,20 @@ public class OrderService {
             }
         }
 
+        // Đổi trạng thái CustomTerrarium thành ORDERED nếu đây là sản phẩm thiết kế riêng
+        for (OrderItem item : orderItems) {
+            if (item.getProduct_name() != null && item.getProduct_name().startsWith("Terrarium Thiết Kế #")) {
+                try {
+                    Integer designId = Integer.parseInt(item.getProduct_name().substring(20).split(" - ")[0]);
+                    customTerrariumRepository.findById(designId).ifPresent(design -> {
+                        design.setStatus(CustomTerrariumStatus.ORDERED);
+                        customTerrariumRepository.save(design);
+                        deductTerrariumComponents(design);
+                    });
+                } catch (Exception ignored) {}
+            }
+        }
+
         // Lưu dữ liệu vào bảng Payments
         PaymentMethod paymentMethod = "VNPAY".equalsIgnoreCase(request.getPaymentMethod()) ? PaymentMethod.VNPAY : PaymentMethod.COD;
         // Trạng thái ban đầu của mọi thanh toán là PENDING.
@@ -352,6 +368,18 @@ public class OrderService {
                     product.setQuantity((product.getQuantity() != null ? product.getQuantity() : 0) + (item.getQuantity() != null ? item.getQuantity() : 0));
                     productRepository.save(product);
                 }
+
+                // Rollback cho TerrariumComponent nếu đây là thiết kế
+                if (item.getProduct_name() != null && item.getProduct_name().startsWith("Terrarium Thiết Kế #")) {
+                    try {
+                        Integer designId = Integer.parseInt(item.getProduct_name().substring(20).split(" - ")[0]);
+                        customTerrariumRepository.findById(designId).ifPresent(design -> {
+                            design.setStatus(CustomTerrariumStatus.APPROVED);
+                            customTerrariumRepository.save(design);
+                            rollbackTerrariumComponents(design);
+                        });
+                    } catch (Exception ignored) {}
+                }
             }
         }
 
@@ -382,6 +410,18 @@ public class OrderService {
                     if (product != null) {
                         product.setQuantity((product.getQuantity() != null ? product.getQuantity() : 0) + (item.getQuantity() != null ? item.getQuantity() : 0));
                         productRepository.save(product);
+                    }
+
+                    // Rollback cho TerrariumComponent nếu đây là thiết kế
+                    if (item.getProduct_name() != null && item.getProduct_name().startsWith("Terrarium Thiết Kế #")) {
+                        try {
+                            Integer designId = Integer.parseInt(item.getProduct_name().substring(20).split(" - ")[0]);
+                            customTerrariumRepository.findById(designId).ifPresent(design -> {
+                                design.setStatus(CustomTerrariumStatus.APPROVED);
+                                customTerrariumRepository.save(design);
+                                rollbackTerrariumComponents(design);
+                            });
+                        } catch (Exception ignored) {}
                     }
                 }
             }
@@ -454,6 +494,18 @@ public class OrderService {
                             product.setQuantity((product.getQuantity() != null ? product.getQuantity() : 0) + (item.getQuantity() != null ? item.getQuantity() : 0));
                             productRepository.save(product);
                         }
+
+                        // Rollback cho TerrariumComponent nếu đây là thiết kế
+                        if (item.getProduct_name() != null && item.getProduct_name().startsWith("Terrarium Thiết Kế #")) {
+                            try {
+                                Integer designId = Integer.parseInt(item.getProduct_name().substring(20).split(" - ")[0]);
+                                customTerrariumRepository.findById(designId).ifPresent(design -> {
+                                    design.setStatus(CustomTerrariumStatus.APPROVED);
+                                    customTerrariumRepository.save(design);
+                                    rollbackTerrariumComponents(design);
+                                });
+                            } catch (Exception ignored) {}
+                        }
                     }
                 }
                 // Hoàn lại mã khuyến mãi
@@ -469,6 +521,76 @@ public class OrderService {
                 orderRepository.delete(order);
             }
         });
+    }
+
+    private void deductTerrariumComponents(CustomTerrarium design) {
+        List<TerrariumComponent> components = terrariumComponentRepository.findAll();
+        
+        if (design.getContainerName() != null) {
+            components.stream().filter(c -> design.getContainerName().equals(c.getName())).findFirst().ifPresent(c -> {
+                c.setStockQuantity((c.getStockQuantity() != null ? c.getStockQuantity() : 0) - 1);
+                terrariumComponentRepository.save(c);
+            });
+        }
+        if (design.getSoilName() != null) {
+            components.stream().filter(c -> design.getSoilName().equals(c.getName())).findFirst().ifPresent(c -> {
+                c.setStockQuantity((c.getStockQuantity() != null ? c.getStockQuantity() : 0) - 1);
+                terrariumComponentRepository.save(c);
+            });
+        }
+        if (design.getPlants() != null) {
+            for (String entry : design.getPlants().split(",")) {
+                String t = entry.trim();
+                int qty = 1;
+                String plantName = t;
+                java.util.regex.Matcher m = java.util.regex.Pattern.compile("^(\\d+)x\\s+(.+)$").matcher(t);
+                if (m.matches()) {
+                    qty = Integer.parseInt(m.group(1));
+                    plantName = m.group(2);
+                }
+                final int finalQty = qty;
+                final String finalPlantName = plantName;
+                components.stream().filter(c -> finalPlantName.equals(c.getName())).findFirst().ifPresent(c -> {
+                    c.setStockQuantity((c.getStockQuantity() != null ? c.getStockQuantity() : 0) - finalQty);
+                    terrariumComponentRepository.save(c);
+                });
+            }
+        }
+    }
+
+    private void rollbackTerrariumComponents(CustomTerrarium design) {
+        List<TerrariumComponent> components = terrariumComponentRepository.findAll();
+        
+        if (design.getContainerName() != null) {
+            components.stream().filter(c -> design.getContainerName().equals(c.getName())).findFirst().ifPresent(c -> {
+                c.setStockQuantity((c.getStockQuantity() != null ? c.getStockQuantity() : 0) + 1);
+                terrariumComponentRepository.save(c);
+            });
+        }
+        if (design.getSoilName() != null) {
+            components.stream().filter(c -> design.getSoilName().equals(c.getName())).findFirst().ifPresent(c -> {
+                c.setStockQuantity((c.getStockQuantity() != null ? c.getStockQuantity() : 0) + 1);
+                terrariumComponentRepository.save(c);
+            });
+        }
+        if (design.getPlants() != null) {
+            for (String entry : design.getPlants().split(",")) {
+                String t = entry.trim();
+                int qty = 1;
+                String plantName = t;
+                java.util.regex.Matcher m = java.util.regex.Pattern.compile("^(\\d+)x\\s+(.+)$").matcher(t);
+                if (m.matches()) {
+                    qty = Integer.parseInt(m.group(1));
+                    plantName = m.group(2);
+                }
+                final int finalQty = qty;
+                final String finalPlantName = plantName;
+                components.stream().filter(c -> finalPlantName.equals(c.getName())).findFirst().ifPresent(c -> {
+                    c.setStockQuantity((c.getStockQuantity() != null ? c.getStockQuantity() : 0) + finalQty);
+                    terrariumComponentRepository.save(c);
+                });
+            }
+        }
     }
 
      //lấy danh sách đơn hàng

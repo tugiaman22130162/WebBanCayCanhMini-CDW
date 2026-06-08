@@ -4,6 +4,7 @@ import Categories from "../../components/user/Categories"
 import Blog from "../../components/user/Blog"
 import NewArrivals from "../../components/user/NewsArrival"
 import SellerProducts from "../../components/user/SellerProducts"
+import FeaturedDesigns from "../../components/user/FeaturedDesigns"
 import ChatbotWidget from "../../components/user/ChatbotWidget"
 
 export default function Home() {
@@ -11,6 +12,7 @@ export default function Home() {
     <MainLayout>
       <Hero />
       <Categories />
+      <FeaturedDesigns />
       <SellerProducts />
       <NewArrivals />
       <Blog />
