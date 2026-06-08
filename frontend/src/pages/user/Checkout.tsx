@@ -100,17 +100,40 @@ export default function Checkout() {
                     localStorage.setItem("user", JSON.stringify(userRes.data));
                 }
 
+                let myDesigns: any[] = [];
+                try {
+                    const designsRes = await axios.get("http://localhost:8080/api/terrariums/my-designs", {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    myDesigns = designsRes.data;
+                } catch (e) {}
+
                 const response = await axios.get(`http://localhost:8080/api/cart/${userId}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
 
                 const allItems = response.data.items || [];
+                const mappedItems = allItems.map((item: any) => {
+                    if (item.product?.name && item.product.name.startsWith("Terrarium Thiết Kế #")) {
+                        try {
+                            const match = item.product.name.match(/Terrarium Thiết Kế #(\d+)/);
+                            if (match) {
+                                const designId = parseInt(match[1]);
+                                const design = myDesigns.find((d: any) => d.id === designId);
+                                if (design && design.userImage) {
+                                    return { ...item, image: design.userImage, name: item.product.name };
+                                }
+                            }
+                        } catch(e) {}
+                    }
+                    return item;
+                });
                 const selectedItemIds = location.state?.selectedItems || [];
 
                 if (selectedItemIds.length > 0) {
-                    setCartItems(allItems.filter((item: any) => selectedItemIds.includes(item.id)));
+                    setCartItems(mappedItems.filter((item: any) => selectedItemIds.includes(item.id)));
                 } else {
-                    setCartItems(allItems);
+                    setCartItems(mappedItems);
                 }
             } catch (error) {
                 console.error("Lỗi tải giỏ hàng thanh toán:", error);

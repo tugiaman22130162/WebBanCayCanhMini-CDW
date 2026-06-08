@@ -113,6 +113,16 @@ export default function Profile() {
         const fetchMyOrders = async () => {
             if (!token) return;
             try {
+                let myDesigns: any[] = [];
+                try {
+                    const designsRes = await axios.get("http://localhost:8080/api/terrariums/my-designs", {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    myDesigns = designsRes.data;
+                } catch (e) {
+                    console.error("Lỗi lấy danh sách thiết kế:", e);
+                }
+
                 const response = await axios.get("http://localhost:8080/api/orders/my-orders", {
                     headers: { Authorization: `Bearer ${token}` }
                 });
@@ -141,6 +151,20 @@ export default function Profile() {
                         if (item.product?.images && item.product.images.length > 0) {
                             imageUrl = item.product.images[0].image_url || item.product.images[0].imageUrl || item.product.images[0];
                         }
+
+                        if (item.product_name && item.product_name.startsWith("Terrarium Thiết Kế #")) {
+                            try {
+                                const designIdMatch = item.product_name.match(/Terrarium Thiết Kế #(\d+)/);
+                                if (designIdMatch) {
+                                    const designId = parseInt(designIdMatch[1]);
+                                    const matchedDesign = myDesigns.find((d: any) => d.id === designId);
+                                    if (matchedDesign && matchedDesign.userImage) {
+                                        imageUrl = matchedDesign.userImage;
+                                    }
+                                }
+                            } catch(e) {}
+                        }
+
                         return {
                             id: item.id,
                             productId: item.product?.id,
@@ -187,13 +211,35 @@ export default function Profile() {
         const fetchMyReviews = async () => {
             if (!token) return;
             try {
+                let myDesigns: any[] = [];
+                try {
+                    const designsRes = await axios.get("http://localhost:8080/api/terrariums/my-designs", {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    myDesigns = designsRes.data;
+                } catch (e) {}
+
                 const response = await axios.get("http://localhost:8080/api/reviews/my-reviews", {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                const formattedReviews = response.data.map((r: any) => ({
+                const formattedReviews = response.data.map((r: any) => {
+                    let imageUrl = r.image || "/images/terrarium.png";
+                    if (r.productName && r.productName.startsWith("Terrarium Thiết Kế #")) {
+                        try {
+                            const designIdMatch = r.productName.match(/Terrarium Thiết Kế #(\d+)/);
+                            if (designIdMatch) {
+                                const designId = parseInt(designIdMatch[1]);
+                                const matchedDesign = myDesigns.find((d: any) => d.id === designId);
+                                if (matchedDesign && matchedDesign.userImage) {
+                                    imageUrl = matchedDesign.userImage;
+                                }
+                            }
+                        } catch(e) {}
+                    }
+                    return {
                     id: r.id,
                     productName: r.productName,
-                    image: r.image || "/images/terrarium.png",
+                    image: imageUrl,
                     rating: r.rating,
                     date: new Date(r.createdAt).toLocaleDateString('vi-VN'),
                     updatedAt: r.updatedAt ? new Date(r.updatedAt).toLocaleString('vi-VN') : null,
@@ -202,7 +248,8 @@ export default function Profile() {
                     status: r.status,
                     reviewImages: r.reviewImages || [],
                     replies: r.replies || []
-                }));
+                    };
+                });
                 setUserReviews(formattedReviews);
             } catch (error) {
                 console.error("Lỗi khi tải danh sách đánh giá:", error);
@@ -215,6 +262,24 @@ export default function Profile() {
 
     // State data chưa đánh giá
     const [pendingReviews, setPendingReviews] = useState<any[]>([]);
+
+    // State data thông báo để kiểm tra điều kiện Đã nhận được hàng
+    const [myNotifications, setMyNotifications] = useState<any[]>([]);
+
+    useEffect(() => {
+        const fetchMyNotifications = async () => {
+            if (!token || !isOrderModalOpen) return;
+            try {
+                const res = await axios.get("http://localhost:8080/api/notifications/my-notifications", {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setMyNotifications(res.data);
+            } catch (error) {
+                console.error("Lỗi khi tải thông báo:", error);
+            }
+        };
+        fetchMyNotifications();
+    }, [isOrderModalOpen, token]);
 
     const handleLogout = () => {
         logout(); // Handle logout via Context
@@ -921,14 +986,22 @@ export default function Profile() {
                             <button onClick={() => setIsOrderModalOpen(false)} className="px-6 py-2 rounded-xl bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 transition-colors shadow-sm">
                                 Đóng
                             </button>
-                            {selectedOrder.status === 'Đang giao' && (
-                                <button
-                                    onClick={() => handleConfirmReceived(selectedOrder.realId)}
-                                    className="px-6 py-2 rounded-xl bg-primary text-white font-bold hover:bg-[#2f5146] transition-colors shadow-sm"
-                                >
-                                    Đã nhận được hàng
-                                </button>
-                            )}
+                            {selectedOrder.status === 'Đang giao' && (() => {
+                                const hasDeliveryNotification = myNotifications.some(n => 
+                                    n.message.includes(selectedOrder.id) && 
+                                    n.message.includes('đang được giao đến bạn')
+                                );
+                                return (
+                                    <button
+                                        onClick={() => handleConfirmReceived(selectedOrder.realId)}
+                                        disabled={!hasDeliveryNotification}
+                                        title={!hasDeliveryNotification ? "Chưa thể xác nhận khi chưa có thông báo đơn hàng đang được giao đến bạn" : ""}
+                                        className={`px-6 py-2 rounded-xl font-bold shadow-sm transition-colors ${hasDeliveryNotification ? 'bg-primary text-white hover:bg-[#2f5146]' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                                    >
+                                        Đã nhận được hàng
+                                    </button>
+                                );
+                            })()}
                             {selectedOrder.status === 'Đã giao' && (
                                 <button
                                     onClick={() => { setIsOrderModalOpen(false); handleTabChange('reviews'); }}

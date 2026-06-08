@@ -37,6 +37,7 @@ import News from "./pages/user/News"
 import TerrariumManagement from "./pages/admin/TerrariumManagement"
 import Message from "./pages/user/Message"
 import AdminMessage from "./pages/admin/AdminMessage"
+import FeaturedDesignsPage from "./pages/user/FeaturedDesignsPage"
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -79,6 +80,7 @@ export default function App() {
           <Route path="/oauth2/success" element={<OAuth2Success />} />
           <Route path="/news" element={<News />} />
           <Route path="/message" element={<Message />} />
+          <Route path="/featured-designs" element={<FeaturedDesignsPage />} />
 
           {/* ADMIN */}
           <Route path="/admin/users" element={<UserManagement />} />
