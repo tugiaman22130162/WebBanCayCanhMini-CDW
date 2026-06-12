@@ -157,6 +157,18 @@ public class OrderController {
         }
     }
 
+    // API Hoàn tiền VNPAY (Dành cho Admin)
+    @PutMapping("/{id}/refund")
+    @Transactional
+    public ResponseEntity<?> refundOrder(@PathVariable Integer id, HttpServletRequest request) {
+        try {
+            Order order = orderService.refundOrderPayment(id, request);
+            return ResponseEntity.ok(mapOrderToDto(order));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
     // API Xác nhận đã nhận được hàng (Dành cho User)
     @PutMapping("/{id}/receive")
     @Transactional
@@ -209,6 +221,11 @@ public class OrderController {
         map.put("address", order.getAddress());
         map.put("note", order.getNote());
         map.put("paymentMethod", order.getPaymentMethod());
+
+        // Trả về thêm trạng thái thanh toán của đơn hàng
+        if (order.getPayments() != null && !order.getPayments().isEmpty()) {
+            map.put("paymentStatus", order.getPayments().get(0).getStatus().name());
+        }
 
         if (order.getPromotions() != null && !order.getPromotions().isEmpty()) {
             map.put("promotions", order.getPromotions().stream().map(p -> {

@@ -146,6 +146,7 @@ export default function Profile() {
                     address: order.address,
                     note: order.note,
                     paymentMethod: order.paymentMethod,
+                    paymentStatus: order.paymentStatus,
                     items: (order.items || []).map((item: any) => {
                         let imageUrl = "https://images.unsplash.com/photo-1614594975525-e45190c55d40?w=100&h=100&fit=crop";
                         if (item.product?.images && item.product.images.length > 0) {
@@ -934,7 +935,21 @@ export default function Profile() {
 
                                     {/* Trạng thái thanh toán (Bên trái) */}
                                     <div className="flex flex-col items-start w-full md:w-auto bg-gray-50 p-5 rounded-xl border border-gray-200 relative z-10">
-                                        {(selectedOrder.paymentMethod?.toUpperCase() === 'VNPAY' || selectedOrder.status === 'Đã giao') ? (
+                                        {selectedOrder.status === 'Đã hủy' && selectedOrder.paymentMethod?.toUpperCase() === 'VNPAY' && selectedOrder.paymentStatus === 'REFUNDED' ? (
+                                            <div className="flex flex-col items-start gap-3">
+                                                <span className="text-sm font-black px-4 py-2 bg-gray-200 text-gray-700 rounded-full border border-gray-300 flex items-center gap-2 shadow-sm">
+                                                    <span className="material-symbols-outlined text-[20px]">done_all</span> Đã hoàn tiền VNPAY
+                                                </span>
+                                                <p className="text-xs text-gray-500 max-w-[200px]">Giao dịch hoàn tiền đã được thực hiện thành công.</p>
+                                            </div>
+                                        ) : selectedOrder.status === 'Đã hủy' && selectedOrder.paymentMethod?.toUpperCase() === 'VNPAY' ? (
+                                            <div className="flex flex-col items-start gap-3">
+                                                <span className="text-sm font-black px-4 py-2 bg-blue-100 text-blue-700 rounded-full border border-blue-200 flex items-center gap-2 shadow-sm">
+                                                    <span className="material-symbols-outlined text-[20px]">currency_exchange</span> Đang chờ hoàn tiền VNPAY
+                                                </span>
+                                                <p className="text-xs text-gray-500 max-w-[200px]">Cửa hàng sẽ tiến hành hoàn tiền cho bạn trong vòng 3-15 ngày.</p>
+                                            </div>
+                                        ) : (selectedOrder.paymentMethod?.toUpperCase() === 'VNPAY' || selectedOrder.status === 'Đã giao') ? (
                                             <div className="flex flex-col items-start gap-3">
                                                 <span className="text-sm font-black px-4 py-2 bg-emerald-100 text-emerald-700 rounded-full border border-emerald-200 flex items-center gap-2 shadow-sm">
                                                     <span className="material-symbols-outlined text-[20px]">check_circle</span> Đã thanh toán
@@ -986,6 +1001,14 @@ export default function Profile() {
                             <button onClick={() => setIsOrderModalOpen(false)} className="px-6 py-2 rounded-xl bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 transition-colors shadow-sm">
                                 Đóng
                             </button>
+                            {selectedOrder.status === 'Đã xác nhận' && (
+                                <button
+                                    onClick={() => handleCancelOrder(selectedOrder.realId)}
+                                    className="px-6 py-2 rounded-xl bg-red-50 text-red-600 font-bold hover:bg-red-100 transition-colors shadow-sm"
+                                >
+                                    Hủy đơn hàng
+                                </button>
+                            )}
                             {selectedOrder.status === 'Đang giao' && (() => {
                                 const hasDeliveryNotification = myNotifications.some(n => 
                                     n.message.includes(selectedOrder.id) && 
