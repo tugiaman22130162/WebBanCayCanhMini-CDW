@@ -55,7 +55,7 @@ export default function OrderHistory({ orders, onViewDetails }: OrderHistoryProp
                         <tr>
                             <th className="text-left p-4">Mã Đơn</th>
                             <th className="text-left p-4">Ngày Đặt</th>
-                            <th className="text-left p-4">Ngày Giao</th>
+                            <th className="text-left p-4">Ngày Giao/Hủy</th>
                             <th className="text-right p-4">Tổng Tiền</th>
                             <th className="text-center p-4">Trạng Thái</th>
                             <th className="text-center p-4">Thao Tác</th>
@@ -68,8 +68,10 @@ export default function OrderHistory({ orders, onViewDetails }: OrderHistoryProp
                                     <td className="p-4 font-bold text-[#406D5E]">{order.id}</td>
                                     <td className="p-4 text-sm text-gray-600 font-medium">{order.date}</td>
                                     <td className="p-4 text-sm text-gray-600 font-medium">
-                                        {order.status === 'Đã giao' && order.updatedAt ? (
-                                            <span className="text-emerald-600">{new Date(order.updatedAt).toLocaleDateString('vi-VN')}</span>
+                                        {(order.status === 'Đã giao' || order.status === 'Đã hủy') && order.updatedAt ? (
+                                            <span className={order.status === 'Đã giao' ? "text-emerald-600" : "text-red-600"}>
+                                                {new Date(order.updatedAt).toLocaleDateString('vi-VN')}
+                                            </span>
                                         ) : (
                                             <span className="text-gray-400">-</span>
                                         )}

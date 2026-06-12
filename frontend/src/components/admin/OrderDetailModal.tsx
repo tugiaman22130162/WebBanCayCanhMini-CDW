@@ -30,6 +30,7 @@ interface OrderDetail {
     promotions?: any[];
     shippingFee?: number;
     discountAmount?: number;
+    paymentStatus?: string;
 }
 
 interface OrderDetailModalProps {
@@ -144,6 +145,50 @@ export default function OrderDetailModal({ isOpen, onClose, orderId, onSuccess }
             showErrorToast(error.response?.data?.message || "Lỗi khi cập nhật trạng thái", 3000);
         } finally {
             setIsUpdating(false);
+        }
+    };
+
+    const handleRefund = async () => {
+        const result = await Swal.fire({
+            title: 'Hoàn tiền cho khách?',
+            text: `Xác nhận hoàn tiền về thẻ VNPAY cho đơn hàng ${order?.orderCode}?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Có, Hoàn tiền',
+            cancelButtonText: 'Hủy',
+            customClass: {
+                confirmButton: 'bg-red-500 text-white px-6 py-2.5 rounded-xl font-bold mx-2 hover:bg-red-600 transition-colors shadow-sm',
+                cancelButton: 'bg-gray-200 text-gray-700 px-6 py-2.5 rounded-xl font-bold mx-2 hover:bg-gray-300 transition-colors shadow-sm'
+            },
+            buttonsStyling: false
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const token = localStorage.getItem("token");
+                
+                await axios.put(`http://localhost:8080/api/orders/${order?.id}/refund`, {}, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Thành công!',
+                    text: 'Đã thực hiện lệnh hoàn tiền qua VNPAY.',
+                    confirmButtonText: 'Đóng',
+                    customClass: {
+                        confirmButton: 'bg-[#006c49] text-white px-6 py-2.5 rounded-xl font-bold hover:bg-[#005236] transition-colors shadow-sm'
+                    },
+                    buttonsStyling: false
+                });
+                
+                if (onSuccess) onSuccess(); // Báo cho component cha tải lại danh sách đơn hàng
+                if (onClose) onClose();     // Đóng modal chi tiết
+                
+            } catch (error: any) {
+                console.error("Lỗi khi hoàn tiền:", error);
+                showErrorToast(error.response?.data?.message || 'Không thể hoàn tiền lúc này. Vui lòng kiểm tra lại.', 3000);
+            }
         }
     };
 
@@ -343,6 +388,29 @@ export default function OrderDetailModal({ isOpen, onClose, orderId, onSuccess }
                                 </div>
                             </div>
                         </div>
+                    )}
+                </div>
+
+                {/* FOOTER */}
+                <div className="p-5 border-t bg-gray-50 flex justify-end gap-3 shrink-0">
+                    {/* Nút Đóng */}
+                    <button onClick={onClose} className="px-6 py-2.5 rounded-xl bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 transition-colors shadow-sm">
+                        Đóng
+                    </button>
+                    {order?.status === 'CANCELLED' && order?.paymentMethod?.toUpperCase() === 'VNPAY' && (
+                        <button
+                            onClick={handleRefund}
+                            disabled={order?.paymentStatus === 'REFUNDED'}
+                            className={`px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-sm transition-colors ${
+                                order?.paymentStatus === 'REFUNDED' 
+                                ? 'bg-gray-400 text-white cursor-not-allowed' 
+                                : 'bg-red-500 text-white hover:bg-red-600'
+                            }`}
+                            title={order?.paymentStatus === 'REFUNDED' ? "Đơn hàng này đã được hoàn tiền" : "Trả lại tiền về tài khoản VNPAY của khách hàng"}
+                        >
+                            <span className="material-symbols-outlined text-[20px]">currency_exchange</span>
+                            {order?.paymentStatus === 'REFUNDED' ? 'Đã hoàn tiền VNPAY' : 'Hoàn tiền VNPAY'}
+                        </button>
                     )}
                 </div>
             </div>

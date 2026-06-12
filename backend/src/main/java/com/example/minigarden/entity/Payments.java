@@ -36,6 +36,12 @@ public class Payments {
     @Enumerated(EnumType.STRING)
     private PaymentStatus status;
 
+    @Column(name = "transaction_no")
+    private String transactionNo;
+
+    @Column(name = "transaction_date")
+    private String transactionDate;
+
     private LocalDateTime createdAt;
 
     @PrePersist

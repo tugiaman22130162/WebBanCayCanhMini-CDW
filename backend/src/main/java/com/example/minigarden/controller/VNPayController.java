@@ -42,7 +42,7 @@ public class VNPayController {
             if (signValue.equals(vnp_SecureHash)) {
                 String orderCode = request.getParameter("vnp_TxnRef");
                 if ("00".equals(request.getParameter("vnp_ResponseCode"))) {
-                    updateOrderPaymentStatus(orderCode);
+                    updateOrderPaymentStatus(orderCode, request);
                     return ResponseEntity.ok(Map.of("message", "Thanh toán thành công", "orderCode", orderCode));
                 }
                 // Nếu thất bại (hủy thanh toán, thẻ lỗi,...), xóa đơn hàng để không lưu rác
@@ -66,7 +66,7 @@ public class VNPayController {
             if (signValue.equals(vnp_SecureHash)) {
                 String orderCode = request.getParameter("vnp_TxnRef");
                 if ("00".equals(request.getParameter("vnp_ResponseCode"))) {
-                    boolean isUpdated = updateOrderPaymentStatus(orderCode);
+                    boolean isUpdated = updateOrderPaymentStatus(orderCode, request);
                     if (isUpdated) {
                         return ResponseEntity.ok(Map.of("RspCode", "00", "Message", "Confirm Success"));
                     } else {
@@ -116,7 +116,7 @@ public class VNPayController {
     }
 
     // Cập nhật trạng thái đơn hàng sang Đã Thanh Toán
-    private boolean updateOrderPaymentStatus(String orderCode) {
+    private boolean updateOrderPaymentStatus(String orderCode, HttpServletRequest request) {
         Optional<Order> orderOpt = orderRepository.findByOrderCode(orderCode);
         if (orderOpt.isPresent() && orderOpt.get().getPaidAt() == null) {
             Order order = orderOpt.get();
@@ -127,7 +127,11 @@ public class VNPayController {
             // Cập nhật trạng thái trong bảng payments
             List<Payments> payments = paymentRepository.findByOrder_Id(order.getId());
             for (Payments payment : payments) {
-                payment.setStatus(PaymentStatus.SUCCESS);
+                if (payment.getStatus() == PaymentStatus.PENDING) {
+                    payment.setStatus(PaymentStatus.SUCCESS);
+                    payment.setTransactionNo(request.getParameter("vnp_TransactionNo"));
+                    payment.setTransactionDate(request.getParameter("vnp_PayDate"));
+                }
                 paymentRepository.save(Objects.requireNonNull(payment));
                 
                 // Gửi thông báo cho Admin

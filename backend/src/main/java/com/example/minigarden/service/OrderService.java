@@ -34,6 +34,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.scheduling.annotation.Scheduled;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import jakarta.servlet.http.HttpServletRequest;
 
 
 @Service
@@ -49,6 +50,7 @@ public class OrderService {
     private final NotificationService notificationService;
     private final CustomTerrariumRepository customTerrariumRepository;
     private final TerrariumComponentRepository terrariumComponentRepository;
+    private final VNPayService vnPayService;
 
     public Order createOrder(Integer userId, OrderRequest request) {
 
@@ -354,8 +356,19 @@ public class OrderService {
             throw new RuntimeException("Bạn không có quyền hủy đơn hàng này");
         }
 
-        if (order.getStatus() != OrderStatus.PENDING) {
-            throw new RuntimeException("Chỉ có thể hủy đơn hàng ở trạng thái Chờ xác nhận");
+        if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.CONFIRMED) {
+            throw new RuntimeException("Chỉ có thể hủy đơn hàng ở trạng thái Chờ xác nhận hoặc Đã xác nhận");
+        }
+
+        // Hoàn tiền cho VNPAY
+        boolean isRefunded = false;
+        if (order.getPayments() != null) {
+            for (Payments payment : order.getPayments()) {
+                if (payment.getMethod() == PaymentMethod.VNPAY && payment.getStatus() == PaymentStatus.SUCCESS) {
+                    // Giữ nguyên trạng thái SUCCESS để Admin tiến hành bấm nút hoàn tiền thủ công trên giao diện
+                    isRefunded = true; // Chỉ đánh dấu để đổi câu thông báo cho khách hàng
+                }
+            }
         }
 
         order.setStatus(OrderStatus.CANCELLED);
@@ -393,6 +406,25 @@ public class OrderService {
             }
         }
 
+        // Thông báo hoàn tiền nếu thanh toán qua VNPAY
+        if (isRefunded) {
+            String message = "Đơn hàng " + order.getOrderCode() + " đã hủy thành công. Số tiền sẽ được hoàn lại qua thẻ/ví VNPAY của bạn trong vòng 3-15 ngày làm việc.";
+            notificationService.createUserNotification(userId, message, "/profile/history", NotificationType.ORDER);
+            
+            // Thông báo cho Admin biết cần hoàn tiền
+            notificationService.createNotification(
+                    "Đơn hàng " + order.getOrderCode() + " đã bị khách hàng hủy. Đơn hàng đã thanh toán qua VNPAY, vui lòng hoàn tiền.",
+                    "/admin/orders?search=" + order.getOrderCode(),
+                    NotificationType.ORDER
+            );
+        } else {
+            notificationService.createNotification(
+                    "Đơn hàng " + order.getOrderCode() + " vừa bị khách hàng hủy.",
+                    "/admin/orders?search=" + order.getOrderCode(),
+                    NotificationType.ORDER
+            );
+        }
+
         return orderRepository.save(order);
     }
 
@@ -402,8 +434,19 @@ public class OrderService {
         Order order = orderRepository.findById(Objects.requireNonNull(orderId))
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng với ID: " + orderId));
 
+        boolean isRefunded = false;
+
         // Nếu admin Hủy đơn hàng và trạng thái cũ chưa phải CANCELLED thì cũng cần Rollback
         if (newStatus == OrderStatus.CANCELLED && order.getStatus() != OrderStatus.CANCELLED) {
+            // Hoàn tiền cho VNPAY nếu Admin hủy đơn đã thanh toán
+            if (order.getPayments() != null) {
+                for (Payments payment : order.getPayments()) {
+                    if (payment.getMethod() == PaymentMethod.VNPAY && payment.getStatus() == PaymentStatus.SUCCESS) {
+                        isRefunded = true; // Chỉ đánh dấu để đổi câu thông báo cho khách hàng
+                    }
+                }
+            }
+
             if (order.getItems() != null) {
                 for (OrderItem item : order.getItems()) {
                     Products product = item.getProduct();
@@ -465,7 +508,7 @@ public class OrderService {
             String statusMessage = switch (newStatus) {
                 case CONFIRMED -> "đã được xác nhận. Chúng tôi đang chuẩn bị hàng cho bạn.";
                 case DELIVERED -> "đã giao thành công. Cảm ơn bạn đã mua sắm!";
-                case CANCELLED -> "đã bị hủy.";
+                case CANCELLED -> isRefunded ? "đã bị hủy. Số tiền sẽ được hoàn lại qua VNPAY trong 3-15 ngày làm việc." : "đã bị hủy.";
                 default -> "đã được cập nhật trạng thái.";
             };
             message = "Đơn hàng " + savedOrder.getOrderCode() + " " + statusMessage;
@@ -479,6 +522,50 @@ public class OrderService {
         notificationService.createUserNotification(savedOrder.getUserId(), message, link, NotificationType.ORDER);
 
         return savedOrder;
+    }
+
+    // Gọi khi Admin bấm nút "Hoàn tiền VNPAY"
+    @Transactional
+    public Order refundOrderPayment(Integer orderId, HttpServletRequest request) throws Exception {
+        Order order = orderRepository.findById(Objects.requireNonNull(orderId))
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng với ID: " + orderId));
+
+        if (order.getStatus() != OrderStatus.CANCELLED) {
+            throw new RuntimeException("Chỉ có thể hoàn tiền cho đơn hàng đã hủy");
+        }
+
+        boolean hasVnpaySuccess = false;
+        if (order.getPayments() != null) {
+            for (Payments payment : order.getPayments()) {
+                if (payment.getMethod() == PaymentMethod.VNPAY && payment.getStatus() == PaymentStatus.SUCCESS) {
+                    
+                    String transNo = payment.getTransactionNo(); 
+                    String transDate = payment.getTransactionDate(); 
+                    
+                    if (transNo == null || transDate == null) {
+                        throw new RuntimeException("Thiếu thông tin Mã GD hoặc Ngày GD VNPAY. Không thể hoàn tiền!");
+                    }
+                    
+                    com.fasterxml.jackson.databind.JsonNode response = vnPayService.refundTransaction(
+                            order.getOrderCode(), payment.getAmount().longValue(), transNo, transDate, "admin", request
+                    );
+                    
+                    if (response != null && "00".equals(response.get("vnp_ResponseCode").asText())) {
+                        payment.setStatus(PaymentStatus.REFUNDED);
+                        paymentRepository.save(payment);
+                        hasVnpaySuccess = true;
+                    } else {
+                        throw new RuntimeException("Lỗi từ VNPAY: " + (response != null ? response.get("vnp_Message").asText() : "Không phản hồi"));
+                    }
+                }
+            }
+        }
+        if (!hasVnpaySuccess) {
+            throw new RuntimeException("Đơn hàng chưa thanh toán qua VNPAY hoặc đã được hoàn tiền");
+        }
+        String message = "Đơn hàng " + order.getOrderCode() + " đã được Admin hoàn tiền thành công qua VNPAY.";
+        notificationService.createUserNotification(order.getUserId(), message, "/profile/history", NotificationType.ORDER);
+        return order;
     }
 
     // Xóa đơn hàng và hoàn lại số lượng nếu thanh toán VNPay thất bại / hủy bỏ
@@ -773,8 +860,8 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
-    // Tự động quét vào 8:00 sáng mỗi ngày để gửi thông báo cho các đơn hàng Đang giao
-    @Scheduled(cron = "0 0 8 * * ?")
+    // Tự động quét mỗi phút 1 lần để gửi thông báo cho các đơn hàng Đang giao
+    @Scheduled(cron = "0 * * * * ?")
     @Transactional
     public void notifyShippingOrdersOnDeliveryDate() {
         LocalDate today = LocalDate.now();
