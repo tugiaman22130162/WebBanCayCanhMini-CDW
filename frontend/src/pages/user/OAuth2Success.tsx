@@ -12,36 +12,37 @@ export default function OAuth2Success() {
     const { login } = useAuth();
 
     useEffect(() => {
-        // Ngăn chặn useEffect bị gọi 2 lần trong React Strict Mode
         if (hasProcessed.current) return;
         hasProcessed.current = true;
 
-        // Lấy token từ URL (ví dụ: ?token=eyJhY2...)
         const params = new URLSearchParams(location.search);
         const token = params.get("token");
+        const role = params.get("role");
 
         if (token) {
-            // Lấy thông tin user bằng token
             axios.get("http://localhost:8080/api/users/me", {
                 headers: { Authorization: `Bearer ${token}` }
             }).then(response => {
-                // Cập nhật state toàn cục của AuthContext ngay lập tức
                 login(token, response.data);
 
-                // Đọc URL chuyển hướng đã lưu từ trước và xóa ngay lập tức
                 const redirectUrl = localStorage.getItem("redirectAfterLogin") || "/";
                 localStorage.removeItem("redirectAfterLogin"); 
 
-                // Lấy tên mạng xã hội để hiển thị thông báo chi tiết
+                const userRole = response.data.role || role;
+
                 const provider = localStorage.getItem("socialProvider");
                 const providerName = provider === "facebook" ? "Facebook" : (provider === "google" ? "Google" : "");
-                localStorage.removeItem("socialProvider"); // Xóa sau khi đã lấy
+                localStorage.removeItem("socialProvider");
 
                 showSuccessToast(
                     providerName ? `Đăng nhập ${providerName} thành công!` : 'Đăng nhập thành công!',
                     1500
                 ).then(() => {
-                    navigate(redirectUrl);
+                    if (userRole === "ADMIN") {
+                        window.location.href = "/admin/dashboard"; 
+                    } else {
+                        navigate(redirectUrl);
+                    }
                 });
             }).catch(error => {
                 console.error("Lỗi xác thực người dùng:", error);

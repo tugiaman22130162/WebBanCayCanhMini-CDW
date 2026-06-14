@@ -10,6 +10,7 @@ import com.example.minigarden.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import java.util.concurrent.ThreadLocalRandom;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,7 +20,6 @@ import java.util.stream.Collectors;
 import com.example.minigarden.entity.AuthProvider;
 import com.example.minigarden.entity.Role;
 
-
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -28,7 +28,6 @@ public class UserService {
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
-
 
     public List<UserResponse> getAllUsers() {
         return userRepository.findAll().stream().map(user -> UserResponse.builder()
@@ -42,7 +41,7 @@ public class UserService {
                 .status(user.getStatus())
                 .build()).collect(Collectors.toList());
     }
-    
+
     public boolean checkEmailExists(String email) {
         return userRepository.existsByEmail(email);
     }
@@ -109,10 +108,11 @@ public class UserService {
                 throw new RuntimeException("Tài khoản đã bị khóa do nhập sai mật khẩu quá 5 lần");
             }
             userRepository.save(Objects.requireNonNull(user));
-            
+
             if (attempts >= 3) {
                 int remaining = 5 - attempts;
-                throw new RuntimeException("Sai mật khẩu. Bạn chỉ còn " + remaining + " lần nhập nữa trước khi tài khoản bị khóa");
+                throw new RuntimeException(
+                        "Sai mật khẩu. Bạn chỉ còn " + remaining + " lần nhập nữa trước khi tài khoản bị khóa");
             }
             throw new RuntimeException("Sai mật khẩu");
         }
@@ -137,25 +137,52 @@ public class UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy email"));
 
-        //tạo token ngẫu nhiên
-        String token = UUID.randomUUID().toString();
-        user.setResetToken(token);
-        //thời gian hết hạn cho token là 15 phút
-        user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(15));
+        String otp = String.valueOf(ThreadLocalRandom
+                .current()
+                .nextInt(100000, 999999));
+        user.setResetToken(otp);
+        // thời gian hết hạn cho token là 5 phút
+        user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(5));
         userRepository.save(Objects.requireNonNull(user));
 
-        emailService.sendResetPasswordEmail(user.getEmail(), token);
+        emailService.sendResetPasswordEmail(user.getEmail(), otp);
         return "Vui lòng kiểm tra email của bạn để đặt lại mật khẩu.";
     }
 
-    // reset password
-    public void resetPassword(String token, String newPassword) {
+    // verify otp
+    public void verifyOtp(String email, String otp) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy email"));
 
-        User user = userRepository.findByResetToken(token)
-                .orElseThrow(() -> new RuntimeException("Token không hợp lệ"));
+        if (user.getResetToken() == null) {
+            throw new RuntimeException("OTP không hợp lệ");
+        }
+
+        if (!otp.equals(user.getResetToken())) {
+            throw new RuntimeException("OTP không hợp lệ");
+        }
 
         if (user.getResetTokenExpiry() != null && user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Token đã hết hạn");
+            throw new RuntimeException("OTP đã hết hạn");
+        }
+    }
+
+    // reset password
+    public void resetPassword(String email, String otp, String newPassword) {
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy email"));
+
+        if (user.getResetToken() == null) {
+            throw new RuntimeException("OTP không hợp lệ");
+        }
+
+        if (!otp.equals(user.getResetToken())) {
+            throw new RuntimeException("OTP không hợp lệ");
+        }
+
+        if (user.getResetTokenExpiry() != null && user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("OTP đã hết hạn");
         }
 
         user.setPassword(passwordEncoder.encode(newPassword));
@@ -170,7 +197,7 @@ public class UserService {
     public UserResponse toggleUserStatus(Integer id) {
         User user = userRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
-        
+
         // Chuyển đổi trạng thái qua lại
         if (user.getStatus() == UserStatus.ACTIVE) {
             user.setStatus(UserStatus.BANNED);
@@ -198,9 +225,12 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         // Cập nhật các trường nếu có truyền lên
-        if (req.getFullName() != null) user.setFullName(req.getFullName());
-        if (req.getRole() != null) user.setRole(req.getRole());
-        if (req.getStatus() != null) user.setStatus(req.getStatus());
+        if (req.getFullName() != null)
+            user.setFullName(req.getFullName());
+        if (req.getRole() != null)
+            user.setRole(req.getRole());
+        if (req.getStatus() != null)
+            user.setStatus(req.getStatus());
 
         userRepository.save(Objects.requireNonNull(user));
 

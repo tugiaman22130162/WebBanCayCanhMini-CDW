@@ -1,6 +1,7 @@
 package com.example.minigarden.config;
 
 import com.example.minigarden.service.JwtService;
+import com.example.minigarden.repository.UserRepository;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.*;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import java.io.IOException;
 public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final JwtService jwtService;
+    private final UserRepository userRepository;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -29,7 +31,12 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 
         String token = jwtService.generateToken(email);
 
-        // redirect về frontend kèm token
-        response.sendRedirect("http://localhost:5173/oauth2/success?token=" + token);
+        String role = "USER";
+        var userOpt = userRepository.findByEmail(email);
+        if (userOpt.isPresent() && userOpt.get().getRole() != null) {
+            role = userOpt.get().getRole().name();
+        }
+
+        response.sendRedirect("http://localhost:5173/oauth2/success?token=" + token + "&role=" + role);
     }
 }

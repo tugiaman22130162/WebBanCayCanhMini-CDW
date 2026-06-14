@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import Swal from "sweetalert2";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { showSuccessToast, showErrorToast } from "../../utils/ToastUtils";
 
@@ -12,6 +11,7 @@ export default function ForgotPassword() {
         email: "",
     });
     const [isLoading, setIsLoading] = useState(false);
+    const navigate = useNavigate();
 
     const validateForm = () => {
         let newErrors = { email: "" };
@@ -40,8 +40,9 @@ export default function ForgotPassword() {
             setIsLoading(true);
             try {
                 const response = await axios.post(`http://localhost:8080/api/auth/forgot-password?email=${formData.email}`);
-                showSuccessToast(response.data.message || 'Đã gửi email khôi phục mật khẩu!', 3000);
-                setFormData({ email: "" }); // Reset lại form
+                showSuccessToast(response.data.message || 'Đã gửi mã OTP khôi phục mật khẩu!', 3000);
+                // Chuyển hướng sang trang nhập OTP, truyền kèm email
+                navigate('/reset-password', { state: { email: formData.email } });
             } catch (error: any) {
                 showErrorToast(
                     error.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại sau!',
@@ -63,7 +64,6 @@ export default function ForgotPassword() {
                     alt="Background forgot password"
                     className="w-full h-full object-cover object-center"
                 />
-                {/* Lớp phủ tối mờ để tạo chiều sâu và nổi bật form */}
                 <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
             </div>
 
