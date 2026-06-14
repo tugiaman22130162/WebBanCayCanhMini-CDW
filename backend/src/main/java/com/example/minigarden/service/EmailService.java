@@ -8,20 +8,25 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 
-//cau hinh email service de gui mail reset password
-//no se duoc su dung trong UserService de gui mail khi nguoi dung yeu cau reset password
-//no la email service don gian su dung JavaMailSender de gui mail
+// cau hinh email service de gui mail reset password
+// no se duoc su dung trong UserService de gui mail khi nguoi dung yeu cau reset
+// password
+// no la email service don gian su dung JavaMailSender de gui mail
 public class EmailService {
 
     private final JavaMailSender mailSender;
 
-    public void sendResetPasswordEmail(String to, String token) {
+    public void sendResetPasswordEmail(String to, String otp) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(to);
         message.setSubject("Yêu cầu đặt lại mật khẩu - MiniGarden");
-        message.setText("Để đặt lại mật khẩu, vui lòng nhấp vào đường link sau:\n\n"
-                + "http://localhost:5173/reset-password?token=" + token
-                + "\n\nLink này sẽ hết hạn sau 15 phút.");
+        message.setText(
+                "Xin chào,\n\n"
+                        + "Mã OTP để đặt lại mật khẩu của bạn là: "
+                        + otp
+                        + "\n\nMã OTP này có hiệu lực trong 5 phút."
+                        + "\n\nNếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này."
+                        + "\n\nMiniGarden");
         mailSender.send(message);
     }
 }

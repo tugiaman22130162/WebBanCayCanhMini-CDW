@@ -54,10 +54,21 @@ public class AuthController {
         }
     }
 
-    @PostMapping("/reset-password")
-    public ResponseEntity<?> resetPassword(@RequestParam String token, @RequestParam String newPassword) {
+    @PostMapping("/verify-otp")
+    public ResponseEntity<?> verifyOtp(@RequestParam String email, @RequestParam String otp) {
         try {
-            userService.resetPassword(token, newPassword);
+            userService.verifyOtp(email, otp);
+            return ResponseEntity.ok(Map.of("message", "OTP hợp lệ"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestParam String email, @RequestParam String otp,
+            @RequestParam String newPassword) {
+        try {
+            userService.resetPassword(email, otp, newPassword);
             return ResponseEntity.ok(Map.of("message", "Đặt lại mật khẩu thành công"));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
