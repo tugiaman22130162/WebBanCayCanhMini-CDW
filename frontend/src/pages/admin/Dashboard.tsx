@@ -49,7 +49,7 @@ export default function Dashboard() {
         categoryStats: [] as any[],
         revenueGrowthData: [] as any[],
         userGrowthData: [] as any[],
-        transactionStats: { success: 0, failed: 0, total: 0 }
+        transactionStats: { success: 0, failed: 0, refunded: 0, total: 0 }
     });
 
     useEffect(() => {
@@ -126,6 +126,8 @@ export default function Dashboard() {
     const txTotal = stats.transactionStats.total || 0;
     const txSuccessPct = txTotal === 0 ? 0 : Math.round((stats.transactionStats.success / txTotal) * 100);
     const txFailedPct = txTotal === 0 ? 0 : Math.round((stats.transactionStats.failed / txTotal) * 100);
+    const txRefundedPct = txTotal === 0 ? 0 : Math.round(((stats.transactionStats.refunded || 0) / txTotal) * 100);
+    const failedEndPct = txSuccessPct + txFailedPct;
 
     return (
         <div className="h-screen bg-background text-on-surface flex overflow-hidden font-[Plus_Jakarta_Sans]">
@@ -280,21 +282,31 @@ export default function Dashboard() {
                             <h3 className="text-lg font-bold text-gray-800 mb-6 w-full text-left">Tỷ lệ giao dịch</h3>
                             <div 
                                 className="w-48 h-48 rounded-full flex items-center justify-center relative shadow-inner"
-                                style={{ background: `conic-gradient(#10b981 0% ${txSuccessPct}%, #ef4444 ${txSuccessPct}% 100%)` }}
+                                style={{ background: `conic-gradient(#10b981 0% ${txSuccessPct}%, #ef4444 ${txSuccessPct}% ${failedEndPct}%, #9ca3af ${failedEndPct}% 100%)` }}
                             >
                                 <div className="w-32 h-32 bg-white rounded-full flex flex-col items-center justify-center shadow-sm">
                                     <span className="text-2xl font-black text-gray-800">{txTotal}</span>
                                     <span className="text-xs text-gray-500 font-medium">Tổng giao dịch</span>
                                 </div>
                             </div>
-                            <div className="flex justify-center gap-6 mt-8 w-full">
-                                <div className="flex items-center gap-2">
-                                    <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
-                                    <span className="text-sm font-semibold text-gray-600">Thành công ({txSuccessPct}%)</span>
+                            <div className="flex flex-col gap-3 mt-8 w-full max-w-[220px] mx-auto">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
+                                        <span className="text-sm font-semibold text-gray-600">Thành công</span>
+                                    </div>                                </div>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                                        <span className="text-sm font-semibold text-gray-600">Thất bại</span>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="w-3 h-3 rounded-full bg-red-500"></span>
-                                    <span className="text-sm font-semibold text-gray-600">Thất bại ({txFailedPct}%)</span>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-3 h-3 rounded-full bg-gray-400"></span>
+                                        <span className="text-sm font-semibold text-gray-600">Hoàn tiền</span>
+                                    </div>
+                                    <span className="text-sm font-bold text-gray-800">{txRefundedPct}%</span>
                                 </div>
                             </div>
                         </div>

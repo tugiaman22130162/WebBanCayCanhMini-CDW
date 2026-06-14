@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import ChatBanners from './ChatBanners';
 import ChatActions from '../../components/chat/ChatActions';
 import { Message as ChatMessage } from '../../utils/chatUtils';
+import Swal from 'sweetalert2';
 
 interface MessageInputAreaProps {
     isLoggedIn?: boolean;
@@ -20,6 +21,7 @@ interface MessageInputAreaProps {
     onSendSticker: (url: string) => void;
     onSendImage: (file: File) => void;
     onSendOrder?: () => void;
+    onSendLocation?: (lat: number, lng: number) => void;
     sendTypingStatus: (isTyping: boolean) => void | Promise<void>;
 }
 
@@ -28,7 +30,7 @@ export default function MessageInputArea({
     inputText, setInputText,
     replyingMessageId, editingMessageId, messages,
     onCancelReply, onCancelEdit,
-    onSendMessage, onSendSticker, onSendImage, onSendOrder,
+    onSendMessage, onSendSticker, onSendImage, onSendOrder, onSendLocation,
     sendTypingStatus
 }: MessageInputAreaProps) {
     const typingTimeoutRef = useRef<any>(null);
@@ -79,6 +81,53 @@ export default function MessageInputArea({
         onSendImage(file);
     };
 
+    const handleSendLocationClick = () => {
+        if (!onSendLocation) return;
+        if (navigator.geolocation) {
+            Swal.fire({
+                title: 'Đang lấy vị trí...',
+                text: 'Vui lòng cấp quyền truy cập vị trí cho trình duyệt.',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    Swal.close();
+                    onSendLocation(position.coords.latitude, position.coords.longitude);
+                },
+                (error) => {
+                    console.error("Lỗi lấy vị trí:", error);
+                    let errorMsg = 'Không thể lấy vị trí. Vui lòng kiểm tra lại cài đặt trình duyệt!';
+                    if (error.code === error.PERMISSION_DENIED) errorMsg = 'Bạn đã từ chối quyền truy cập vị trí. Vui lòng cấp quyền trong cài đặt trình duyệt.';
+                    else if (error.code === error.POSITION_UNAVAILABLE) errorMsg = 'Thông tin vị trí không khả dụng (Máy tính không có GPS).';
+                    else if (error.code === error.TIMEOUT) errorMsg = 'Yêu cầu lấy vị trí quá hạn thời gian (Thử lại ở nơi có sóng tốt hơn).';
+                    
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Không thể lấy vị trí',
+                        text: errorMsg,
+                        confirmButtonText: 'Đóng',
+                        customClass: { confirmButton: 'bg-primary text-white px-6 py-2.5 rounded-xl font-bold hover:bg-[#2f5146]' },
+                        buttonsStyling: false
+                    });
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Lỗi',
+                text: 'Trình duyệt của bạn không hỗ trợ tính năng định vị!',
+                confirmButtonText: 'Đóng',
+                customClass: { confirmButton: 'bg-primary text-white px-6 py-2.5 rounded-xl font-bold hover:bg-[#2f5146]' },
+                buttonsStyling: false
+            });
+        }
+    };
+
     return (
         <div className="p-4 bg-white border-t border-gray-100 shrink-0 flex flex-col gap-2">
             <ChatBanners 
@@ -100,7 +149,7 @@ export default function MessageInputArea({
                 </div>
             ) : (
                 <form onSubmit={handleSubmit} className="flex items-end gap-3">
-                    <ChatActions onSendImage={handleSendImage} onSendSticker={handleSendSticker} onSendOrder={onSendOrder} uploadId={uploadId} />
+                    <ChatActions onSendImage={handleSendImage} onSendSticker={handleSendSticker} onSendOrder={onSendOrder} onSendLocation={handleSendLocationClick} uploadId={uploadId} />
                     <textarea
                         ref={textareaRef} value={inputText} onChange={handleInputChange}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e); } }}

@@ -13,6 +13,7 @@ type CartItem = {
     price: number;
     image: string;
     quantity: number;
+    stock: number;
 };
 
 export default function Cart() {
@@ -59,19 +60,23 @@ export default function Cart() {
             
             const rawItems = response.data.items || [];
             const mappedItems = rawItems.map((item: any) => {
-                if (item.product?.name && item.product.name.startsWith("Terrarium Thiết Kế #")) {
+                // Ưu tiên đọc trực tiếp từ item.stock do backend gửi lên
+                const itemStock = item.stock ?? item.product?.quantity ?? item.product?.stock ?? 0;
+                const itemName = item.name || item.product?.name || "";
+                
+                if (itemName.startsWith("Terrarium Thiết Kế #")) {
                     try {
-                        const match = item.product.name.match(/Terrarium Thiết Kế #(\d+)/);
+                        const match = itemName.match(/Terrarium Thiết Kế #(\d+)/);
                         if (match) {
                             const designId = parseInt(match[1]);
                             const design = myDesigns.find((d: any) => d.id === designId);
                             if (design && design.userImage) {
-                                return { ...item, image: design.userImage, name: item.product.name };
+                                return { ...item, image: design.userImage, name: itemName, stock: itemStock };
                             }
                         }
                     } catch(e) {}
                 }
-                return item;
+                return { ...item, stock: itemStock };
             });
             
             setCartItems(mappedItems);
@@ -91,7 +96,8 @@ export default function Cart() {
     // Hàm xử lý chọn "Tất cả"
     const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.checked) {
-            setSelectedItems(cartItems.map(item => item.id));
+            // Chỉ chọn những sản phẩm còn hàng
+            setSelectedItems(cartItems.filter(item => item.stock > 0).map(item => item.id));
         } else {
             setSelectedItems([]);
         }
@@ -109,7 +115,7 @@ export default function Cart() {
     // Hàm tính tổng tiền các sản phẩm được chọn
     const calculateTotal = () => {
         return cartItems
-            .filter(item => selectedItems.includes(item.id))
+            .filter(item => selectedItems.includes(item.id) && item.stock > 0)
             .reduce((total, item) => total + (item.price * item.quantity), 0);
     };
 
@@ -206,6 +212,10 @@ export default function Cart() {
         );
     }
 
+    const availableItemsCount = cartItems.filter(item => item.stock > 0).length;
+    const isAllSelected = cartItems.length > 0 && availableItemsCount > 0 && selectedItems.length === availableItemsCount;
+    const selectedAvailableCount = cartItems.filter(item => selectedItems.includes(item.id) && item.stock > 0).length;
+
     return (
         <div className="flex flex-col min-h-screen bg-[#F8F9F5] relative">
             <Header />
@@ -224,11 +234,12 @@ export default function Cart() {
                         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
                             <input 
                                 type="checkbox" 
-                                checked={cartItems.length > 0 && selectedItems.length === cartItems.length} 
+                                checked={isAllSelected} 
                                 onChange={handleSelectAll} 
-                                className="w-5 h-5 accent-primary cursor-pointer ml-2" 
+                                disabled={availableItemsCount === 0}
+                                className="w-5 h-5 accent-primary cursor-pointer ml-2 disabled:opacity-50 disabled:cursor-not-allowed" 
                             />
-                            <span className="font-bold text-gray-700">Chọn tất cả ({cartItems.length} sản phẩm)</span>
+                            <span className="font-bold text-gray-700">Chọn tất cả ({availableItemsCount} sản phẩm khả dụng)</span>
                         </div>
 
                         {cartItems.map((item, index) => (
@@ -237,31 +248,39 @@ export default function Cart() {
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: index * 0.1 }}
-                                className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 sm:gap-6"
+                                className={`p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 sm:gap-6 bg-white ${item.stock === 0 ? 'opacity-60' : ''}`}
                             >
                                 <input 
                                     type="checkbox" 
-                                    checked={selectedItems.includes(item.id)}
+                                    checked={selectedItems.includes(item.id) && item.stock > 0}
                                     onChange={(e) => handleSelectItem(item.id, e.target.checked)}
-                                    className="w-5 h-5 accent-primary cursor-pointer ml-2 shrink-0" 
+                                    disabled={item.stock === 0}
+                                    className={`w-5 h-5 accent-primary cursor-pointer ml-2 shrink-0 ${item.stock === 0 ? 'cursor-not-allowed' : ''}`} 
                                 />
                                 <img src={item.image || "https://images.unsplash.com/photo-1614594975525-e45190c55d40?w=200&h=200&fit=crop"} alt={item.name} className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-xl border border-gray-100" />
                                 
                                 <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                     <div>
-                                        <Link to={`/products/${item.productId}`} className="text-lg font-bold text-gray-800 hover:text-primary transition-colors line-clamp-1">{item.name}</Link>
-                                        <p className="text-primary font-black mt-1">{item.price.toLocaleString('vi-VN')}đ</p>
+                                        <div className="flex items-start gap-2">
+                                            <Link to={`/products/${item.productId}`} className={`text-lg font-bold hover:text-primary transition-colors line-clamp-1 ${item.stock === 0 ? 'text-gray-500' : 'text-gray-800'}`}>{item.name}</Link>
+                                            {item.stock === 0 && (
+                                                <span className="shrink-0 bg-red-50 text-red-500 text-[10px] font-bold px-2 py-0.5 rounded border border-red-200 mt-1 whitespace-nowrap shadow-sm">
+                                                    Hết hàng
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className={`font-black mt-1 ${item.stock === 0 ? 'text-gray-500' : 'text-primary'}`}>{item.price.toLocaleString('vi-VN')}đ</p>
                                     </div>
                                     
                                     <div className="flex items-center gap-6">
-                                        <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden h-10">
-                                            <button onClick={() => updateQuantity(item.id, -1, item.quantity)} className="w-10 h-full flex items-center justify-center text-gray-600 hover:bg-gray-200 hover:text-primary transition-colors">
+                                        <div className={`flex items-center border rounded-xl overflow-hidden h-10 ${item.stock === 0 ? 'bg-gray-100 border-gray-200 opacity-50 pointer-events-none' : 'bg-gray-50 border-gray-200'}`}>
+                                            <button onClick={() => updateQuantity(item.id, -1, item.quantity)} disabled={item.stock === 0} className="w-10 h-full flex items-center justify-center text-gray-600 hover:bg-gray-200 hover:text-primary transition-colors">
                                                 <span className="material-symbols-outlined font-bold text-[18px]">remove</span>
                                             </button>
                                             <span className="w-10 h-full flex items-center justify-center font-bold text-gray-800 bg-white text-sm">
                                                 {item.quantity}
                                             </span>
-                                            <button onClick={() => updateQuantity(item.id, 1, item.quantity)} className="w-10 h-full flex items-center justify-center text-gray-600 hover:bg-gray-200 hover:text-primary transition-colors">
+                                            <button onClick={() => updateQuantity(item.id, 1, item.quantity)} disabled={item.stock === 0} className="w-10 h-full flex items-center justify-center text-gray-600 hover:bg-gray-200 hover:text-primary transition-colors">
                                                 <span className="material-symbols-outlined font-bold text-[18px]">add</span>
                                             </button>
                                         </div>
@@ -282,11 +301,12 @@ export default function Cart() {
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <input 
                                     type="checkbox" 
-                                    checked={cartItems.length > 0 && selectedItems.length === cartItems.length} 
+                                    checked={isAllSelected} 
                                     onChange={handleSelectAll} 
-                                    className="w-5 h-5 accent-primary cursor-pointer" 
+                                    disabled={availableItemsCount === 0}
+                                    className="w-5 h-5 accent-primary cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" 
                                 />
-                                <span className="font-semibold text-gray-700 whitespace-nowrap">Chọn tất cả ({cartItems.length})</span>
+                                <span className="font-semibold text-gray-700 whitespace-nowrap">Chọn tất cả ({availableItemsCount})</span>
                             </label>
                             {selectedItems.length > 0 && (
                                 <button 
@@ -327,19 +347,23 @@ export default function Cart() {
 
                         <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6 w-full sm:w-auto">
                             <div className="text-right flex-1 sm:flex-none">
-                                <div className="text-gray-600 font-medium text-sm sm:text-base">Tổng thanh toán ({selectedItems.length} SP):</div>
+                                <div className="text-gray-600 font-medium text-sm sm:text-base">Tổng thanh toán ({selectedAvailableCount} SP):</div>
                                 <div className="text-2xl font-black text-primary">{calculateTotal().toLocaleString('vi-VN')}đ</div>
                             </div>
                             <button 
                                 onClick={() => {
-                                    if (selectedItems.length === 0) {
-                                        Swal.fire("Chưa chọn sản phẩm", "Vui lòng chọn ít nhất 1 sản phẩm để thanh toán nhé!", "warning");
+                                    const availableSelected = selectedItems.filter(id => {
+                                        const item = cartItems.find(i => i.id === id);
+                                        return item && item.stock > 0;
+                                    });
+                                    if (availableSelected.length === 0) {
+                                        Swal.fire("Chưa chọn sản phẩm", "Vui lòng chọn ít nhất 1 sản phẩm còn hàng để thanh toán nhé!", "warning");
                                         return;
                                     }
-                                    navigate('/checkout', { state: { selectedItems } });
+                                    navigate('/checkout', { state: { selectedItems: availableSelected } });
                                 }} 
-                                className={`px-6 sm:px-8 py-3 rounded-xl font-bold transition-all shadow-md whitespace-nowrap ${selectedItems.length > 0 ? 'bg-primary text-white hover:bg-[#2f5146] hover:scale-[1.02] active:scale-95' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
-                                disabled={selectedItems.length === 0}
+                                className={`px-6 sm:px-8 py-3 rounded-xl font-bold transition-all shadow-md whitespace-nowrap ${selectedAvailableCount > 0 ? 'bg-primary text-white hover:bg-[#2f5146] hover:scale-[1.02] active:scale-95' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                                disabled={selectedAvailableCount === 0}
                             >
                                 Mua Hàng
                             </button>

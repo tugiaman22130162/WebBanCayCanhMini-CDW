@@ -26,4 +26,5 @@ public class MessageResponse {
 
     private String reaction; 
     private String imgUrl; 
+    private Boolean isOnline;
 }

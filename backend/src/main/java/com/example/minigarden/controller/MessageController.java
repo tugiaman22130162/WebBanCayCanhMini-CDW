@@ -25,9 +25,11 @@ public class MessageController {
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     // Lấy tin nhắn của một đoạn chat
-    @GetMapping("/conversation/{conversationId}")
-    public ResponseEntity<List<MessageResponse>> getMessages(@PathVariable Integer conversationId) {
-        return ResponseEntity.ok(messageService.getMessages(conversationId));
+   @GetMapping("/conversation/{conversationId}")
+    public ResponseEntity<List<MessageResponse>> getMessages(
+            @PathVariable Integer conversationId,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.ok(messageService.getMessages(conversationId, currentUser));
     }
 
     // Gửi tin nhắn mới

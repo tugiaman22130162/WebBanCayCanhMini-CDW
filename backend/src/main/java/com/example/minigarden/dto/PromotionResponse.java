@@ -43,4 +43,8 @@ public class PromotionResponse {
     private Integer targetId;
 
     private String targetName;
+    
+    private Integer usedCount;
+
+    private Integer remaining;
 }

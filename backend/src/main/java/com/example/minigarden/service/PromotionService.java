@@ -23,6 +23,9 @@ import com.example.minigarden.entity.Categories;
 import com.example.minigarden.entity.Products;
 import com.example.minigarden.repository.PromotionCategoryRepository;
 import com.example.minigarden.repository.PromotionProductRepository;
+import com.example.minigarden.entity.NotificationType;
+import com.example.minigarden.exception.OutOfStockException;
+import com.example.minigarden.exception.ResourceNotFoundException;
 
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
@@ -39,8 +42,11 @@ import java.io.IOException;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import java.time.format.DateTimeFormatter;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import org.springframework.data.domain.Sort;
 import java.util.Set;
-
+import java.time.LocalDateTime;
 @Service
 public class PromotionService {
     @Autowired
@@ -51,6 +57,9 @@ public class PromotionService {
 
     @Autowired
     private PromotionProductRepository promotionProductRepository;
+
+    @Autowired
+    private NotificationService notificationService;
 
     // map json từ DB sang Response trả về cho FE
     private PromotionResponse mapToResponse(Promotion promotion) {
@@ -94,6 +103,7 @@ public class PromotionService {
                 .createdAt(
                         promotion.getCreatedAt())
                 .quantity(promotion.getQuantity())
+                .usedCount(promotion.getUsedCount() != null ? promotion.getUsedCount() : 0)
                 .targetId(targetId)
                 .targetName(targetName)
                 .build();
@@ -193,7 +203,7 @@ public class PromotionService {
         promotion.setQuantity(
                 request.getQuantity() != null ? request.getQuantity() : 0);
 
-        Promotion savedPromotion = promotionRepository.saveAndFlush(promotion); // Ép lưu để sinh ID ngay lập tức
+        Promotion savedPromotion = promotionRepository.saveAndFlush(promotion); 
 
         savePromotionMapping(savedPromotion, request);
 
@@ -208,6 +218,55 @@ public class PromotionService {
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
+    }
+
+    // Tìm kiếm và lọc khuyến mãi
+    @Transactional(readOnly = true)
+    public List<PromotionResponse> searchPromotions(String keyword, String timeRange, LocalDate customStartDate, LocalDate customEndDate) {
+        LocalDateTime startDate = null;
+        LocalDateTime endDate = LocalDateTime.now();
+
+        if (timeRange != null && !timeRange.equals("all")) {
+            switch (timeRange) {
+                case "7days":
+                    startDate = endDate.minusDays(7);
+                    break;
+                case "30days":
+                    startDate = endDate.minusDays(30);
+                    break;
+                case "6months":
+                    startDate = endDate.minusMonths(6);
+                    break;
+                case "1year":
+                    startDate = endDate.minusYears(1);
+                    break;
+                case "quarter":
+                    int currentQuarter = (endDate.getMonthValue() - 1) / 3 + 1;
+                    startDate = LocalDateTime.of(endDate.getYear(), (currentQuarter - 1) * 3 + 1, 1, 0, 0);
+                    break;
+                case "custom":
+                    if (customStartDate != null && customEndDate != null) {
+                        startDate = customStartDate.atStartOfDay();
+                        endDate = customEndDate.atTime(LocalTime.MAX);
+                    }
+                    break;
+            }
+        }
+
+        String finalKeyword = (keyword == null) ? "" : keyword.trim();
+
+        List<Promotion> promotions;
+        if (startDate != null) {
+            promotions = promotionRepository.searchPromotionsWithDate(finalKeyword, startDate, endDate);
+        } else {
+            if (finalKeyword.isEmpty()) {
+                promotions = promotionRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
+            } else {
+                promotions = promotionRepository.searchPromotions(finalKeyword);
+            }
+        }
+
+        return promotions.stream().map(this::mapToResponse).toList();
     }
 
     // lấy ra theo id
@@ -269,12 +328,12 @@ public class PromotionService {
         promotion.setQuantity(
                 request.getQuantity() != null ? request.getQuantity() : 0);
 
-        Promotion savedPromotion = promotionRepository.saveAndFlush(promotion); // Ép lưu để sinh ID ngay lập tức
+        Promotion savedPromotion = promotionRepository.saveAndFlush(promotion); 
 
         promotionCategoryRepository.deleteByPromotionId(savedPromotion.getId());
-        promotionCategoryRepository.flush(); // Bắt buộc Flush để thực thi lệnh XÓA ngay lập tức
+        promotionCategoryRepository.flush(); 
         promotionProductRepository.deleteByPromotionId(savedPromotion.getId());
-        promotionProductRepository.flush(); // Bắt buộc Flush để thực thi lệnh XÓA ngay lập tức
+        promotionProductRepository.flush();
 
         savePromotionMapping(savedPromotion, request);
 
@@ -372,7 +431,7 @@ public class PromotionService {
             // Tạo Header Row (Bị dời xuống dòng 1)
             Row headerRow = sheet.createRow(1);
             String[] columns = { "ID", "Mã Khuyến Mãi", "Mô Tả", "Loại KM", "Áp Dụng Cho", "Loại Giảm Giá", "Mức Giảm",
-                    "Đơn Tối Thiểu", "Trạng Thái", "Ngày Bắt Đầu", "Ngày Kết Thúc", "Số Lượng" };
+                    "Đơn Tối Thiểu", "Trạng Thái", "Ngày Bắt Đầu", "Ngày Kết Thúc", "Số Lượng", "Đã Sử Dụng" };
             for (int col = 0; col < columns.length; col++) {
                 Cell cell = headerRow.createCell(col);
                 cell.setCellValue(columns[col]);
@@ -443,7 +502,7 @@ public class PromotionService {
                 cell7.setCellStyle(dataCellStyle);
 
                 Cell cell8 = row.createCell(colIdx++);
-                cell8.setCellValue(Boolean.TRUE.equals(promotion.getIsActive()) ? "Hoạt động" : "Ngừng HĐ");
+                cell8.setCellValue(Boolean.TRUE.equals(promotion.getIsActive()) ? "Hoạt động" : "Ngừng họat động");
                 cell8.setCellStyle(dataCellStyle);
 
                 Cell cell9 = row.createCell(colIdx++);
@@ -458,6 +517,10 @@ public class PromotionService {
                 Object qty = promotion.getQuantity();
                 cell11.setCellValue(qty != null ? ((Number) qty).doubleValue() : 0);
                 cell11.setCellStyle(dataCellStyle);
+
+                Cell cell12 = row.createCell(colIdx++);
+                cell12.setCellValue(promotion.getUsedCount());
+                cell12.setCellStyle(dataCellStyle);
             }
 
             // Tự động căn chỉnh độ rộng cột
@@ -673,5 +736,36 @@ public class PromotionService {
 
             promotionRepository.saveAll(promotions);
         }
+    }
+
+    // Hàm xử lý sử dụng mã khuyến mãi (Gọi từ OrderService)
+    @Transactional
+    public void claimPromotion(Integer promotionId) {
+        Promotion p = promotionRepository.findById(Objects.requireNonNull(promotionId))
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy mã khuyến mãi"));
+
+        int updatedRows = promotionRepository.claimPromotion(promotionId);
+        if (updatedRows == 0) {
+            throw new OutOfStockException("Mã khuyến mãi [" + p.getName() + "] đã hết lượt sử dụng hoặc không còn hiệu lực!");
+        }
+
+        if (p.getQuantity() != null && p.getQuantity() > 0) {
+            int oldUsedCount = p.getUsedCount() != null ? p.getUsedCount() : 0;
+            int remaining = p.getQuantity() - (oldUsedCount + 1);
+            
+            if (remaining == 5) {
+                String link = "/admin/promotions?search=" + p.getName();
+                notificationService.createNotification("Mã khuyến mãi [" + p.getName() + "] sắp hết (chỉ còn 5 lượt)!", link, NotificationType.PROMOTION);
+            } else if (remaining <= 0) {
+                String link = "/admin/promotions?search=" + p.getName();
+                notificationService.createNotification("Mã khuyến mãi [" + p.getName() + "] đã hết số lượng và được hệ thống tự động ẩn!", link, NotificationType.PROMOTION);
+            }
+        }
+    }
+
+    @Transactional
+    public void restorePromotion(String promotionCode) {
+        // Dùng duy nhất 1 câu lệnh Atomic SQL để giảm usedCount và tự động bật lại isActive nếu cần
+        promotionRepository.restorePromotionUsageByName(promotionCode);
     }
 }

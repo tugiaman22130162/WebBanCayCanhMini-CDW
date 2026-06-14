@@ -165,25 +165,37 @@ export default function ProductCartAction({ product, mainImage, imageRef }: Prod
             <div className="flex items-center gap-4">
                 <span className="font-bold text-gray-700">Số lượng:</span>
                 <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden h-12">
-                    <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-12 h-full flex items-center justify-center text-gray-600 hover:bg-gray-200 hover:text-primary transition-colors">
+                    <button disabled={product.stock === 0} onClick={() => setQuantity(Math.max(1, quantity - 1))} className={`w-12 h-full flex items-center justify-center transition-colors ${product.stock === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-200 hover:text-primary'}`}>
                         <span className="material-symbols-outlined font-bold">remove</span>
                     </button>
                     <span className="w-12 h-full flex items-center justify-center font-bold text-gray-800 bg-white">
-                        {quantity}
+                        {product.stock === 0 ? 0 : quantity}
                     </span>
-                    <button onClick={() => setQuantity(Math.min(product.stock, quantity + 1))} className="w-12 h-full flex items-center justify-center text-gray-600 hover:bg-gray-200 hover:text-primary transition-colors">
+                    <button disabled={product.stock === 0} onClick={() => setQuantity(Math.min(product.stock, quantity + 1))} className={`w-12 h-full flex items-center justify-center transition-colors ${product.stock === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-200 hover:text-primary'}`}>
                         <span className="material-symbols-outlined font-bold">add</span>
                     </button>
                 </div>
-                <span className="text-sm text-gray-500 font-medium ml-2">Còn {product.stock} sản phẩm</span>
+                {product.stock === 0 ? (
+                    <span className="text-sm text-red-500 font-bold ml-2">Hết hàng</span>
+                ) : (
+                    <span className="text-sm text-gray-500 font-medium ml-2">Còn {product.stock} sản phẩm</span>
+                )}
             </div>
 
             <div className="flex gap-4">
-                <button onClick={handleAddToCart} className="flex-1 py-4 border-2 border-primary text-primary font-bold rounded-xl hover:bg-primary/5 transition-colors flex justify-center items-center gap-2">
+                <button 
+                    onClick={handleAddToCart} 
+                    disabled={product.stock === 0}
+                    className={`flex-1 py-4 border-2 font-bold rounded-xl flex justify-center items-center gap-2 transition-colors ${product.stock === 0 ? 'border-primary/50 text-primary/50 cursor-not-allowed' : 'border-primary text-primary hover:bg-primary/5'}`}
+                >
                     <span className="material-symbols-outlined">add_shopping_cart</span>
-                    Thêm Vào Giỏ
+                    {product.stock === 0 ? 'Hết hàng' : 'Thêm Vào Giỏ'}
                 </button>
-                <button onClick={handleBuyNow} className="flex-1 py-4 bg-primary text-white font-bold rounded-xl hover:bg-[#2f5146] shadow-lg shadow-primary/30 transition-all active:scale-[0.98] flex justify-center items-center gap-2">
+                <button 
+                    onClick={handleBuyNow} 
+                    disabled={product.stock === 0}
+                    className={`flex-1 py-4 font-bold rounded-xl flex justify-center items-center gap-2 transition-all ${product.stock === 0 ? 'bg-primary/50 text-white cursor-not-allowed' : 'bg-primary text-white hover:bg-[#2f5146] shadow-lg shadow-primary/30 active:scale-[0.98]'}`}
+                >
                     Mua Ngay
                 </button>
             </div>

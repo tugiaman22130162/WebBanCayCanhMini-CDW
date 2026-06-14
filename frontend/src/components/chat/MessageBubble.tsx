@@ -1,7 +1,21 @@
 import React, { useState } from 'react';
-import { isStickerUrl, highlightMatch, formatMessageTime, Message } from './chatUtils';
+import { isStickerUrl, highlightMatch, formatMessageTime, Message } from '../../utils/chatUtils';
 import axios from 'axios';
-import OrderMessageCard from '../components/chat/OrderMessageCard';
+import OrderMessageCard from './OrderMessageCard';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Khởi tạo icon ghim vị trí mặc định cho bản đồ
+const customIcon = new L.Icon({
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
 
 interface MessageBubbleProps {
     msg: Message;
@@ -93,7 +107,6 @@ export default function MessageBubble({
                     )}
 
                     <div className={`flex flex-col gap-1.5 ${isOwn ? 'items-end' : 'items-start'}`}>
-                        {/* Lịch sử chỉnh sửa tách riêng nằm trên bong bóng */}
                         {!msg.isDeleted && showHistory && (
                             <div className={`mb-1 rounded-2xl p-3 max-w-full text-[13px] animate-in fade-in slide-in-from-bottom-2 shadow-sm ${isOwn ? 'bg-emerald-50/80 border border-emerald-100 text-gray-800' : 'bg-gray-100/80 border border-gray-200 text-gray-800'}`}>
                                 <button 
@@ -132,7 +145,7 @@ export default function MessageBubble({
                                     <div className={`rounded-lg p-2 mb-2 text-xs border ${(isSticker || isImage || isOrder || isLocation) ? 'bg-white border-gray-200 text-gray-600 shadow-sm mt-2' : isOwn ? 'bg-white/20 border-white/30 text-white' : 'bg-gray-50 border-gray-200 text-gray-600'}`}>
                                         <span className="font-bold">{replyToMsg?.sender === msg.sender ? 'Bạn' : (replyToMsg?.senderName || otherName)}: </span>
                                         <span className="truncate inline-block max-w-[150px] align-bottom">
-                                            {replyToMsg?.type === 'STICKER' ? '[Nhãn dán]' : replyToMsg?.type === 'IMAGE' ? '[Hình ảnh]' : replyToMsg?.type === 'ORDER' ? '[Đơn hàng]' : replyToMsg?.type === 'LOCATION' ? '[Vị trí]' : (replyToMsg?.text || 'Tin nhắn đã thu hồi')}
+                                            {(replyToMsg?.type === 'STICKER' || isStickerUrl(replyToMsg?.text || '')) ? '[Nhãn dán]' : replyToMsg?.type === 'IMAGE' ? '[Hình ảnh]' : replyToMsg?.type === 'ORDER' ? '[Đơn hàng]' : replyToMsg?.type === 'LOCATION' ? '[Vị trí]' : (replyToMsg?.text || 'Tin nhắn đã thu hồi')}
                                         </span>
                                     </div>
                                 )}
@@ -143,40 +156,47 @@ export default function MessageBubble({
                                 <img src={msg.text} alt="Hình ảnh" className="max-w-[200px] sm:max-w-[250px] rounded-2xl object-cover shadow-sm border border-gray-100 cursor-pointer" />
                             ) : isOrder ? (
                                 <OrderMessageCard orderId={Number(msg.text.replace('ORDER:', ''))} />
-                            ) : isLocation ? (
-                                <div className="w-[200px] sm:w-[250px] flex flex-col gap-1">
-                                    <iframe
-                                        width="100%"
-                                        height="150"
-                                        className="rounded-2xl border border-gray-200 shadow-sm bg-gray-50"
-                                        loading="lazy"
-                                        src={`https://maps.google.com/maps?q=${msg.text}&hl=vi&z=15&output=embed`}
-                                    ></iframe>
-                                    <a href={`https://www.google.com/maps?q=${msg.text}`} target="_blank" rel="noreferrer" className={`text-[12px] font-medium hover:underline flex items-center justify-center gap-1 mt-1 ${isOwn ? 'text-gray-500' : 'text-primary'}`}><span className="material-symbols-outlined text-[14px]">map</span> Xem trên Google Maps</a>
-                                </div>
-                            ) : (
+                            ) : isLocation ? (() => {
+                                const locText = msg.text || (msg as any).content || '';
+                                const coords = locText.split(',');
+                                const lat = parseFloat(coords[0]);
+                                const lng = parseFloat(coords[1]);
+                                
+                                if (isNaN(lat) || isNaN(lng)) return <p className="whitespace-pre-wrap">{locText}</p>;
+                                
+                                return (
+                                    <div className="w-[250px] h-[150px] sm:w-[300px] sm:h-[200px] rounded-xl overflow-hidden relative border border-gray-200 shadow-sm mt-1 z-0">
+                                        {/* React Leaflet Map */}
+                                        <MapContainer center={[lat, lng]} zoom={15} scrollWheelZoom={false} style={{ height: '100%', width: '100%', zIndex: 1 }}>
+                                            <TileLayer
+                                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                            />
+                                            <Marker position={[lat, lng]} icon={customIcon}></Marker>
+                                        </MapContainer>
+                                        
+                                        <a 
+                                            href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`} 
+                                            target="_blank" 
+                                            rel="noreferrer" 
+                                            className="absolute bottom-2 right-2 bg-white text-blue-600 px-3 py-1.5 text-xs font-bold rounded-full shadow-md hover:bg-blue-50 transition-colors flex items-center gap-1 z-[400]"
+                                        >
+                                            <span className="material-symbols-outlined text-[14px]">map</span>
+                                            Mở Bản Đồ
+                                        </a>
+                                    </div>
+                                );
+                            })() : (
                                 <p className="whitespace-pre-wrap">{msg.isDeleted ? 'Tin nhắn đã bị thu hồi' : highlightMatch(msg.text, searchMessageTerm)}</p>
                             )}
                             
                             {!msg.isDeleted && (() => {
                                 const editTime = msg.updatedAt || msg.editedAt || (msg as any).updated_at || (msg as any).edited_at;
 
-                                // --- START DEBUGGING BLOCK ---
-                                if (msg.isEdited) {
-                                    console.log(
-                                        `[DEBUG] Message ID ${msg.id} is edited. Raw editTime value:`,
-                                        editTime,
-                                        "| Full msg object:",
-                                        msg
-                                    );
-                                }
-                                // --- END DEBUGGING BLOCK ---
-                                
                                 const originalTime = msg.timestamp || (msg as any).createdAt || (msg as any).created_at;
                                 let displayTime = safeParseDate(originalTime);
                                 let tooltipText = undefined;
                                 
-                                // Nếu tin nhắn đã sửa và có tồn tại dữ liệu editTime
                                 if (msg.isEdited && editTime) {
                                     let tempDate = safeParseDate(editTime);
                                     if (!isNaN(tempDate.getTime())) {
@@ -192,7 +212,7 @@ export default function MessageBubble({
                                         {msg.isEdited && (
                                             
                                             <span 
-                                                className="text-[10px] font-medium cursor-pointer hover:underline"
+                                                className="text-[10px] font-medium cursor-pointer hover:opacity-80"
                                                 onClick={handleToggleHistory}
                                                 title={tooltipText}
                                             >

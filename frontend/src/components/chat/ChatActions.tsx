@@ -5,10 +5,11 @@ interface ChatActionsProps {
     onSendImage: (file: File) => void;
     onSendSticker: (stickerUrl: string) => void;
     onSendOrder?: () => void;
+    onSendLocation?: () => void;
     uploadId?: string;
 }
 
-export default function ChatActions({ onSendImage, onSendSticker, onSendOrder, uploadId = "chat-image-upload" }: ChatActionsProps) {
+export default function ChatActions({ onSendImage, onSendSticker, onSendOrder, onSendLocation, uploadId = "chat-image-upload" }: ChatActionsProps) {
     const [plusMenuOpen, setPlusMenuOpen] = useState(false);
     const [stickerMenuOpen, setStickerMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
@@ -35,7 +36,7 @@ export default function ChatActions({ onSendImage, onSendSticker, onSendOrder, u
                         <button type="button" onClick={() => { setPlusMenuOpen(false); if (onSendOrder) onSendOrder(); }} className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left text-sm text-gray-700 font-semibold">
                             <span className="material-symbols-outlined text-[20px] text-blue-500">receipt_long</span> Đơn hàng
                         </button>
-                        <button type="button" onClick={() => setPlusMenuOpen(false)} className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left text-sm text-gray-700 font-semibold">
+                        <button type="button" onClick={() => { setPlusMenuOpen(false); if (onSendLocation) onSendLocation(); }} className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left text-sm text-gray-700 font-semibold">
                             <span className="material-symbols-outlined text-[20px] text-red-500">location_on</span> Vị trí
                         </button>
                     </div>

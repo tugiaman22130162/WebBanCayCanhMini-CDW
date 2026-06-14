@@ -6,6 +6,7 @@ import AdminSidebar from "../../components/admin/AdminSidebar";
 import AddPromotionModal from "../../components/admin/AddPromotionModal";
 import EditPromotionModal from "../../components/admin/EditPromotionModal";
 import { showSuccessToast, showErrorToast } from "../../utils/ToastUtils";
+import { useSearchParams } from "react-router-dom";
 
 type PromotionType = 'SHOP' | 'CATEGORY' | 'PRODUCT' | 'SHIPPING';
 type DiscountType = 'PERCENTAGE' | 'FIXED_AMOUNT' | 'FREE';
@@ -23,6 +24,8 @@ type PromotionResponse = {
     startDate: string;
     endDate: string;
     createdAt: string;
+    quantity?: number;
+    usedCount?: number;
     targetId?: number;
     targetName?: string;
 };
@@ -48,15 +51,27 @@ export default function PromotionManagement() {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [promoToDelete, setPromoToDelete] = useState<number | null>(null);
     
+    const [searchParams] = useSearchParams();
+    const searchTerm = searchParams.get("search") || "";
+
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [categories, setCategories] = useState<{id: number, name: string}[]>([]);
     const [products, setProducts] = useState<{id: number, name: string}[]>([]);
 
     useEffect(() => {
-        fetchPromotions();
         fetchCategoriesAndProducts();
     }, []);
+
+    // Gọi lại API lấy khuyến mãi mỗi khi từ khóa tìm kiếm thay đổi
+    useEffect(() => {
+        fetchPromotions(searchTerm);
+    }, [searchTerm]);
+
+    // Đặt lại trang về 1 khi người dùng gõ tìm kiếm mới
+    useEffect(() => {
+        if (searchTerm) setCurrentPage(1);
+    }, [searchTerm]);
 
     const fetchCategoriesAndProducts = async () => {
         try {
@@ -71,12 +86,13 @@ export default function PromotionManagement() {
         }
     };
 
-    const fetchPromotions = async () => {
+    const fetchPromotions = async (keyword = "") => {
         setIsLoading(true);
         try {
             const token = localStorage.getItem("token");
             const response = await axios.get("http://localhost:8080/api/promotions", {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` },
+                params: { keyword: keyword || null }
             });
             setPromotions(response.data);
         } catch (error) {
@@ -89,12 +105,16 @@ export default function PromotionManagement() {
 
     // Xử lý Lọc
     const filteredPromos = useMemo(() => {
-        return promotions.filter(promo => {
+        let data = [...promotions];
+        if (searchTerm) {
+            data = data.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.description.toLowerCase().includes(searchTerm.toLowerCase()));
+        }
+        return data.filter(promo => {
             const matchType = currentFilters.type === 'ALL' || promo.type === currentFilters.type;
             const matchStatus = currentFilters.isActive === 'ALL' || (currentFilters.isActive === 'TRUE' ? promo.isActive : !promo.isActive);
             return matchType && matchStatus;
         });
-    }, [promotions, currentFilters]);
+    }, [promotions, currentFilters, searchTerm]);
 
     // Xử lý Phân trang
     const totalPages = Math.ceil(filteredPromos.length / itemsPerPage);
@@ -393,8 +413,9 @@ export default function PromotionManagement() {
                                         <th className="text-left p-4">Loại Khuyến Mãi</th>
                                         <th className="text-left p-4">Mức Giảm</th>
                                         <th className="text-left p-4">Hạn Sử Dụng</th>
+                                        <th className="text-center p-4">Đã Dùng</th>
                                         <th className="text-left p-4">Trạng thái</th>
-                                        <th className="text-right p-4">Hành động</th>
+                                        <th className="text-right p-4 pr-6">Hành động</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -429,6 +450,18 @@ export default function PromotionManagement() {
                                                 </td>
                                                 <td className="p-4 text-sm text-gray-600 font-medium">
                                                     {new Date(promo.endDate).toLocaleDateString('vi-VN')}
+                                                </td>
+                                                <td className="p-4 text-center">
+                                                    <div className="flex flex-col items-center gap-1.5">
+                                                        <span className="text-sm font-bold text-gray-700 bg-gray-100 px-3 py-1 rounded-lg border border-gray-200">
+                                                            {promo.usedCount || 0} / {promo.quantity && promo.quantity > 0 ? promo.quantity : '∞'}
+                                                        </span>
+                                                        {promo.quantity !== undefined && promo.quantity > 0 && (
+                                                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                                                                Còn: {Math.max(0, promo.quantity - (promo.usedCount || 0))}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="p-4">
                                                     <span className={`text-xs font-semibold px-3 py-1.5 rounded-full ${

@@ -1,14 +1,14 @@
 package com.example.minigarden.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import com.example.minigarden.entity.CartItems;
+import com.example.minigarden.entity.CartItem;
 
 import java.util.List;
 import java.util.Optional;
-public interface CartItemRepository extends JpaRepository<CartItems, Integer> {
+public interface CartItemRepository extends JpaRepository<CartItem, Integer> {
 
-    Optional<CartItems> findByCartIdAndProductId(int cartId, int productId);
+    Optional<CartItem> findByCartIdAndProductId(int cartId, int productId);
 
-    List<CartItems> findByCartId(int cartId);
+    List<CartItem> findByCartId(int cartId);
 
 }

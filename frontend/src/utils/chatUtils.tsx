@@ -24,6 +24,7 @@ export type Conversation = {
     lastMessageTime?: Date | null;
     unread: number;
     isActive: boolean;
+    isOnline?: boolean;
 };
 
 export const formatMessageTime = (date: Date) => {
@@ -32,10 +33,11 @@ export const formatMessageTime = (date: Date) => {
     return isToday ? date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : `${date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}, ${date.toLocaleDateString('vi-VN')}`;
 };
 
-export const formatSidebarTime = (date: Date) => {
+export const formatSidebarTime = (dateInput: Date | string) => {
+    const date = new Date(dateInput);
     const now = new Date();
     const isToday = date.getDate() === now.getDate() && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-    return isToday ? date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+    return isToday ? date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }).replace(/-/g, '/');
 };
 
 export const isStickerUrl = (text: string) => typeof text === 'string' && text.startsWith('/assets/stickers/') && text.endsWith('.gif');

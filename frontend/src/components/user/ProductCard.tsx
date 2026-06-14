@@ -37,7 +37,8 @@ const ProductCard: React.FC<Props> = ({
                 const headers = token ? { Authorization: `Bearer ${token}` } : {};
                 fetchPromotionsPromise = axios.get("http://localhost:8080/api/promotions", { headers })
                     .then(res => {
-                        const activePromos = res.data.filter((p: any) => p.isActive);
+                        // Lọc mã đang hoạt động VÀ (không giới hạn HOẶC số lượng còn lại > 0)
+                        const activePromos = res.data.filter((p: any) => p.isActive && (!p.quantity || p.quantity - (p.usedCount || 0) > 0));
                         cachedPromotions = activePromos;
                         return activePromos;
                     })
@@ -147,6 +148,8 @@ const ProductCard: React.FC<Props> = ({
         }
     };
 
+    const isOutOfStock = (product as any).stock === 0 || (product as any).stock === '0';
+
     // Lọc ra các mã KHUYẾN MÃI áp dụng cho Sản phẩm này hoặc Danh mục của nó
     const applicablePromos = useMemo(() => {
         return promotions.filter(promo => {
@@ -248,9 +251,16 @@ const ProductCard: React.FC<Props> = ({
             </div>
 
             <div className="flex flex-col flex-grow gap-3">
-                <Link to={`/products/${product.id}`}>
-                    <h4 className="text-lg font-bold break-words hover:text-primary transition-colors">{product.name}</h4>
-                </Link>
+                <div className="flex items-start justify-between gap-2">
+                    <Link to={`/products/${product.id}`} className="flex-1 min-w-0">
+                        <h4 className="text-lg font-bold break-words hover:text-primary transition-colors line-clamp-2">{product.name}</h4>
+                    </Link>
+                    {isOutOfStock && (
+                        <span className="shrink-0 bg-red-50 text-red-500 text-[10px] font-bold px-2 py-0.5 rounded border border-red-200 mt-1 whitespace-nowrap shadow-sm">
+                            Hết hàng
+                        </span>
+                    )}
+                </div>
                 
                 <div className="flex items-end gap-2 flex-wrap mb-1">
                     <p className="text-xl font-black text-primary leading-none">{priceString}</p>
@@ -264,8 +274,12 @@ const ProductCard: React.FC<Props> = ({
                     )}
                 </div>
 
-                <button onClick={handleAddToCart} className="w-full mt-auto pt-3 pb-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary-container hover:scale-[1.02] active:scale-95 transition-all">
-                    Thêm vào giỏ
+                <button 
+                    onClick={handleAddToCart} 
+                    disabled={isOutOfStock}
+                    className={`w-full mt-auto pt-3 pb-3 rounded-xl font-semibold transition-all ${isOutOfStock ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-primary text-white hover:bg-primary-container hover:scale-[1.02] active:scale-95'}`}
+                >
+                    {isOutOfStock ? 'Hết hàng' : 'Thêm vào giỏ'}
                 </button>
             </div>
         </motion.div>

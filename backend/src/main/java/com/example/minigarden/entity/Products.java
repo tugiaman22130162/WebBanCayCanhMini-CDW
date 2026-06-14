@@ -77,7 +77,7 @@ public class Products {
     }
 
     @OneToMany(mappedBy = "product")
-    private List<CartItems> cart_items;
+    private List<CartItem> cart_items;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL)
     private List<Reviews> reviews;

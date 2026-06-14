@@ -5,5 +5,6 @@ public enum NotificationType {
     PAYMENT,
     REVIEW,
     SYSTEM,
-    TERRARIUM
+    TERRARIUM,
+    PROMOTION
 }

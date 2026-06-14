@@ -95,7 +95,8 @@ export default function ProductDetail() {
                     name: formattedProduct.name,
                     price: formattedProduct.price,
                     image: formattedProduct.images[0],
-                    category: formattedProduct.category
+                    category: formattedProduct.category,
+                    stock: formattedProduct.stock
                 });
                 // Chỉ lưu tối đa 5 sản phẩm gần nhất (để khi trừ sản phẩm hiện tại ra vẫn còn đủ 4)
                 if (updatedViewed.length > 5) updatedViewed.pop();
@@ -122,7 +123,8 @@ export default function ProductDetail() {
                         name: item.name,
                         price: item.price || 0,
                         image: (item.images && item.images.length > 0) ? item.images[0] : "https://images.unsplash.com/photo-1614594975525-e45190c55d40?w=800&h=800&q=80&fit=crop",
-                        category: item.categoryName || item.category?.name || item.category || "Chưa phân loại"
+                        category: item.categoryName || item.category?.name || item.category || "Chưa phân loại",
+                        stock: item.quantity ?? item.stock ?? 0
                     }));
                     setRelatedProducts(formattedRelated);
                 } catch (err) {
@@ -172,8 +174,8 @@ export default function ProductDetail() {
                 // Cố gắng gọi API lấy promotion (sử dụng token nếu có)
                 const res = await axios.get("http://localhost:8080/api/promotions", { headers });
                 
-                // Chỉ lưu các mã đang ở trạng thái Hoạt động
-                setPromotions(res.data.filter((p: any) => p.isActive));
+                // Chỉ lưu các mã đang ở trạng thái Hoạt động VÀ còn lượt sử dụng
+                setPromotions(res.data.filter((p: any) => p.isActive && (!p.quantity || p.quantity - (p.usedCount || 0) > 0)));
             } catch (err) {
                 console.error("Lỗi lấy danh sách khuyến mãi:", err);
             }

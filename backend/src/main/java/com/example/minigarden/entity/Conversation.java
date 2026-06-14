@@ -32,16 +32,30 @@ public class Conversation {
 
     private LocalDateTime lastMessageTime;
 
+    @Column(name = "last_message_content", columnDefinition = "TEXT")
+    private String lastMessageContent;
+
+    @Column(name = "last_message_sender_id")
+    private Integer lastMessageSenderId;
+
     @Column(name = "customer_last_seen_message_id")
     private int customerLastSeenMessageId;
     @Column(name = "admin_last_seen_message_id")
     private int adminLastSeenMessageId;
 
+    @Column(name = "customer_deleted_at")
+    private LocalDateTime customerDeletedAt;
+
+    @Column(name = "admin_deleted_at")
+    private LocalDateTime adminDeletedAt;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public void updateLastMessage(int messageId) {
+    public void updateLastMessage(int messageId, String content, Integer senderId) {
         this.lastMessageId = messageId;
+        this.lastMessageContent = content;
+        this.lastMessageSenderId = senderId;
         this.lastMessageTime = LocalDateTime.now();
     }
 

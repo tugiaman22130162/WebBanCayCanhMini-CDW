@@ -1,9 +1,11 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 const AdminSidebar: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
+    const { logout } = useAuth();
 
     const navItems = [
         { name: "Tổng quan", path: "/admin/dashboard", icon: "dashboard" },
@@ -59,7 +61,12 @@ const AdminSidebar: React.FC = () => {
             {/* Logout Button */}
             <div className="p-4">
                 <button
-                    onClick={() => navigate("/login")}
+                    onClick={() => {
+                        localStorage.removeItem("token");
+                        localStorage.removeItem("user");
+                        logout();
+                        navigate("/login");
+                    }}
                     className="flex items-center gap-3 px-4 py-3 w-full rounded-xl font-semibold text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all"
                 >
                     <span className="material-symbols-outlined text-[22px]">logout</span>

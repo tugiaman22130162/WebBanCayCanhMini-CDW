@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { Message as ChatMessage } from '../../utils/chatUtils';
-import MessageBubble from '../../utils/MessageBubble';
+import MessageBubble from './MessageBubble';
 
 interface MessageListProps {
     messages: ChatMessage[];
@@ -58,7 +58,7 @@ export default function MessageList({
                     <MessageBubble 
                         key={msg.id} msg={msg} isOwn={msg.sender === (isAdmin ? 'ADMIN' : 'USER')}
                         showTimeSeparator={showTimeSeparator} replyToMsg={messages.find(m => m.id === msg.replyToMessageId)}
-                        searchMessageTerm={searchMessageTerm} otherName={msg.senderName || (isAdmin ? (activeConversationName || 'Khách hàng') : 'MiniGarden')} otherAvatar={msg.senderAvatar || (isAdmin ? activeConversationAvatar : '/images/chatbot.png')}
+                        searchMessageTerm={searchMessageTerm} otherName={msg.senderName || (isAdmin ? (activeConversationName || 'Khách hàng') : 'MiniGarden')} otherAvatar={msg.senderAvatar || (isAdmin ? activeConversationAvatar : '/logo.png')}
                         actionMenuOpenId={actionMenuOpenId} setActionMenuOpenId={setActionMenuOpenId} moreMenuOpenId={moreMenuOpenId} setMoreMenuOpenId={setMoreMenuOpenId}
                         onReact={onReact} onReply={onReply} onEdit={onEdit} onDelete={onDelete} onRevoke={onRevoke}
                     />
@@ -73,7 +73,7 @@ export default function MessageList({
                         ) : isAdmin && activeConversationName ? (
                             <span className="font-bold text-[14px]">{activeConversationName.charAt(0).toUpperCase()}</span>
                         ) : (
-                            <img src="/images/chatbot.png" alt="Admin" className="w-full h-full object-cover" />
+                            <img src="/logo.png" alt="Admin" className="w-full h-full object-cover" />
                         )}
                     </div>
                     <div className="flex space-x-1 mr-2">

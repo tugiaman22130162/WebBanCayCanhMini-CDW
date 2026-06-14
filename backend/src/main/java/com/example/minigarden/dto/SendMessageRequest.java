@@ -10,4 +10,6 @@ public class SendMessageRequest {
     private String type; // TEXT, IMAGE, LOCATION, STICKER, ORDER, EMOJI
     private Integer replyToMessageId;
     private Integer referenceId;
+    private Integer latitude;
+    private Integer longitude;
 }

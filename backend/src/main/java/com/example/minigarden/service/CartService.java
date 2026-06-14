@@ -6,13 +6,15 @@ import com.example.minigarden.dto.AddToCartRequest;
 import com.example.minigarden.repository.CartItemRepository;
 import com.example.minigarden.repository.CartRepository;
 import com.example.minigarden.repository.ProductRepository;
-import com.example.minigarden.entity.Carts;
-import com.example.minigarden.entity.CartItems;
+import com.example.minigarden.entity.Cart;
+import com.example.minigarden.entity.CartItem;
 import com.example.minigarden.entity.Products;
 import com.example.minigarden.dto.CartResponse;
 import com.example.minigarden.dto.CartItemResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.example.minigarden.exception.OutOfStockException;
+import com.example.minigarden.exception.ResourceNotFoundException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,28 +36,26 @@ public class CartService {
     public String addToCart(AddToCartRequest request) {
 
         if (request.getUserId() <= 0) {
-            throw new RuntimeException("Vui lòng đăng nhập để thêm vào giỏ hàng");
+            throw new IllegalArgumentException("Vui lòng đăng nhập để thêm vào giỏ hàng");
         }
 
-        // 1. tìm cart theo user
-        Carts cart = cartRepository.findByUserId(request.getUserId())
+        Cart cart = cartRepository.findByUserId(request.getUserId())
                 .orElseGet(() -> {
 
-                    // nếu chưa có cart thì tạo mới
-                    Carts newCart = new Carts();
+                    Cart newCart = new Cart();
                     newCart.setUserId(request.getUserId());
 
                     return cartRepository.save(newCart);
                 });
 
         Products product = productRepository.findById(request.getProductId())
-                .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Sản phẩm không tồn tại"));
 
         int stock = product.getQuantity() != null ? product.getQuantity() : 0;
         int addQty = request.getQuantity() > 0 ? request.getQuantity() : 1;
 
         // 2. kiểm tra sản phẩm đã tồn tại chưa
-        Optional<CartItems> optionalCartItem =
+        Optional<CartItem> optionalCartItem =
                 cartItemRepository.findByCartIdAndProductId(
                         cart.getId(),
                         request.getProductId()
@@ -64,12 +64,12 @@ public class CartService {
         // 3. nếu đã tồn tại -> tăng số lượng
         if (optionalCartItem.isPresent()) {
 
-            CartItems cartItem = optionalCartItem.get();
+            CartItem cartItem = optionalCartItem.get();
 
             int currentQty = cartItem.getQuantity() != null ? cartItem.getQuantity() : 0;
             int newQuantity = currentQty + addQty;
             if (stock < newQuantity) {
-                throw new RuntimeException("Sản phẩm không đủ số lượng trong kho");
+                throw new OutOfStockException("Sản phẩm [" + product.getName() + "] không đủ số lượng (chỉ còn " + stock + " sản phẩm).");
             }
 
             cartItem.setQuantity(newQuantity);
@@ -79,11 +79,11 @@ public class CartService {
         } else {
 
             if (stock < addQty) {
-                throw new RuntimeException("Sản phẩm không đủ số lượng trong kho");
+                throw new OutOfStockException("Sản phẩm [" + product.getName() + "] không đủ số lượng (chỉ còn " + stock + " sản phẩm).");
             }
 
             // 4. chưa tồn tại -> tạo mới
-            CartItems cartItem = new CartItems();
+            CartItem cartItem = new CartItem();
 
             // Set đối tượng Cart thay vì CartId
             cartItem.setCart(cart);
@@ -105,12 +105,12 @@ public class CartService {
         List<CartItemResponse> itemResponses = new ArrayList<>();
         double total = 0.0;
 
-        Optional<Carts> optionalCart = cartRepository.findByUserId(userId);
+        Optional<Cart> optionalCart = cartRepository.findByUserId(userId);
         if (optionalCart.isPresent()) {
-            Carts cart = optionalCart.get();
-            List<CartItems> cartItems = cartItemRepository.findByCartId(cart.getId());
+            Cart cart = optionalCart.get();
+            List<CartItem> cartItems = cartItemRepository.findByCartId(cart.getId());
 
-            for (CartItems item : cartItems) {
+            for (CartItem item : cartItems) {
                 CartItemResponse res = new CartItemResponse();
                 res.setId(item.getId()); // ID của CartItem (dùng để gửi lên khi muốn xóa/sửa)
                 
@@ -126,6 +126,7 @@ public class CartService {
                     res.setImage(item.getProduct().getImages().get(0).getImage_url());
                 }
                 res.setQuantity(item.getQuantity());
+                res.setStock(item.getProduct().getQuantity() != null ? item.getProduct().getQuantity() : 0);
                 
                 // THÊM CATEGORY ID ĐỂ XÉT ĐIỀU KIỆN KHUYẾN MÃI DANH MỤC
                 if (item.getProduct().getCategory() != null) {
@@ -153,7 +154,7 @@ public class CartService {
                 int stock = item.getProduct().getQuantity() != null ? item.getProduct().getQuantity() : 0;
                 // Chỉ kiểm tra tồn kho nếu số lượng tăng lên (bấm dấu +)
                 if (delta > 0 && stock < newQuantity) {
-                    throw new RuntimeException("Sản phẩm không đủ số lượng trong kho");
+                    throw new OutOfStockException("Sản phẩm [" + item.getProduct().getName() + "] không đủ số lượng (chỉ còn " + stock + " sản phẩm).");
                 }
                 item.setQuantity(newQuantity);
                 cartItemRepository.save(item);

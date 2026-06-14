@@ -35,6 +35,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import jakarta.servlet.http.HttpServletRequest;
+import com.example.minigarden.exception.OutOfStockException;
+import com.example.minigarden.exception.ResourceNotFoundException;
 
 
 @Service
@@ -51,7 +53,9 @@ public class OrderService {
     private final CustomTerrariumRepository customTerrariumRepository;
     private final TerrariumComponentRepository terrariumComponentRepository;
     private final VNPayService vnPayService;
+    private final PromotionService promotionService;
 
+    @Transactional
     public Order createOrder(Integer userId, OrderRequest request) {
 
         //Lấy địa chỉ
@@ -63,17 +67,17 @@ public class OrderService {
 
         BigDecimal subtotal = BigDecimal.ZERO;
 
-        //Duyệt sản phẩm
-        for (OrderItemRequest itemRequest : request.getItems()) {
-
+       for (OrderItemRequest itemRequest : request.getItems()) {
             Products product = productRepository.findById(Objects.requireNonNull(itemRequest.getProductId()))
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm"));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Không tìm thấy sản phẩm trong hệ thống."));
+            int updatedRows = productRepository.deductInventory(
+                    itemRequest.getProductId(), itemRequest.getQuantity());
 
-            //Kiểm tra tồn kho
-            if (product.getQuantity() < itemRequest.getQuantity()) {
-                throw new RuntimeException("Sản phẩm không đủ số lượng");
+            if (updatedRows == 0) {
+                throw new OutOfStockException(
+                        "Sản phẩm [" + product.getName() + "] đã hết hàng hoặc không đủ số lượng!");
             }
-
             //Tính tiền sản phẩm
             BigDecimal itemTotal = product.getPrice()
                     .multiply(BigDecimal.valueOf(itemRequest.getQuantity()));
@@ -102,7 +106,8 @@ public class OrderService {
         BigDecimal shippingFee = request.getShippingFee() != null ? request.getShippingFee() : BigDecimal.ZERO;
 
         //Giảm giá
-        BigDecimal productDiscount = request.getDiscountAmount() != null ? request.getDiscountAmount() : BigDecimal.ZERO;
+        BigDecimal productDiscount = request.getDiscountAmount() != null ? request.getDiscountAmount()
+                : BigDecimal.ZERO;
 
         // Tìm mã khuyến mãi nếu có
         List<Promotion> appliedPromotions = new ArrayList<>();
@@ -248,10 +253,7 @@ public class OrderService {
         // Trừ số lượng mã khuyến mãi (nếu có áp dụng)
         if (!appliedPromotions.isEmpty()) {
             for (Promotion p : appliedPromotions) {
-                if (p.getQuantity() != null && p.getQuantity() > 0) {
-                    p.setQuantity(p.getQuantity() - 1);
-                    promotionRepository.save(p);
-                }
+                promotionService.claimPromotion(p.getId());
             }
         }
 
@@ -378,8 +380,8 @@ public class OrderService {
             for (OrderItem item : order.getItems()) {
                 Products product = item.getProduct();
                 if (product != null) {
-                    product.setQuantity((product.getQuantity() != null ? product.getQuantity() : 0) + (item.getQuantity() != null ? item.getQuantity() : 0));
-                    productRepository.save(product);
+                    productRepository.restoreInventory(product.getId(),
+                            item.getQuantity() != null ? item.getQuantity() : 0);
                 }
 
                 // Rollback cho TerrariumComponent nếu đây là thiết kế
@@ -398,11 +400,8 @@ public class OrderService {
 
         // Rollback số lượng mã khuyến mãi
         if (order.getPromotions() != null) {
-            for (OrderPromotion orderPromotion : order.getPromotions()) {
-                promotionRepository.findByName(orderPromotion.getPromotionCode()).ifPresent(promotion -> {
-                    promotion.setQuantity((promotion.getQuantity() != null ? promotion.getQuantity() : 0) + 1);
-                    promotionRepository.save(promotion);
-                });
+           for (OrderPromotion orderPromotion : order.getPromotions()) {
+                promotionService.restorePromotion(orderPromotion.getPromotionCode());
             }
         }
 
@@ -451,8 +450,8 @@ public class OrderService {
                 for (OrderItem item : order.getItems()) {
                     Products product = item.getProduct();
                     if (product != null) {
-                        product.setQuantity((product.getQuantity() != null ? product.getQuantity() : 0) + (item.getQuantity() != null ? item.getQuantity() : 0));
-                        productRepository.save(product);
+                        productRepository.restoreInventory(product.getId(),
+                                item.getQuantity() != null ? item.getQuantity() : 0);
                     }
 
                     // Rollback cho TerrariumComponent nếu đây là thiết kế
@@ -470,10 +469,7 @@ public class OrderService {
             }
             if (order.getPromotions() != null) {
                 for (OrderPromotion orderPromotion : order.getPromotions()) {
-                    promotionRepository.findByName(orderPromotion.getPromotionCode()).ifPresent(promotion -> {
-                        promotion.setQuantity((promotion.getQuantity() != null ? promotion.getQuantity() : 0) + 1);
-                        promotionRepository.save(promotion);
-                    });
+                    promotionService.restorePromotion(orderPromotion.getPromotionCode());
                 }
             }
         }
@@ -578,8 +574,8 @@ public class OrderService {
                     for (OrderItem item : order.getItems()) {
                         Products product = item.getProduct();
                         if (product != null) {
-                            product.setQuantity((product.getQuantity() != null ? product.getQuantity() : 0) + (item.getQuantity() != null ? item.getQuantity() : 0));
-                            productRepository.save(product);
+                            productRepository.restoreInventory(product.getId(),
+                                    item.getQuantity() != null ? item.getQuantity() : 0);
                         }
 
                         // Rollback cho TerrariumComponent nếu đây là thiết kế
@@ -598,10 +594,7 @@ public class OrderService {
                 // Hoàn lại mã khuyến mãi
                 if (order.getPromotions() != null) {
                     for (OrderPromotion orderPromotion : order.getPromotions()) {
-                        promotionRepository.findByName(orderPromotion.getPromotionCode()).ifPresent(promotion -> {
-                            promotion.setQuantity((promotion.getQuantity() != null ? promotion.getQuantity() : 0) + 1);
-                            promotionRepository.save(promotion);
-                        });
+                        promotionService.restorePromotion(orderPromotion.getPromotionCode());
                     }
                 }
                 // Xóa đơn hàng (Cascade sẽ tự động xóa bảng payments và order_items liên quan)
