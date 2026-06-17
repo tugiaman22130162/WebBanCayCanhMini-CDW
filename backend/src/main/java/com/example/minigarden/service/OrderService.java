@@ -31,7 +31,8 @@ import java.util.Objects;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.springframework.data.domain.Sort;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -369,6 +370,9 @@ public class OrderService {
                 if (payment.getMethod() == PaymentMethod.VNPAY && payment.getStatus() == PaymentStatus.SUCCESS) {
                     // Giữ nguyên trạng thái SUCCESS để Admin tiến hành bấm nút hoàn tiền thủ công trên giao diện
                     isRefunded = true; // Chỉ đánh dấu để đổi câu thông báo cho khách hàng
+                } else if (payment.getMethod() == PaymentMethod.COD && payment.getStatus() == PaymentStatus.PENDING) {
+                    payment.setStatus(PaymentStatus.FAILED);
+                    paymentRepository.save(payment);
                 }
             }
         }
@@ -442,6 +446,9 @@ public class OrderService {
                 for (Payments payment : order.getPayments()) {
                     if (payment.getMethod() == PaymentMethod.VNPAY && payment.getStatus() == PaymentStatus.SUCCESS) {
                         isRefunded = true; // Chỉ đánh dấu để đổi câu thông báo cho khách hàng
+                    } else if (payment.getMethod() == PaymentMethod.COD && payment.getStatus() == PaymentStatus.PENDING) {
+                        payment.setStatus(PaymentStatus.FAILED);
+                        paymentRepository.save(payment);
                     }
                 }
             }
@@ -853,8 +860,8 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
-    // Tự động quét mỗi phút 1 lần để gửi thông báo cho các đơn hàng Đang giao
-    @Scheduled(cron = "0 * * * * ?")
+    // Gửi thông báo 1 lần khi khởi động backend cho các đơn hàng Đang giao
+    @EventListener(ApplicationReadyEvent.class)
     @Transactional
     public void notifyShippingOrdersOnDeliveryDate() {
         LocalDate today = LocalDate.now();
@@ -866,8 +873,15 @@ public class OrderService {
 
         for (Order order : shippingOrders) {
             String message = "Đơn hàng " + order.getOrderCode() + " đang được giao đến bạn. Vui lòng chú ý điện thoại.";
-            String link = "/profile/orders?status=SHIPPING";
-            notificationService.createUserNotification(order.getUserId(), message, link, NotificationType.ORDER);
+            
+            // Kiểm tra xem hôm nay hệ thống đã từng gửi thông báo cho đơn hàng đó chưa
+            boolean alreadySentToday = notificationService.getUserNotifications(order.getUserId()).stream()
+                    .anyMatch(n -> n.getMessage().equals(message) && n.getCreatedAt() != null && n.getCreatedAt().toLocalDate().isEqual(today));
+
+            if (!alreadySentToday) {
+                String link = "/profile/orders?status=SHIPPING";
+                notificationService.createUserNotification(order.getUserId(), message, link, NotificationType.ORDER);
+            }
         }
     }
 }
