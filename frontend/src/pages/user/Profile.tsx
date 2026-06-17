@@ -925,10 +925,17 @@ export default function Profile() {
                                 {/* TỔNG TIỀN VÀ THANH TOÁN */}
                                 <div className="mt-6 pt-6 border-t border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative">
                                     {/* Logo in chìm Đã thanh toán */}
-                                    {(selectedOrder.paymentMethod?.toUpperCase() === 'VNPAY' || selectedOrder.status === 'Đã giao') && (
+                                    {(selectedOrder.paymentMethod?.toUpperCase() === 'VNPAY' || selectedOrder.status === 'Đã giao') && selectedOrder.status !== 'Đã hủy' && (
                                         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.08] pointer-events-none transform -rotate-12 select-none z-0">
                                             <div className="border-8 border-emerald-600 rounded-3xl p-6 flex flex-col items-center justify-center">
                                                 <span className="font-black text-4xl sm:text-5xl text-emerald-600 tracking-widest uppercase">Đã thanh toán</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {selectedOrder.status === 'Đã hủy' && (
+                                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.08] pointer-events-none transform -rotate-12 select-none z-0">
+                                            <div className="border-8 border-red-600 rounded-3xl p-6 flex flex-col items-center justify-center">
+                                                <span className="font-black text-4xl sm:text-5xl text-red-600 tracking-widest uppercase">Đã hủy</span>
                                             </div>
                                         </div>
                                     )}
@@ -948,6 +955,13 @@ export default function Profile() {
                                                     <span className="material-symbols-outlined text-[20px]">currency_exchange</span> Đang chờ hoàn tiền VNPAY
                                                 </span>
                                                 <p className="text-xs text-gray-500 max-w-[200px]">Cửa hàng sẽ tiến hành hoàn tiền cho bạn trong vòng 3-15 ngày.</p>
+                                            </div>
+                                        ) : selectedOrder.status === 'Đã hủy' && selectedOrder.paymentMethod?.toUpperCase() !== 'VNPAY' ? (
+                                            <div className="flex flex-col items-start gap-3">
+                                                <span className="text-sm font-black px-4 py-2 bg-gray-200 text-gray-700 rounded-full border border-gray-300 flex items-center gap-2 shadow-sm">
+                                                    <span className="material-symbols-outlined text-[20px]">cancel</span> Đã hủy
+                                                </span>
+                                                <p className="text-xs text-gray-500 max-w-[200px]">Đơn hàng thanh toán tiền mặt (COD) đã được hủy.</p>
                                             </div>
                                         ) : (selectedOrder.paymentMethod?.toUpperCase() === 'VNPAY' || selectedOrder.status === 'Đã giao') ? (
                                             <div className="flex flex-col items-start gap-3">

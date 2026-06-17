@@ -1,6 +1,7 @@
 package com.example.minigarden.websocket;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.lang.NonNull;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
@@ -22,8 +23,8 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
 
     @Override
     public Message<?> preSend(
-            Message<?> message,
-            MessageChannel channel) {
+            @NonNull Message<?> message,
+            @NonNull MessageChannel channel) {
 
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 

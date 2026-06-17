@@ -15,7 +15,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import com.example.minigarden.entity.AuthProvider;
 import com.example.minigarden.entity.Role;

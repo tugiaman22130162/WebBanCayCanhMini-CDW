@@ -67,6 +67,7 @@ public class Promotion {
     @Column(name = "quantity")
     private Integer quantity;
 
+    @Builder.Default
     @Column(name = "used_count", nullable = false, columnDefinition = "int default 0")
     private Integer usedCount = 0;
 
