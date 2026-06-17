@@ -18,6 +18,7 @@ export default function EditPromotionModal({ isOpen, onClose, onSuccess, categor
     const [currentPromo, setCurrentPromo] = useState<any>({});
     const [originalPromo, setOriginalPromo] = useState<any>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errors, setErrors] = useState<any>({});
 
     useEffect(() => {
         if (isOpen && promoData) {
@@ -28,6 +29,7 @@ export default function EditPromotionModal({ isOpen, onClose, onSuccess, categor
             };
             setCurrentPromo(formatted);
             setOriginalPromo(formatted);
+            setErrors({});
         }
     }, [isOpen, promoData]);
 
@@ -65,9 +67,49 @@ export default function EditPromotionModal({ isOpen, onClose, onSuccess, categor
         return JSON.stringify(currentPayload) !== JSON.stringify(originalPayload);
     }, [currentPromo, originalPromo, isOpen]);
 
+    const validateForm = () => {
+        let newErrors: any = {};
+        
+        if (currentPromo.type === 'CATEGORY' && !currentPromo.targetId) {
+            newErrors.targetId = "Vui lòng chọn danh mục áp dụng";
+        }
+        if (currentPromo.type === 'PRODUCT' && !currentPromo.targetId) {
+            newErrors.targetId = "Vui lòng chọn sản phẩm áp dụng";
+        }
+        
+        if (currentPromo.discountType !== 'FREE' && (!currentPromo.discountValue || currentPromo.discountValue <= 0)) {
+            newErrors.discountValue = "Vui lòng nhập mức giảm lớn hơn 0";
+        }
+        
+        if (currentPromo.discountType === 'PERCENTAGE' && currentPromo.discountValue > 100) {
+            newErrors.discountValue = "Mức giảm phần trăm không được vượt quá 100%";
+        }
+        
+        if (!currentPromo.startDate) {
+            newErrors.startDate = "Vui lòng chọn thời gian bắt đầu";
+        }
+        
+        if (!currentPromo.endDate) {
+            newErrors.endDate = "Vui lòng chọn thời gian kết thúc";
+        }
+        
+        if (currentPromo.startDate && currentPromo.endDate && new Date(currentPromo.startDate) >= new Date(currentPromo.endDate)) {
+            newErrors.endDate = "Thời gian kết thúc phải sau thời gian bắt đầu";
+        }
+
+        if (currentPromo.quantity === "" || currentPromo.quantity === null || currentPromo.quantity <= 0) {
+            newErrors.quantity = "Vui lòng nhập số lượng lớn hơn 0";
+        } else if (currentPromo.usedCount !== undefined && currentPromo.quantity < currentPromo.usedCount) {
+            newErrors.quantity = `Số lượng phải lớn hơn hoặc bằng số lượt đã dùng (${currentPromo.usedCount})`;
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleSavePromo = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!currentPromo.id || !hasChanges) return;
+        if (!currentPromo.id || !hasChanges || !validateForm()) return;
 
         setIsSubmitting(true);
         try {
@@ -77,7 +119,7 @@ export default function EditPromotionModal({ isOpen, onClose, onSuccess, categor
                 description: currentPromo.description,
                 type: currentPromo.type,
                 discountType: currentPromo.discountType,
-                discountValue: currentPromo.discountValue || 0,
+                discountValue: currentPromo.discountType === 'FREE' ? 0 : (currentPromo.discountValue || 0),
                 minOrderValue: currentPromo.minOrderValue || 0,
                 maxDiscountValue: currentPromo.maxDiscountValue || 0,
                 isActive: currentPromo.isActive,
@@ -94,9 +136,10 @@ export default function EditPromotionModal({ isOpen, onClose, onSuccess, categor
             showSuccessToast("Cập nhật khuyến mãi thành công!", 2000);
             onClose();
             onSuccess();
-        } catch (error) {
+        } catch (error: any) {
             console.error("Lỗi khi lưu khuyến mãi:", error);
-            showErrorToast("Có lỗi xảy ra khi lưu khuyến mãi.", 2000);
+            const errorMessage = error.response?.data?.message || error.response?.data?.error || "Có lỗi xảy ra khi lưu khuyến mãi.";
+            showErrorToast(errorMessage, 3000);
         } finally {
             setIsSubmitting(false);
         }
@@ -145,6 +188,7 @@ export default function EditPromotionModal({ isOpen, onClose, onSuccess, categor
                                     onChange={(val) => {
                                         if (val !== currentPromo.type) {
                                             setCurrentPromo({ ...currentPromo, type: val as PromotionType, targetId: undefined, targetName: '' });
+                                            setErrors({ ...errors, targetId: "" });
                                         }
                                     }}
                                     options={[
@@ -166,9 +210,12 @@ export default function EditPromotionModal({ isOpen, onClose, onSuccess, categor
                                             const id = Number(val);
                                             const name = categories.find(c => c.id === id)?.name;
                                             setCurrentPromo({ ...currentPromo, targetId: id, targetName: name });
+                                            setErrors({ ...errors, targetId: "" });
                                         }}
                                         options={categories.map(cat => ({ value: cat.id, label: cat.name }))}
+                                        error={!!errors.targetId}
                                     />
+                                    {errors.targetId && <p className="text-red-500 text-xs mt-1">{errors.targetId}</p>}
                                 </div>
                             )}
 
@@ -182,9 +229,12 @@ export default function EditPromotionModal({ isOpen, onClose, onSuccess, categor
                                             const id = Number(val);
                                             const name = products.find(p => p.id === id)?.name;
                                             setCurrentPromo({ ...currentPromo, targetId: id, targetName: name });
+                                            setErrors({ ...errors, targetId: "" });
                                         }}
                                         options={products.map(prod => ({ value: prod.id, label: prod.name }))}
+                                        error={!!errors.targetId}
                                     />
+                                    {errors.targetId && <p className="text-red-500 text-xs mt-1">{errors.targetId}</p>}
                                 </div>
                             )}
 
@@ -192,7 +242,10 @@ export default function EditPromotionModal({ isOpen, onClose, onSuccess, categor
                                 <label className="block text-sm font-semibold mb-1 text-gray-700">Kiểu giảm</label>
                                 <CustomSelect
                                     value={currentPromo.discountType || 'PERCENTAGE'}
-                                    onChange={(val) => setCurrentPromo({ ...currentPromo, discountType: val as DiscountType })}
+                                    onChange={(val) => {
+                                        setCurrentPromo({ ...currentPromo, discountType: val as DiscountType });
+                                        setErrors({ ...errors, discountValue: "" });
+                                    }}
                                     options={[
                                         { value: 'PERCENTAGE', label: 'Phần trăm (%)' },
                                         { value: 'FIXED_AMOUNT', label: 'Số tiền cố định (VNĐ)' },
@@ -203,16 +256,20 @@ export default function EditPromotionModal({ isOpen, onClose, onSuccess, categor
 
                             <div>
                                 <label className="block text-sm font-semibold mb-1 text-gray-700">
-                                    Mức giảm {currentPromo.discountType === 'PERCENTAGE' ? '(%)' : currentPromo.discountType === 'FIXED_AMOUNT' ? '(VNĐ)' : '(Bỏ qua nếu FREE)'}
+                                    Mức giảm {currentPromo.discountType === 'PERCENTAGE' ? '(%)' : currentPromo.discountType === 'FIXED_AMOUNT' ? '(VNĐ)' : '(Bỏ qua nếu FREE)'} {currentPromo.discountType !== 'FREE' && <span className="text-red-500">*</span>}
                                 </label>
                                 <input
                                     type="number"
                                     value={currentPromo.discountValue || ''}
-                                    onChange={(e) => setCurrentPromo({ ...currentPromo, discountValue: e.target.value === '' ? '' : Number(e.target.value) })}
+                                    onChange={(e) => {
+                                        setCurrentPromo({ ...currentPromo, discountValue: e.target.value === '' ? '' : Number(e.target.value) });
+                                        setErrors({ ...errors, discountValue: "" });
+                                    }}
                                     placeholder="0"
                                     disabled={currentPromo.discountType === 'FREE'}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors disabled:bg-gray-100"
+                                    className={`w-full px-4 py-2 border rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors disabled:bg-gray-100 ${errors.discountValue ? 'border-red-500' : 'border-gray-300'}`}
                                 />
+                                {errors.discountValue && <p className="text-red-500 text-xs mt-1">{errors.discountValue}</p>}
                             </div>
 
                             <div>
@@ -241,14 +298,44 @@ export default function EditPromotionModal({ isOpen, onClose, onSuccess, categor
                             </div>
 
                             <div>
-                                <label className="block text-sm font-semibold mb-1 text-gray-700">Số lượng mã</label>
-                                <input
-                                    type="number"
-                                    value={currentPromo.quantity ?? ''}
-                                    onChange={(e) => setCurrentPromo({ ...currentPromo, quantity: e.target.value === '' ? '' : Number(e.target.value) })}
-                                    placeholder="VD: 100"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors"
-                                />
+                                <label className="block text-sm font-semibold mb-1 text-gray-700">Số lượng khả dụng (Còn lại) <span className="text-red-500">*</span></label>
+                                <div className="relative">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={currentPromo.quantity !== "" && currentPromo.quantity !== undefined && currentPromo.usedCount !== undefined ? Math.max(0, currentPromo.quantity - currentPromo.usedCount) : ''}
+                                        onChange={(e) => {
+                                            const remaining = e.target.value === '' ? '' : Number(e.target.value);
+                                            const newQuantity = remaining === '' ? '' : remaining + (currentPromo.usedCount || 0);
+                                            let newIsActive = currentPromo.isActive;
+                                            
+                                            // Tự động bật/tắt Trạng thái Hoạt động dựa trên số lượng còn lại
+                                            if (typeof remaining === 'number') {
+                                                if (remaining > 0 && !currentPromo.isActive) {
+                                                    newIsActive = true;
+                                                } else if (remaining <= 0 && currentPromo.isActive) {
+                                                    newIsActive = false;
+                                                }
+                                            }
+                                            setCurrentPromo({ ...currentPromo, quantity: newQuantity, isActive: newIsActive });
+                                            setErrors({ ...errors, quantity: "" });
+                                        }}
+                                        placeholder="0"
+                                        className={`w-full px-4 py-2 border rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors pr-24 ${errors.quantity ? 'border-red-500' : 'border-gray-300'}`}
+                                    />
+                                    {currentPromo.usedCount !== undefined && (
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-bold bg-gray-100 px-2.5 py-1 rounded-md border border-gray-200 pointer-events-none">
+                                            Đã dùng: {currentPromo.usedCount}
+                                        </span>
+                                    )}
+                                </div>
+                                {currentPromo.quantity !== "" && currentPromo.quantity > 0 && currentPromo.usedCount !== undefined && (
+                                    <p className="text-xs text-emerald-600 font-bold mt-2 flex items-center gap-1">
+                                        <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                                        Tổng phát hành: {currentPromo.quantity} mã
+                                    </p>
+                                )}
+                                {errors.quantity && <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>}
                             </div>
 
                             <div>
@@ -269,9 +356,13 @@ export default function EditPromotionModal({ isOpen, onClose, onSuccess, categor
                                     type="datetime-local"
                                     required
                                     value={currentPromo.startDate || ''}
-                                    onChange={(e) => setCurrentPromo({ ...currentPromo, startDate: e.target.value })}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors cursor-text"
+                                    onChange={(e) => {
+                                        setCurrentPromo({ ...currentPromo, startDate: e.target.value });
+                                        setErrors({ ...errors, startDate: "", endDate: "" });
+                                    }}
+                                    className={`w-full px-4 py-2 border rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors cursor-text ${errors.startDate ? 'border-red-500' : 'border-gray-300'}`}
                                 />
+                                {errors.startDate && <p className="text-red-500 text-xs mt-1">{errors.startDate}</p>}
                             </div>
 
                             <div>
@@ -280,9 +371,13 @@ export default function EditPromotionModal({ isOpen, onClose, onSuccess, categor
                                     type="datetime-local"
                                     required
                                     value={currentPromo.endDate || ''}
-                                    onChange={(e) => setCurrentPromo({ ...currentPromo, endDate: e.target.value })}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors cursor-text"
+                                    onChange={(e) => {
+                                        setCurrentPromo({ ...currentPromo, endDate: e.target.value });
+                                        setErrors({ ...errors, endDate: "" });
+                                    }}
+                                    className={`w-full px-4 py-2 border rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] transition-colors cursor-text ${errors.endDate ? 'border-red-500' : 'border-gray-300'}`}
                                 />
+                                {errors.endDate && <p className="text-red-500 text-xs mt-1">{errors.endDate}</p>}
                             </div>
                         </div>
                     </div>
@@ -304,12 +399,13 @@ export default function EditPromotionModal({ isOpen, onClose, onSuccess, categor
     );
 }
 
-function CustomSelect({ value, onChange, options, disabled = false, placeholder = "" }: {
+function CustomSelect({ value, onChange, options, disabled = false, placeholder = "", error = false }: {
     value: string | number;
     onChange: (val: string | number) => void;
     options: { value: string | number; label: string }[];
     disabled?: boolean;
     placeholder?: string;
+    error?: boolean;
 }) {
     const [isOpen, setIsOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
@@ -331,8 +427,8 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder 
             <div
                 onClick={() => !disabled && setIsOpen(!isOpen)}
                 className={`w-full px-4 py-2 pr-10 border rounded-lg outline-none transition-all bg-white flex items-center justify-between select-none
-                    ${isOpen ? 'border-[#406D5E] ring-1 ring-[#406D5E]' : 'border-gray-300'}
-                    ${!disabled ? 'hover:border-gray-400 cursor-pointer' : ''}`}
+                    ${isOpen ? 'border-[#406D5E] ring-1 ring-[#406D5E]' : (error ? 'border-red-500' : 'border-gray-300')}
+                    ${!disabled ? (error ? 'hover:border-red-600 cursor-pointer' : 'hover:border-gray-400 cursor-pointer') : ''}`}
             >
                 <span className={`font-medium truncate ${selectedOption ? 'text-gray-700' : 'text-gray-400'}`}>
                     {selectedOption ? selectedOption.label : placeholder}

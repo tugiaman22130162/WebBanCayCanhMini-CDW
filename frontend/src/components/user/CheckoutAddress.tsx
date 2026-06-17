@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Swal from "sweetalert2";
 import axios from "axios";
 
@@ -16,6 +16,7 @@ export default function CheckoutAddress({ shippingAddress, setShippingAddress, a
     const [newAddress, setNewAddress] = useState({
         id: '', name: '', phone: '', province: '', district: '', ward: '', street: '', type: 'Nhà riêng', isDefault: false, provinceId: 0, districtId: 0, wardCode: ''
     });
+    const sliderRef = useRef<HTMLDivElement>(null);
 
     const [provinces, setProvinces] = useState<any[]>([]);
     const [districts, setDistricts] = useState<any[]>([]);
@@ -234,6 +235,15 @@ export default function CheckoutAddress({ shippingAddress, setShippingAddress, a
         setIsAddressModalOpen(true);
     };
 
+    const scroll = (direction: 'left' | 'right') => {
+        if (sliderRef.current) {
+            const { scrollLeft, clientWidth } = sliderRef.current;
+            const firstChild = sliderRef.current.children[0] as HTMLElement;
+            const scrollAmount = firstChild ? firstChild.clientWidth + 16 : clientWidth * 0.8; // 16px là gap-4
+            const scrollTo = direction === 'left' ? scrollLeft - scrollAmount : scrollLeft + scrollAmount;
+            sliderRef.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
+        }
+    };
     return (
         <>
             <div className="bg-white p-6 rounded-xl shadow-sm">
@@ -247,55 +257,71 @@ export default function CheckoutAddress({ shippingAddress, setShippingAddress, a
                         <span>Thêm địa chỉ</span>
                     </button>
                 </div>
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="relative group/slider">
                     {addresses.length === 0 ? (
                         <div className="col-span-2 text-center py-4 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
                             Chưa có địa chỉ giao hàng nào. Vui lòng thêm địa chỉ!
                         </div>
-                    ) : addresses.map(addr => (
-                        <label key={addr.id} className="relative cursor-pointer group">
-                            <input type="radio" name="shippingAddress" value={addr.id} checked={String(shippingAddress) === String(addr.id)} onChange={(e) => setShippingAddress(e.target.value)} className="absolute opacity-0 w-0 h-0" />
-                            <div className={`p-4 rounded-lg border-2 transition-all h-full flex flex-col ${String(shippingAddress) === String(addr.id) ? 'border-[#406D5E] bg-[#E8F1EE]' : 'border-gray-200 bg-gray-50 hover:border-gray-400'}`}>
-                                <div className="flex justify-between items-start mb-2">
-                                    <div className="font-bold text-gray-800 flex items-center gap-2">
-                                        <span className="material-symbols-outlined">{addr.type === 'HOME' ? 'home' : addr.type === 'COMPANY' ? 'apartment' : 'location_on'}</span>
-                                        {addr.type === 'HOME' ? 'Nhà riêng' : addr.type === 'COMPANY' ? 'Công ty' : 'Địa chỉ khác'}
-                                        {addr.isDefault && (
-                                            <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">Mặc định</span>
-                                        )}
-                                    </div>
-                                    <div className="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center flex-shrink-0">
-                                        {String(shippingAddress) === String(addr.id) && <div className="w-3 h-3 rounded-full bg-[#406D5E]"></div>}
-                                    </div>
-                                </div>
-                                <div className="flex-1">
-                                    <p className="text-sm font-semibold text-gray-800 mb-1">{addr.receiverName || addr.name} - {addr.phone}</p>
-                                    <p className="text-sm text-gray-600 line-clamp-2">{addr.street}, {addr.ward}, {addr.district}, {addr.province}</p>
-                                </div>
-                                <div className="flex items-center gap-3 mt-3 pt-3 border-t border-gray-200/60 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button type="button" onClick={(e) => handleEditAddress(addr, e)} className="text-sm font-semibold text-[#406D5E] hover:underline flex items-center gap-1">
-                                        <span className="material-symbols-outlined text-[16px]">edit</span> Sửa
-                                    </button>
-                                    <button type="button" onClick={(e) => handleDeleteAddress(addr.id, e)} className="text-sm font-semibold text-red-500 hover:underline flex items-center gap-1">
-                                        <span className="material-symbols-outlined text-[16px]">delete</span> Xóa
-                                    </button>
-                                </div>
+                    ) : (
+                        <>
+                            {addresses.length > 2 && (
+                                <button onClick={() => scroll('left')} className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center text-gray-600 hover:text-primary opacity-0 group-hover/slider:opacity-100 transition-opacity">
+                                    <span className="material-symbols-outlined">chevron_left</span>
+                                </button>
+                            )}
+                            <div ref={sliderRef} className="flex overflow-x-auto gap-4 pb-4 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full scroll-smooth snap-x snap-mandatory">
+                                {addresses.map(addr => (
+                                    <label key={addr.id} className="relative cursor-pointer group shrink-0 w-full sm:w-[calc(50%-8px)] snap-start">
+                                        <input type="radio" name="shippingAddress" value={addr.id} checked={String(shippingAddress) === String(addr.id)} onChange={(e) => setShippingAddress(e.target.value)} className="absolute opacity-0 w-0 h-0" />
+                                        <div className={`p-4 rounded-lg border-2 transition-all h-full flex flex-col ${String(shippingAddress) === String(addr.id) ? 'border-[#406D5E] bg-[#E8F1EE]' : 'border-gray-200 bg-gray-50 hover:border-gray-400'}`}>
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div className="font-bold text-gray-800 flex items-center gap-2">
+                                                    <span className="material-symbols-outlined">{addr.type === 'HOME' ? 'home' : addr.type === 'COMPANY' ? 'apartment' : 'location_on'}</span>
+                                                    {addr.type === 'HOME' ? 'Nhà riêng' : addr.type === 'COMPANY' ? 'Công ty' : 'Địa chỉ khác'}
+                                                    {addr.isDefault && (
+                                                        <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">Mặc định</span>
+                                                    )}
+                                                </div>
+                                                <div className="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center flex-shrink-0">
+                                                    {String(shippingAddress) === String(addr.id) && <div className="w-3 h-3 rounded-full bg-[#406D5E]"></div>}
+                                                </div>
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-sm font-semibold text-gray-800 mb-1">{addr.receiverName || addr.name} - {addr.phone}</p>
+                                                <p className="text-sm text-gray-600 line-clamp-2">{addr.street}, {addr.ward}, {addr.district}, {addr.province}</p>
+                                            </div>
+                                            <div className="flex items-center gap-3 mt-3 pt-3 border-t border-gray-200/60 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button type="button" onClick={(e) => handleEditAddress(addr, e)} className="text-sm font-semibold text-[#406D5E] hover:underline flex items-center gap-1">
+                                                    <span className="material-symbols-outlined text-[16px]">edit</span> Sửa
+                                                </button>
+                                                <button type="button" onClick={(e) => handleDeleteAddress(addr.id, e)} className="text-sm font-semibold text-red-500 hover:underline flex items-center gap-1">
+                                                    <span className="material-symbols-outlined text-[16px]">delete</span> Xóa
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </label>
+                                ))}
                             </div>
-                        </label>
-                    ))}
+                            {addresses.length > 2 && (
+                                <button onClick={() => scroll('right')} className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center text-gray-600 hover:text-primary opacity-0 group-hover/slider:opacity-100 transition-opacity">
+                                    <span className="material-symbols-outlined">chevron_right</span>
+                                </button>
+                            )}
+                        </>
+                    )}
                 </div>
             </div>
 
             {isAddressModalOpen && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-50 duration-300">
-                        <div className="flex justify-between items-center p-4 border-b">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-50 duration-300 max-h-[90vh]">
+                        <div className="flex justify-between items-center p-4 border-b shrink-0">
                             <h3 className="font-bold text-lg text-[#406D5E]">{addressModalMode === 'ADD' ? 'Địa chỉ giao hàng mới' : 'Chỉnh sửa địa chỉ'}</h3>
                             <button onClick={() => setIsAddressModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                                 <span className="material-symbols-outlined">close</span>
                             </button>
                         </div>
-                        <form onSubmit={handleSaveAddress} className="p-6 space-y-4">
+                        <form onSubmit={handleSaveAddress} className="flex-1 overflow-y-auto p-6 space-y-4 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full">
                             <div><label className="block text-sm font-semibold mb-1 text-gray-700">Loại địa chỉ</label><div className="flex gap-4"><label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="addrType" value="Nhà riêng" checked={newAddress.type === 'Nhà riêng'} onChange={(e) => setNewAddress({...newAddress, type: e.target.value})} className="accent-primary" /><span className="text-sm font-medium">Nhà riêng</span></label><label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="addrType" value="Công ty" checked={newAddress.type === 'Công ty'} onChange={(e) => setNewAddress({...newAddress, type: e.target.value})} className="accent-primary" /><span className="text-sm font-medium">Công ty</span></label><label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="addrType" value="Địa chỉ khác" checked={newAddress.type === 'Địa chỉ khác'} onChange={(e) => setNewAddress({...newAddress, type: e.target.value})} className="accent-primary" /><span className="text-sm font-medium">Khác</span></label></div></div>
                             <div><label className="block text-sm font-semibold mb-1 text-gray-700">Họ và tên</label><input type="text" placeholder="Nguyễn Văn A" value={newAddress.name} onChange={(e) => setNewAddress({...newAddress, name: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary" required /></div>
                             <div><label className="block text-sm font-semibold mb-1 text-gray-700">Số điện thoại</label><input type="tel" placeholder="0987654321" value={newAddress.phone} onChange={(e) => setNewAddress({...newAddress, phone: e.target.value.replace(/\D/g, '').slice(0, 10)})} pattern="[0-9]{10}" maxLength={10} title="Vui lòng nhập đúng 10 chữ số" className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary" required /></div>

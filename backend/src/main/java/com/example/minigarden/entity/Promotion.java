@@ -67,6 +67,9 @@ public class Promotion {
     @Column(name = "quantity")
     private Integer quantity;
 
+    @Column(name = "used_count", nullable = false, columnDefinition = "int default 0")
+    private Integer usedCount = 0;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

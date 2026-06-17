@@ -183,13 +183,18 @@ export default function ReviewManagement() {
                         <div className="bg-white p-6 rounded-2xl flex items-center justify-between shadow-sm border border-gray-50">
                             <div>
                                 <p className="text-sm font-semibold text-gray-500 mb-1">Đánh giá trung bình</p>
-                                <h3 className="text-3xl font-black text-yellow-600">
+                                <h3 className="text-3xl font-black text-yellow-600 flex items-center gap-1">
                                     {reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : 0}
                                     <span className="text-lg"> / 5</span>
+                                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7 text-yellow-600 mb-1">
+                                        <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                                    </svg>
                                 </h3>
                             </div>
                             <div className="w-14 h-14 bg-yellow-50 text-yellow-600 rounded-xl flex items-center justify-center">
-                                <span className="material-symbols-outlined text-3xl">star</span>
+                                <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
+                                    <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                                </svg>
                             </div>
                         </div>
                     </div>
@@ -270,9 +275,11 @@ export default function ReviewManagement() {
                                                     </div>
                                                 </td>
                                                 <td className="p-4 text-center">
-                                                    <div className="flex justify-center text-yellow-400">
+                                                    <div className="flex justify-center gap-0.5">
                                                         {[...Array(5)].map((_, i) => (
-                                                            <span key={i} className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: i < review.rating ? "'FILL' 1" : "'FILL' 0" }}>star</span>
+                                                            <svg key={i} viewBox="0 0 24 24" fill="currentColor" className={`w-4 h-4 ${i < review.rating ? 'text-yellow-400' : 'text-gray-200'}`}>
+                                                                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                                                            </svg>
                                                         ))}
                                                     </div>
                                                 </td>

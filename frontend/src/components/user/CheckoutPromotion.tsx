@@ -35,7 +35,7 @@ export default function CheckoutPromotion({
                 }, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                setPromotions(response.data);
+                setPromotions(response.data.filter((p: any) => !p.quantity || p.quantity - (p.usedCount || 0) > 0));
             } catch (error) {
                 console.error("Lỗi lấy danh sách khuyến mãi:", error);
             }
@@ -47,7 +47,6 @@ export default function CheckoutPromotion({
         if (!code?.trim()) return;
         const upperCode = code.trim().toUpperCase();
         
-        // Tìm mã trong danh sách động lấy từ Database
         const promo = promotions.find(p => p.name.toUpperCase() === upperCode);
 
         if (promo) {

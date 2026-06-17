@@ -24,6 +24,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.springframework.format.annotation.DateTimeFormat;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/promotions")
@@ -36,8 +38,12 @@ public class PromotionController {
     private final PromotionProductRepository promotionProductRepository;
 
     @GetMapping
-    public ResponseEntity<?> getAvailablePromotions() {
-        return ResponseEntity.ok(promotionService.getAll());
+    public ResponseEntity<?> getPromotions(
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(required = false, defaultValue = "all") String timeRange,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return ResponseEntity.ok(promotionService.searchPromotions(keyword, timeRange, startDate, endDate));
     }
 
     @PostMapping

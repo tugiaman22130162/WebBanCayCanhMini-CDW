@@ -18,8 +18,8 @@ interface AuthContextType {
     user: User | null;
     isLoggedIn: boolean;
     isLoading: boolean;
-    login: (token: string, user: User) => void;
-    logout: () => void;
+    login: (token: string, userData: User) => void;
+    logout: (redirectPath?: string) => void;
     updateUser: (user: User) => void;
 }
 
@@ -84,14 +84,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     // Hàm xử lý đăng xuất
-    const logout = () => {
+    const logout = (redirectPath: string = '/') => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setToken(null);
         setUser(null);
         setIsLoggedIn(false);
         setIsLoading(false);
-        window.location.href = '/';
+        window.location.href = redirectPath;
     };
 
     const updateUser = (updatedUser: User) => {

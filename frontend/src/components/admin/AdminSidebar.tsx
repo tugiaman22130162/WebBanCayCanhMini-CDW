@@ -1,9 +1,11 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 const AdminSidebar: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
+    const { logout } = useAuth();
 
     const navItems = [
         { name: "Tổng quan", path: "/admin/dashboard", icon: "dashboard" },
@@ -14,8 +16,8 @@ const AdminSidebar: React.FC = () => {
         { name: "Quản lý Terrarium", path: "/admin/terrariums", icon: "psychiatry" },
         { name: "Khuyến mãi", path: "/admin/promotions", icon: "campaign" },
         { name: "Thanh toán", path: "/admin/payments", icon: "payments" },
-        {name: "Đánh giá", path: "/admin/reviews", icon: "star_rate" },
-        {name: "Bài viết", path: "/admin/blogs", icon: "article" },
+        { name: "Đánh giá", path: "/admin/reviews", icon: "star" },
+        { name: "Bài viết", path: "/admin/blogs", icon: "article" },
          {name: "Tin nhắn", path: "/admin/messages", icon: "chat" },
     ];
 
@@ -47,6 +49,7 @@ const AdminSidebar: React.FC = () => {
                             <span
                                 className={`material-symbols-outlined text-[22px] ${isActive ? "text-white" : "text-white/70 group-hover:text-white"
                                     }`}
+                                style={item.icon === 'star' ? { fontVariationSettings: "'FILL' 1" } : undefined}
                             >
                                 {item.icon}
                             </span>
@@ -59,7 +62,7 @@ const AdminSidebar: React.FC = () => {
             {/* Logout Button */}
             <div className="p-4">
                 <button
-                    onClick={() => navigate("/login")}
+                    onClick={() => logout("/login")}
                     className="flex items-center gap-3 px-4 py-3 w-full rounded-xl font-semibold text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all"
                 >
                     <span className="material-symbols-outlined text-[22px]">logout</span>

@@ -3,13 +3,11 @@ package com.example.minigarden.dto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
 @Data
 @Builder
-@NoArgsConstructor
 @AllArgsConstructor
 public class MessageResponse {
     private Integer id;
@@ -26,4 +24,6 @@ public class MessageResponse {
 
     private String reaction; 
     private String imgUrl; 
+    private Boolean isOnline;
+    private Integer conversationId;
 }

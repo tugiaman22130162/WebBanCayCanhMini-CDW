@@ -33,11 +33,20 @@ public class MessageService {
 
     // Lấy danh sách tin nhắn của 1 cuộc trò chuyện
     @Transactional(readOnly = true)
-    public List<MessageResponse> getMessages(Integer conversationId) {
-        List<Message> messages = messagesRepository.findByConversationIdOrderByCreatedAtAsc(conversationId);
-        return messages.stream().map(this::mapToResponse).collect(Collectors.toList());
-    }
+    public List<MessageResponse> getMessages(Integer conversationId, UserPrincipal currentUser) {
+        Conversation conversation = conversationRepository.findById(Objects.requireNonNull(conversationId)).orElse(null);
+        java.time.LocalDateTime deletedAt = null;
+        if (conversation != null && currentUser != null) {
+            boolean isAdmin = currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+            deletedAt = isAdmin ? conversation.getAdminDeletedAt() : conversation.getCustomerDeletedAt();
+        }
 
+        List<Message> messages = messagesRepository.findByConversationIdOrderByCreatedAtAsc(conversationId);
+        final java.time.LocalDateTime finalDeletedAt = deletedAt;
+        return messages.stream()
+                .filter(m -> finalDeletedAt == null || m.getCreatedAt().isAfter(finalDeletedAt))
+                .map(this::mapToResponse).collect(Collectors.toList());
+    }
     // Gửi tin nhắn mới
     @Transactional
     public MessageResponse sendMessage(Integer senderId, SendMessageRequest request) {
@@ -57,8 +66,15 @@ public class MessageService {
 
         Message savedMessage = messagesRepository.save(Objects.requireNonNull(message));
 
+        String displayContent = savedMessage.getContent();
+        if (savedMessage.getType() == MessageType.STICKER) {
+            displayContent = "[Nhãn dán]";
+        } else if (savedMessage.getType() == MessageType.LOCATION) {
+            displayContent = "[Vị trí]";
+        }
+
         // Cập nhật ID tin nhắn cuối cùng vào Conversation
-        conversation.updateLastMessage(savedMessage.getId());
+        conversation.updateLastMessage(savedMessage.getId(), displayContent, senderId);
         conversationRepository.save(conversation);
 
         return mapToResponse(savedMessage);
@@ -116,6 +132,7 @@ public class MessageService {
         
         return MessageResponse.builder()
                 .id(message.getId())
+                .conversationId(message.getConversationId())
                 .senderId(message.getSenderId())
                 .content(message.getContent())
                 .type(message.getType() != null ? message.getType().name() : "TEXT")
@@ -174,7 +191,7 @@ public class MessageService {
 
         Message savedMessage = messagesRepository.save(Objects.requireNonNull(message));
 
-        conversation.updateLastMessage(savedMessage.getId());
+        conversation.updateLastMessage(savedMessage.getId(), "[Hình ảnh]", senderId);
         conversationRepository.save(conversation);
 
         return mapToResponse(savedMessage);
@@ -198,7 +215,7 @@ public class MessageService {
 
         Message savedMessage = messagesRepository.save(Objects.requireNonNull(message));
 
-        conversation.updateLastMessage(savedMessage.getId());
+        conversation.updateLastMessage(savedMessage.getId(), "[Đơn hàng]", senderId);
         conversationRepository.save(conversation);
 
         return mapToResponse(savedMessage);

@@ -30,7 +30,6 @@ interface OrderDetail {
     promotions?: any[];
     shippingFee?: number;
     discountAmount?: number;
-    paymentStatus?: string;
 }
 
 interface OrderDetailModalProps {
@@ -148,50 +147,6 @@ export default function OrderDetailModal({ isOpen, onClose, orderId, onSuccess }
         }
     };
 
-    const handleRefund = async () => {
-        const result = await Swal.fire({
-            title: 'Hoàn tiền cho khách?',
-            text: `Xác nhận hoàn tiền về thẻ VNPAY cho đơn hàng ${order?.orderCode}?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Có, Hoàn tiền',
-            cancelButtonText: 'Hủy',
-            customClass: {
-                confirmButton: 'bg-red-500 text-white px-6 py-2.5 rounded-xl font-bold mx-2 hover:bg-red-600 transition-colors shadow-sm',
-                cancelButton: 'bg-gray-200 text-gray-700 px-6 py-2.5 rounded-xl font-bold mx-2 hover:bg-gray-300 transition-colors shadow-sm'
-            },
-            buttonsStyling: false
-        });
-
-        if (result.isConfirmed) {
-            try {
-                const token = localStorage.getItem("token");
-                
-                await axios.put(`http://localhost:8080/api/orders/${order?.id}/refund`, {}, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Thành công!',
-                    text: 'Đã thực hiện lệnh hoàn tiền qua VNPAY.',
-                    confirmButtonText: 'Đóng',
-                    customClass: {
-                        confirmButton: 'bg-[#006c49] text-white px-6 py-2.5 rounded-xl font-bold hover:bg-[#005236] transition-colors shadow-sm'
-                    },
-                    buttonsStyling: false
-                });
-                
-                if (onSuccess) onSuccess(); // Báo cho component cha tải lại danh sách đơn hàng
-                if (onClose) onClose();     // Đóng modal chi tiết
-                
-            } catch (error: any) {
-                console.error("Lỗi khi hoàn tiền:", error);
-                showErrorToast(error.response?.data?.message || 'Không thể hoàn tiền lúc này. Vui lòng kiểm tra lại.', 3000);
-            }
-        }
-    };
-
     if (!isOpen) return null;
 
     return (
@@ -253,26 +208,28 @@ export default function OrderDetailModal({ isOpen, onClose, orderId, onSuccess }
                                             className="px-3 py-1.5 border border-gray-300 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm font-semibold text-gray-700"
                                         >
                                             <option value={order.status}>{getStatusLabel(order.status)}</option>
-                                            {order.paymentMethod?.toUpperCase() === 'VNPAY' ? (
-                                                order.status !== 'DELIVERED' && <option value="DELIVERED">Đã giao</option>
-                                            ) : (
+                                            {order.status === 'PENDING' && (
                                                 <>
-                                                    {order.status !== 'CONFIRMED' && <option value="CONFIRMED">Đã xác nhận</option>}
-                                                    {order.status !== 'DELIVERED' && <option value="DELIVERED">Đã giao</option>}
-                                                    {order.status === 'PENDING' && <option value="CANCELLED">Đã hủy</option>}
+                                                    <option value="CONFIRMED">Đã xác nhận</option>
+                                                    <option value="DELIVERED">Đã giao</option>
+                                                    <option value="CANCELLED">Đã hủy</option>
                                                 </>
                                             )}
+                                            {order.status === 'CONFIRMED' && <option value="DELIVERED">Đã giao</option>}
+                                            {order.status === 'SHIPPING' && <option value="DELIVERED">Đã giao</option>}
                                         </select>
                                     )}
                                 </div>
                                 <div className="flex gap-2">
                                     {!isEditingStatus ? (
-                                        <button 
-                                            onClick={() => { setSelectedStatus(order.status); setIsEditingStatus(true); }} 
-                                            className="px-4 py-2 text-sm font-bold bg-primary text-white rounded-lg hover:bg-[#2f5146] transition-colors shadow-sm"
-                                        >
-                                            Cập nhật trạng thái
-                                        </button>
+                                        order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && (
+                                            <button 
+                                                onClick={() => { setSelectedStatus(order.status); setIsEditingStatus(true); }} 
+                                                className="px-4 py-2 text-sm font-bold bg-primary text-white rounded-lg hover:bg-[#2f5146] transition-colors shadow-sm"
+                                            >
+                                                Cập nhật trạng thái
+                                            </button>
+                                        )
                                     ) : (
                                         <>
                                             <button onClick={() => setIsEditingStatus(false)} disabled={isUpdating} className="px-4 py-2 text-sm font-bold bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors shadow-sm">
@@ -350,13 +307,41 @@ export default function OrderDetailModal({ isOpen, onClose, orderId, onSuccess }
                                     </div>
                                 )}
                                 
-                                {/* Tổng tiền */}
-                                <div className="mt-4 pt-4 border-t flex justify-end">
-                                    <div className="w-full md:w-1/2 flex flex-col space-y-2">
+                                {/* TỔNG TIỀN VÀ THANH TOÁN */}
+                                <div className="mt-6 pt-6 border-t border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative">
+                                    {/* Logo in chìm Đã thanh toán */}
+                                    {(order.paymentMethod?.toUpperCase() === 'VNPAY' || order.status === 'DELIVERED') && (
+                                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.08] pointer-events-none transform -rotate-12 select-none z-0">
+                                            <div className="border-8 border-emerald-600 rounded-3xl p-6 flex flex-col items-center justify-center">
+                                                <span className="font-black text-4xl sm:text-5xl text-emerald-600 tracking-widest uppercase">Đã thanh toán</span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Trạng thái thanh toán (Bên trái) */}
+                                    <div className="flex flex-col items-start w-full md:w-auto bg-gray-50 p-5 rounded-xl border border-gray-200 relative z-10">
+                                        {(order.paymentMethod?.toUpperCase() === 'VNPAY' || order.status === 'DELIVERED') ? (
+                                            <div className="flex flex-col items-start gap-3">
+                                                <span className="text-sm font-black px-4 py-2 bg-emerald-100 text-emerald-700 rounded-full border border-emerald-200 flex items-center gap-2 shadow-sm">
+                                                    <span className="material-symbols-outlined text-[20px]">check_circle</span> Đã thanh toán
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col items-start gap-3">
+                                                <span className="text-sm font-black px-4 py-2 bg-orange-100 text-orange-700 rounded-full border border-orange-200 flex items-center gap-2 shadow-sm">
+                                                    <span className="material-symbols-outlined text-[20px]">schedule</span> Chưa thanh toán
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Phần Tạm tính & Tổng cộng (Bên phải) */}
+                                    <div className="flex flex-col w-full md:w-1/2 lg:w-1/3 gap-2 relative z-10">
                                         <div className="flex justify-between text-gray-600 text-sm">
                                             <span>Tạm tính:</span>
                                             <span className="font-semibold">{order.items.reduce((sum, item) => sum + item.subtotal, 0).toLocaleString('vi-VN')}đ</span>
                                         </div>
+                                        {/* Phí vận chuyển */}
                                         <div className="flex justify-between text-gray-600 text-sm">
                                             <span>Phí vận chuyển:</span>
                                             <span className="font-semibold">
@@ -380,7 +365,7 @@ export default function OrderDetailModal({ isOpen, onClose, orderId, onSuccess }
                                                 </span>
                                             </div>
                                         )}
-                                        <div className="flex justify-between text-lg pt-3 mt-1 border-t border-gray-200">
+                                        <div className="flex justify-between text-lg pt-2 border-t border-gray-100">
                                             <span className="font-bold text-gray-800">Tổng cộng:</span>
                                             <span className="font-black text-primary">{order.totalPrice.toLocaleString('vi-VN')}đ</span>
                                         </div>
@@ -388,29 +373,6 @@ export default function OrderDetailModal({ isOpen, onClose, orderId, onSuccess }
                                 </div>
                             </div>
                         </div>
-                    )}
-                </div>
-
-                {/* FOOTER */}
-                <div className="p-5 border-t bg-gray-50 flex justify-end gap-3 shrink-0">
-                    {/* Nút Đóng */}
-                    <button onClick={onClose} className="px-6 py-2.5 rounded-xl bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 transition-colors shadow-sm">
-                        Đóng
-                    </button>
-                    {order?.status === 'CANCELLED' && order?.paymentMethod?.toUpperCase() === 'VNPAY' && (
-                        <button
-                            onClick={handleRefund}
-                            disabled={order?.paymentStatus === 'REFUNDED'}
-                            className={`px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-sm transition-colors ${
-                                order?.paymentStatus === 'REFUNDED' 
-                                ? 'bg-gray-400 text-white cursor-not-allowed' 
-                                : 'bg-red-500 text-white hover:bg-red-600'
-                            }`}
-                            title={order?.paymentStatus === 'REFUNDED' ? "Đơn hàng này đã được hoàn tiền" : "Trả lại tiền về tài khoản VNPAY của khách hàng"}
-                        >
-                            <span className="material-symbols-outlined text-[20px]">currency_exchange</span>
-                            {order?.paymentStatus === 'REFUNDED' ? 'Đã hoàn tiền VNPAY' : 'Hoàn tiền VNPAY'}
-                        </button>
                     )}
                 </div>
             </div>

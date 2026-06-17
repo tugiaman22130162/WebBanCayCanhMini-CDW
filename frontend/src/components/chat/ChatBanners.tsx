@@ -1,5 +1,5 @@
 import React from 'react';
-import { Message as ChatMessage } from '../../utils/chatUtils';
+import { Message as ChatMessage, isStickerUrl } from '../../utils/chatUtils';
 
 interface ChatBannersProps {
     replyingMessageId: number | null;
@@ -22,7 +22,7 @@ export default function ChatBanners({ replyingMessageId, editingMessageId, messa
                 <div className={`flex items-center justify-between bg-gray-50 px-4 py-2 rounded-xl border border-gray-200 text-sm ${isAdmin ? 'mx-4 mt-2' : ''}`}>
                     <div className="flex flex-col overflow-hidden">
                         <span className="font-bold text-primary text-xs">Đang phản hồi {replyMsg.sender === (isAdmin ? 'ADMIN' : 'USER') ? 'chính bạn' : (replyMsg.senderName || activeConversationName || (isAdmin ? 'Khách hàng' : 'MiniGarden'))}</span>
-                        <span className="text-gray-600 truncate">{replyMsg.type === 'STICKER' ? '[Nhãn dán]' : replyMsg.type === 'IMAGE' ? '[Hình ảnh]' : replyMsg.type === 'ORDER' ? '[Đơn hàng]' : replyMsg.text}</span>
+                        <span className="text-gray-600 truncate">{(replyMsg.type === 'STICKER' || isStickerUrl(replyMsg.text)) ? '[Nhãn dán]' : replyMsg.type === 'IMAGE' ? '[Hình ảnh]' : replyMsg.type === 'ORDER' ? '[Đơn hàng]' : replyMsg.type === 'LOCATION' ? '[Vị trí]' : replyMsg.text}</span>
                     </div>
                     <button onClick={onCancelReply} className="text-gray-400 hover:text-red-500 transition-colors"><span className="material-symbols-outlined text-[18px]">close</span></button>
                 </div>

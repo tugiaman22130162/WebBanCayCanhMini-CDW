@@ -7,6 +7,7 @@ import com.example.minigarden.repository.UserRepository;
 import com.example.minigarden.service.OrderService;
 import com.example.minigarden.repository.PromotionRepository;
 import com.example.minigarden.entity.Promotion;
+import com.example.minigarden.exception.OutOfStockException;
 import com.example.minigarden.entity.DiscountType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -61,6 +62,8 @@ public class OrderController {
             }
 
             return ResponseEntity.ok(response);
+        } catch (OutOfStockException e) {
+            throw e; 
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest()

@@ -13,7 +13,7 @@ export default function Message() {
     const { user, isLoggedIn, isLoading } = useAuth();
 
     const {
-        conversations, messages, setMessages,
+        conversations, setConversations, messages, setMessages,
         activeConversationId, setActiveConversationId, isTyping
     } = useChatWebSocket(user, isLoggedIn);
 
@@ -63,6 +63,8 @@ export default function Message() {
     };
 
     const handleRevoke = async (id: number) => {
+        // Tạm thời ẩn/đánh dấu thu hồi ở giao diện trước cho mượt
+        setMessages(prev => prev.map(msg => msg.id === id ? { ...msg, deletedAt: new Date().toISOString() } : msg));
         try {
             const token = localStorage.getItem('token');
             await axios.delete(`http://localhost:8080/api/messages/${id}/revoke`, {
@@ -70,6 +72,7 @@ export default function Message() {
             });
         } catch (error) {
             console.error("Lỗi thu hồi tin nhắn", error);
+            // Tùy chọn: Hoàn tác lại state nếu API lỗi
         }
     };
 
@@ -83,14 +86,39 @@ export default function Message() {
         await axios.post(`http://localhost:8080/api/messages/conversation/${activeConversationId}/typing`, { isTyping: isTypingStatus }, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
     };
 
-    const handleSendMessage = async (e?: React.FormEvent) => {
+    const handleSendMessage = async (e?: React.FormEvent, customText?: string) => {
         e?.preventDefault();
-        if (!inputText.trim() || !activeConversationId) return;
+        const textToSend = customText || inputText;
+        if (!textToSend.trim()) return;
 
         const token = localStorage.getItem('token');
-        const textToSend = inputText;
+        let targetConversationId = activeConversationId;
+        const replyTo = replyingMessageId;
 
-        if (editingMessageId) {
+        // Tự động tạo hội thoại mới nếu khách hàng chưa từng nhắn tin
+        if (!targetConversationId) {
+            try {
+                const convRes = await axios.post("http://localhost:8080/api/conversations", {}, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                targetConversationId = convRes.data.id;
+                if (setActiveConversationId) setActiveConversationId(targetConversationId);
+                
+                await axios.post('http://localhost:8080/api/messages', {
+                    conversationId: targetConversationId,
+                    content: textToSend,
+                    replyToMessageId: customText ? null : (replyTo || null)
+                }, { headers: { Authorization: `Bearer ${token}` } });
+                
+                window.location.reload();
+                return;
+            } catch (error) {
+                console.error("Lỗi tạo hội thoại:", error);
+                return;
+            }
+        }
+
+        if (editingMessageId && !customText) {
             try {
                 await axios.put(`http://localhost:8080/api/messages/${editingMessageId}`, 
                     { content: textToSend }, 
@@ -104,16 +132,18 @@ export default function Message() {
             return;
         }
 
-        setInputText('');
-        const replyTo = replyingMessageId;
-        setReplyingMessageId(null);
-        setActionMenuOpenId(null);
+        if (!customText) setInputText('');
+        
+        if (!customText) {
+            setReplyingMessageId(null);
+            setActionMenuOpenId(null);
+        }
 
         try {
             await axios.post('http://localhost:8080/api/messages', {
-                conversationId: activeConversationId,
+                conversationId: targetConversationId,
                 content: textToSend,
-                replyToMessageId: replyTo || null
+                replyToMessageId: customText ? null : (replyTo || null)
             }, { headers: { Authorization: `Bearer ${token}` } });
         } catch (error) {
             console.error("Lỗi gửi tin nhắn", error);
@@ -121,46 +151,92 @@ export default function Message() {
     };
 
     const handleSendSticker = async (stickerUrl: string) => {
-        if (!activeConversationId) return;
+        let targetConversationId = activeConversationId;
         const token = localStorage.getItem('token');
         const replyTo = replyingMessageId;
+
+        if (!targetConversationId) {
+            try {
+                const convRes = await axios.post("http://localhost:8080/api/conversations", {}, { headers: { Authorization: `Bearer ${token}` } });
+                targetConversationId = convRes.data.id;
+            } catch (error) { return; }
+        }
+
         setReplyingMessageId(null);
         setActionMenuOpenId(null);
         
         try {
             await axios.post('http://localhost:8080/api/messages', {
-                conversationId: activeConversationId,
+                conversationId: targetConversationId,
                 content: stickerUrl,
+                type: 'STICKER',
                 replyToMessageId: replyTo || null
             }, { headers: { Authorization: `Bearer ${token}` } });
+            if (!activeConversationId) window.location.reload();
         } catch (error) {
             console.error("Lỗi gửi sticker", error);
         }
     };
 
     const handleSendImage = async (file: File) => {
-        if (!activeConversationId) return;
+        let targetConversationId = activeConversationId;
         const token = localStorage.getItem('token');
         const replyTo = replyingMessageId;
+
+        if (!targetConversationId) {
+            try {
+                const convRes = await axios.post("http://localhost:8080/api/conversations", {}, { headers: { Authorization: `Bearer ${token}` } });
+                targetConversationId = convRes.data.id;
+            } catch (error) { return; }
+        }
+
         setReplyingMessageId(null);
         setActionMenuOpenId(null);
         
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('conversationId', activeConversationId.toString());
+        formData.append('conversationId', targetConversationId!.toString());
         if (replyTo) formData.append('replyToMessageId', replyTo.toString());
 
         try {
             await axios.post('http://localhost:8080/api/messages/send-image', formData, {
                 headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
             });
+            if (!activeConversationId) window.location.reload();
         } catch (error) {
             console.error("Lỗi gửi ảnh", error);
         }
     };
 
+    const handleSendLocation = async (lat: number, lng: number) => {
+        let targetConversationId = activeConversationId;
+        const token = localStorage.getItem('token');
+        const replyTo = replyingMessageId;
+
+        if (!targetConversationId) {
+            try {
+                const convRes = await axios.post("http://localhost:8080/api/conversations", {}, { headers: { Authorization: `Bearer ${token}` } });
+                targetConversationId = convRes.data.id;
+            } catch (error) { return; }
+        }
+
+        setReplyingMessageId(null);
+        setActionMenuOpenId(null);
+        
+        try {
+            await axios.post('http://localhost:8080/api/messages', {
+                conversationId: targetConversationId,
+                content: `${lat},${lng}`,
+                type: 'LOCATION',
+                replyToMessageId: replyTo || null
+            }, { headers: { Authorization: `Bearer ${token}` } });
+            if (!activeConversationId) window.location.reload();
+        } catch (error) {
+            console.error("Lỗi gửi vị trí", error);
+        }
+    };
+
     const handleSendOrder = async () => {
-        if (!activeConversationId) return;
         try {
             const token = localStorage.getItem('token');
             const res = await axios.get("http://localhost:8080/api/orders/my-orders", {
@@ -212,15 +288,61 @@ export default function Message() {
             });
 
             if (orderId) {
+                let targetConversationId = activeConversationId;
+                if (!targetConversationId) {
+                    const convRes = await axios.post("http://localhost:8080/api/conversations", {}, { headers: { Authorization: `Bearer ${token}` } });
+                    targetConversationId = convRes.data.id;
+                }
+
                 const formData = new FormData();
-                formData.append('conversationId', activeConversationId.toString());
+                formData.append('conversationId', targetConversationId!.toString());
                 formData.append('referenceId', orderId);
                 await axios.post('http://localhost:8080/api/messages/send-order', formData, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
+                if (!activeConversationId) window.location.reload();
             }
         } catch (error) {
             console.error("Lỗi lấy danh sách hoặc gửi đơn hàng", error);
+        }
+    };
+
+    const handleDeleteConversation = async () => {
+        if (!activeConversationId) return;
+        const result = await Swal.fire({
+            title: 'Xóa đoạn chat?',
+            text: "Hành động này sẽ xóa toàn bộ tin nhắn. Bạn có chắc chắn không?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Xóa',
+            cancelButtonText: 'Hủy',
+            customClass: {
+                confirmButton: 'bg-red-500 text-white px-6 py-2.5 rounded-xl font-bold mx-2 hover:bg-red-600',
+                cancelButton: 'bg-gray-200 text-gray-700 px-6 py-2.5 rounded-xl font-bold mx-2 hover:bg-gray-300'
+            },
+            buttonsStyling: false
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const token = localStorage.getItem('token');
+                await axios.delete(`http://localhost:8080/api/conversations/${activeConversationId}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                
+                if (setConversations) setConversations((prev: any[]) => prev.filter(c => c.id !== activeConversationId));
+                if (setActiveConversationId) setActiveConversationId(null);
+                
+            } catch (error) {
+                Swal.fire('Lỗi', 'Không thể xóa đoạn chat này. Vui lòng thử lại sau!', 'error');
+            }
+        }
+    };
+
+    const handleDeleteSuccess = (id: number) => {
+        if (setConversations) setConversations((prev: any[]) => prev.filter(c => c.id !== id));
+        if (activeConversationId === id) {
+            if (setActiveConversationId) setActiveConversationId(null);
         }
     };
 
@@ -238,13 +360,16 @@ export default function Message() {
                         activeConversationId={activeConversationId} 
                         onSelectConversation={setActiveConversationId} 
                         isAdmin={false} 
+                        onDeleteSuccess={handleDeleteSuccess}
                     />
 
                     <div className="flex-1 flex flex-col h-full bg-white relative">
                         <ChatHeader 
+                            isOnline={conversations[0]?.isOnline}
                             searchMessageTerm={searchMessageTerm} 
                             setSearchMessageTerm={setSearchMessageTerm} 
                             isAdmin={false} 
+                            onDeleteChat={handleDeleteConversation}
                         />
 
                         <MessageList 
@@ -256,13 +381,25 @@ export default function Message() {
                             onDelete={handleDelete} onRevoke={handleRevoke}
                         />
 
+                        <div className="px-4 py-2 bg-white flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden shrink-0 border-t border-gray-50">
+                            {["Hướng dẫn tự thiết kế terrarium", "Sen đá chăm sóc như thế nào?", "Shop có ship tỉnh không?", "Cây để bàn nào dễ chăm?"].map((q, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => handleSendMessage(undefined, q)}
+                                    className="whitespace-nowrap text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-full hover:bg-emerald-100 transition-colors shadow-sm active:scale-95 shrink-0"
+                                >
+                                    {q}
+                                </button>
+                            ))}
+                        </div>
+
                         <MessageInputArea 
                             isLoggedIn={isLoggedIn} inputText={inputText} setInputText={setInputText}
                             replyingMessageId={replyingMessageId} editingMessageId={editingMessageId}
                             messages={messages}
                             onCancelReply={() => setReplyingMessageId(null)} onCancelEdit={() => { setEditingMessageId(null); setInputText(''); }}
                             onSendMessage={handleSendMessage} onSendSticker={handleSendSticker} onSendImage={handleSendImage}
-                            onSendOrder={handleSendOrder}
+                            onSendOrder={handleSendOrder} onSendLocation={handleSendLocation}
                             sendTypingStatus={sendTypingStatus}
                         />
                     </div>

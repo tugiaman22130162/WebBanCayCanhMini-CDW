@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 
@@ -14,6 +14,7 @@ interface Category {
 export default function Categories() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const sliderRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const fetchCategories = async () => {
@@ -29,6 +30,14 @@ export default function Categories() {
 
         fetchCategories();
     }, []);
+
+    const scroll = (direction: 'left' | 'right') => {
+        if (sliderRef.current) {
+            const { scrollLeft, clientWidth } = sliderRef.current;
+            const scrollTo = direction === 'left' ? scrollLeft - clientWidth : scrollLeft + clientWidth;
+            sliderRef.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
+        }
+    };
 
     return (
         <section className="mt-[30px] pt-6 pb-20 px-8 bg-surface-container-lowest overflow-hidden">
@@ -99,9 +108,19 @@ export default function Categories() {
                             )}
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {categories.map((category) => (
-                                <div key={category.id} className="group relative overflow-hidden rounded-2xl h-[300px] sm:h-[350px] bg-surface-container-lowest transition-all duration-500 hover:shadow-xl">
+                        <div className="relative group/slider">
+                            <button 
+                                onClick={() => scroll('left')}
+                                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-700 hover:text-primary opacity-0 group-hover/slider:opacity-100 transition-all hover:scale-110"
+                            >
+                                <span className="material-symbols-outlined">chevron_left</span>
+                            </button>
+                            <div 
+                                ref={sliderRef}
+                                className="flex overflow-x-auto gap-6 pb-4 snap-x snap-mandatory hide-scrollbar scroll-smooth"
+                            >
+                                {categories.map((category) => (
+                                    <div key={category.id} className="group relative overflow-hidden rounded-2xl h-[300px] sm:h-[350px] bg-surface-container-lowest transition-all duration-500 hover:shadow-xl shrink-0 w-full sm:w-[calc(50%-12px)] lg:w-[calc(25%-18px)] snap-start">
                                     <img
                                         src={category.image_url || category.imageUrl || "/images/terrarium.png"}
                                         alt={category.name}
@@ -120,6 +139,13 @@ export default function Categories() {
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                            <button 
+                                onClick={() => scroll('right')}
+                                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-700 hover:text-primary opacity-0 group-hover/slider:opacity-100 transition-all hover:scale-110"
+                            >
+                                <span className="material-symbols-outlined">chevron_right</span>
+                            </button>
                         </div>
                     )
                 ) : (

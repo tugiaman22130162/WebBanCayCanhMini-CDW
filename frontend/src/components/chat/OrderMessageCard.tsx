@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import OrderDetailModal from '../admin/OrderDetailModal';
 
 interface OrderMessageCardProps {
     orderId: number;
@@ -8,6 +9,7 @@ interface OrderMessageCardProps {
 export default function OrderMessageCard({ orderId }: OrderMessageCardProps) {
     const [order, setOrder] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchOrder = async () => {
@@ -89,6 +91,12 @@ export default function OrderMessageCard({ orderId }: OrderMessageCardProps) {
                 <div className="flex justify-between items-center text-xs"><span className="text-gray-500 font-medium">Tổng tiền:</span><span className="font-bold text-[#006c49] text-sm">{order.totalPrice?.toLocaleString('vi-VN')}đ</span></div>
                 <div className="flex justify-between items-center text-xs"><span className="text-gray-500 font-medium">{order.status === 'DELIVERED' ? 'Ngày nhận:' : 'Dự kiến giao:'}</span><span className="font-bold text-gray-700">{order.status === 'DELIVERED' ? new Date(order.updatedAt || order.createdAt).toLocaleDateString('vi-VN') : (order.estimatedDeliveryTimeFrom ? new Date(order.estimatedDeliveryTimeFrom).toLocaleDateString('vi-VN') : new Date(order.createdAt).toLocaleDateString('vi-VN'))}</span></div>
             </div>
+            
+            <button onClick={() => setIsModalOpen(true)} className="mt-1 w-full py-2 bg-[#006c49]/10 text-[#006c49] font-bold rounded-lg text-xs hover:bg-[#006c49]/20 transition-colors">
+                Xem chi tiết
+            </button>
+
+            <OrderDetailModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} orderId={order.id} onSuccess={() => {}} />
         </div>
     );
 }

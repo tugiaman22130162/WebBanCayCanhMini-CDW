@@ -338,7 +338,7 @@ export default function CategoryManagement() {
             <div className="flex-1 flex flex-col overflow-hidden">
                 <AdminHeader />
 
-                <main className="p-6 md:p-8 flex-1 overflow-y-auto">
+                <main className="p-6 md:p-8 flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                         <h2 className="text-4xl font-extrabold text-gray-800">Quản Lý Danh Mục</h2>
                         
@@ -369,14 +369,14 @@ export default function CategoryManagement() {
 
                                 {/* Popup Bộ Lọc */}
                                 {isFilterPanelOpen && (
-                                    <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 z-20 animate-in fade-in slide-in-from-top-2">
-                                        <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                                    <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 z-20 animate-in fade-in slide-in-from-top-2 flex flex-col max-h-[60vh] overflow-hidden">
+                                        <div className="p-4 border-b border-gray-100 flex justify-between items-center shrink-0">
                                             <h4 className="font-bold text-gray-800">Lọc danh mục</h4>
                                             <button onClick={() => setIsFilterPanelOpen(false)} className="text-gray-400 hover:text-red-500 transition-colors">
                                                 <span className="material-symbols-outlined text-xl">close</span>
                                             </button>
                                         </div>
-                                        <div className="p-4 space-y-4">
+                                        <div className="flex-1 overflow-y-auto p-4 space-y-4 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full">
                                             <div>
                                                 <label className="block text-xs font-bold uppercase text-gray-500 mb-3">Trạng thái sản phẩm</label>
                                                 <div className="space-y-2">
@@ -396,7 +396,7 @@ export default function CategoryManagement() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="bg-gray-50 p-3 flex justify-end gap-2 rounded-b-2xl border-t border-gray-100">
+                                        <div className="bg-gray-50 p-3 flex justify-end gap-2 rounded-b-2xl border-t border-gray-100 shrink-0">
                                             <button onClick={handleClearFilter} className="px-4 py-2 text-sm font-semibold rounded-lg border bg-white hover:bg-gray-100 transition text-gray-700">Xóa lọc</button>
                                             <button onClick={handleApplyFilter} className="px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-white hover:bg-[#2f5146] transition">Áp dụng</button>
                                         </div>
@@ -452,7 +452,7 @@ export default function CategoryManagement() {
 
                     {/* TABLE */}
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full">
                             <table className="w-full min-w-[800px]">
                                 <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold">
                                     <tr>
@@ -536,8 +536,8 @@ export default function CategoryManagement() {
             {/* MODAL THÊM/SỬA */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden zoom-in-95 duration-200">
-                        <div className="p-5 border-b flex justify-between items-center bg-gray-50">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                        <div className="p-5 border-b flex justify-between items-center bg-gray-50 shrink-0">
                             <h3 className="font-bold text-lg text-gray-800">
                                 {modalMode === 'ADD' ? 'Thêm Danh Mục Mới' : 'Chỉnh Sửa Danh Mục'}
                             </h3>
@@ -545,7 +545,7 @@ export default function CategoryManagement() {
                                 <span className="material-symbols-outlined">close</span>
                             </button>
                         </div>
-                        <form onSubmit={handleSaveCategory} className="p-6 space-y-4">
+                        <form onSubmit={handleSaveCategory} className="flex-1 overflow-y-auto p-6 space-y-4 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full">
                             <div>
                                 <label className="block text-sm font-semibold mb-1 text-gray-700">Tên danh mục <span className="text-red-500">*</span></label>
                                 <input 
@@ -610,7 +610,7 @@ export default function CategoryManagement() {
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#406D5E] focus:ring-1 focus:ring-[#406D5E] resize-none"
                                 ></textarea>
                             </div>
-                            <div className="pt-4 mt-2 border-t flex justify-end gap-3">
+                            <div className="pt-4 mt-2 border-t flex justify-end gap-3 sticky bottom-0 bg-white">
                                 <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="px-6 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-bold hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors">
                                     Hủy
                                 </button>
@@ -636,7 +636,7 @@ export default function CategoryManagement() {
             {/* MODAL XÁC NHẬN XÓA */}
             {isDeleteModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden zoom-in-95 duration-200 p-6 text-center">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden zoom-in-95 duration-200 p-6 text-center flex flex-col max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full">
                         <div className="w-16 h-16 rounded-full bg-red-100 text-red-500 flex items-center justify-center mx-auto mb-4">
                             <span className="material-symbols-outlined text-3xl">delete_forever</span>
                         </div>

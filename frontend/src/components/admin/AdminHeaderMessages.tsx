@@ -31,6 +31,7 @@ export default function AdminHeaderMessages({ user }: { user: any }) {
 
         const safeGetTime = (dateVal: any) => {
             if (!dateVal) return 0;
+            if (dateVal instanceof Date) return dateVal.getTime();
             if (Array.isArray(dateVal)) return new Date(dateVal[0], dateVal[1] - 1, dateVal[2], dateVal[3] || 0, dateVal[4] || 0, dateVal[5] || 0).getTime();
             if (typeof dateVal === 'string') {
                 if (dateVal.includes('/')) {
@@ -55,17 +56,18 @@ export default function AdminHeaderMessages({ user }: { user: any }) {
                 usersRes.data.forEach((u: any) => { rolesMap[u.id] = u.role; });
                 userRolesMapRef.current = rolesMap;
 
-                const readTimes = JSON.parse(localStorage.getItem('adminReadTimes') || '{}');
                 const unreadCountsToSave: any = {};
                 let totalUnread = 0;
 
-                const convs = Array.isArray(res.data) ? res.data : (res.data.content || []);
+                const rawConvs = Array.isArray(res.data) ? res.data : (res.data.content || []);
+                const convs = rawConvs.map((item: any) => item.conversation ? { ...item.conversation, isOnline: item.isOnline } : item);
 
                 const formatted = await Promise.all(convs.map(async (c: any) => {
                     const customer = usersRes.data.find((u: any) => u.id === c.customerId);
                     let lastMsg = c.lastMessage;
                     let unreadCountForConv = 0;
-                    const rTime = readTimes[c.id] ? new Date(readTimes[c.id]).getTime() : 0;
+                    const currentReadTimes = JSON.parse(localStorage.getItem('adminReadTimes') || '{}');
+                    const rTime = currentReadTimes[c.id] ? new Date(currentReadTimes[c.id]).getTime() : 0;
 
                     try {
                         const msgRes = await axios.get(`http://localhost:8080/api/messages/conversation/${c.id}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -93,6 +95,7 @@ export default function AdminHeaderMessages({ user }: { user: any }) {
                     if (lastMsg?.type === 'IMAGE') text = '[Hình ảnh]';
                     else if (lastMsg?.type === 'STICKER' || isStickerUrl(text)) text = '[Nhãn dán]';
                     else if (lastMsg?.type === 'ORDER') text = '[Đơn hàng]';
+                    else if (lastMsg?.type === 'LOCATION') text = '[Vị trí]';
                     
                     const actualSenderId = lastMsg?.senderId || lastMsg?.sender_id;
                     const senderRole = rolesMap[actualSenderId] || (String(actualSenderId) === String(user.id) ? 'ADMIN' : 'USER');
@@ -107,7 +110,7 @@ export default function AdminHeaderMessages({ user }: { user: any }) {
                     };
                 }));
                 
-                formatted.sort((a: any, b: any) => (b.lastMessageTime?.getTime() || 0) - (a.lastMessageTime?.getTime() || 0));
+                formatted.sort((a: any, b: any) => safeGetTime(b.lastMessageTime) - safeGetTime(a.lastMessageTime));
 
                 if (!isMounted) return;
                 setRecentChats(formatted.slice(0, 5));
@@ -122,17 +125,16 @@ export default function AdminHeaderMessages({ user }: { user: any }) {
                     onConnect: () => {
                         stompClient!.subscribe('/topic/admin/messages', (message) => {
                             const msg = JSON.parse(message.body);
-                            const currentUserStr = localStorage.getItem("user");
-                            const currentUserId = currentUserStr ? JSON.parse(currentUserStr).id : null;
                             const convId = msg.conversationId || msg.conversation_id;
                             const actualMsgSenderId = msg.senderId || msg.sender_id;
-                            const msgSenderRole = userRolesMapRef.current[actualMsgSenderId] || (String(actualMsgSenderId) === String(currentUserId) ? 'ADMIN' : 'USER');
+                            const msgSenderRole = userRolesMapRef.current[actualMsgSenderId] || (user && String(actualMsgSenderId) === String(user.id) ? 'ADMIN' : 'USER');
                             const isFromAdmin = msgSenderRole === 'ADMIN';
 
                             let newText = msg.content || msg.text;
                             if (msg.type === 'IMAGE') newText = '[Hình ảnh]';
                             else if (msg.type === 'STICKER' || isStickerUrl(newText)) newText = '[Nhãn dán]';
                             else if (msg.type === 'ORDER') newText = '[Đơn hàng]';
+                            else if (msg.type === 'LOCATION') newText = '[Vị trí]';
                             if (isFromAdmin) newText = "Bạn: " + newText;
 
                             setRecentChats(prev => {
@@ -140,7 +142,7 @@ export default function AdminHeaderMessages({ user }: { user: any }) {
                                 let updated = exists 
                                     ? prev.map(c => c.id === convId ? { ...c, lastMessageText: newText, lastMessageTime: new Date(safeGetTime(msg.createdAt || msg.created_at)), senderId: actualMsgSenderId } : c)
                                     : [{ id: convId, name: msg.senderName || msg.sender_name || 'Khách hàng', avatar: msg.senderAvatar || msg.sender_avatar, lastMessageText: newText, lastMessageTime: new Date(safeGetTime(msg.createdAt || msg.created_at)), senderId: actualMsgSenderId }, ...prev];
-                                return updated.sort((a: any, b: any) => (b.lastMessageTime?.getTime() || 0) - (a.lastMessageTime?.getTime() || 0)).slice(0, 5);
+                                return updated.sort((a: any, b: any) => safeGetTime(b.lastMessageTime) - safeGetTime(a.lastMessageTime)).slice(0, 5);
                             });
 
                             if (!isFromAdmin) {
@@ -177,6 +179,23 @@ export default function AdminHeaderMessages({ user }: { user: any }) {
         };
     }, [user?.id]);
 
+    const handleMarkAllAsRead = () => {
+        const unreadCounts = JSON.parse(localStorage.getItem('adminUnreadCounts') || '{}');
+        const readTimes = JSON.parse(localStorage.getItem('adminReadTimes') || '{}');
+        
+        Object.keys(unreadCounts).forEach(convId => {
+            unreadCounts[convId] = 0;
+            readTimes[convId] = new Date().toISOString(); 
+        });
+        
+        localStorage.setItem('adminUnreadCounts', JSON.stringify(unreadCounts));
+        localStorage.setItem('adminReadTimes', JSON.stringify(readTimes));
+        
+        window.dispatchEvent(new Event("adminUnreadUpdated"));
+    };
+
+    const unreadCounts = JSON.parse(localStorage.getItem('adminUnreadCounts') || '{}');
+
     return (
         <div className="relative" ref={msgDropdownRef}>
             <button onClick={() => setIsMsgOpen(!isMsgOpen)} className={`relative w-10 h-10 flex items-center justify-center text-white rounded-full transition-all outline-none ${isMsgOpen ? 'bg-white/20' : 'hover:text-green-200 hover:bg-white/10'}`}>
@@ -191,25 +210,48 @@ export default function AdminHeaderMessages({ user }: { user: any }) {
                     <div className="relative z-10 bg-white rounded-2xl overflow-hidden">
                         <div className="p-4 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
                             <h3 className="font-bold text-gray-800 text-[16px]">Tin nhắn khách hàng</h3>
-                            {unreadMessageCount > 0 && <span className="text-xs text-primary font-bold bg-emerald-50 px-2 py-1 rounded-full">{unreadMessageCount} tin mới</span>}
+                            <div className="flex items-center gap-2">
+                                {unreadMessageCount > 0 && <span className="text-xs text-primary font-bold bg-emerald-50 px-2 py-1 rounded-full">{unreadMessageCount} tin mới</span>}
+                                {unreadMessageCount > 0 && (
+                                    <button onClick={handleMarkAllAsRead} className="text-xs text-primary font-medium hover:opacity-80 transition-opacity flex items-center gap-1" title="Đánh dấu tất cả là đã đọc">
+                                        <span className="material-symbols-outlined text-[16px]">done_all</span> Đọc tất cả
+                                    </button>
+                                )}
+                            </div>
                         </div>
                         <div className="max-h-80 overflow-y-auto p-2 flex flex-col gap-1">
-                            {recentChats.length > 0 ? recentChats.map(chat => (
-                                <Link key={chat.id} to="/admin/messages" onClick={() => setIsMsgOpen(false)} className="flex items-center gap-3 p-3 rounded-xl transition-colors relative group border-b border-gray-50 last:border-0 hover:bg-gray-50">
-                                    <div className="w-11 h-11 rounded-full bg-emerald-100 text-primary flex items-center justify-center shrink-0 overflow-hidden border border-emerald-200 shadow-sm">
-                                        {chat.avatar ? <img src={chat.avatar} alt="Avatar" className="w-full h-full object-cover" /> : <span className="font-bold">{chat.name.charAt(0).toUpperCase()}</span>}
-                                    </div>
-                                    <div className="flex-1 min-w-0 text-left">
-                                        <div className="flex justify-between items-baseline mb-1">
-                                            <h4 className="font-bold text-gray-800 text-[14px] truncate">{chat.name}</h4>
-                                            {chat.lastMessageTime && <span className="text-[11px] text-gray-400 whitespace-nowrap ml-2">{chat.lastMessageTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>}
+                            {recentChats.length > 0 ? recentChats.map(chat => {
+                                const isUnread = unreadCounts[chat.id] > 0;
+                                return (
+                                    <Link key={chat.id} to="/admin/messages" onClick={() => {
+                                        setIsMsgOpen(false);
+                                        // Đánh dấu đã đọc đoạn chat này ngay khi nhấn vào
+                                        if (isUnread) {
+                                            const updatedUnread = { ...unreadCounts, [chat.id]: 0 };
+                                            localStorage.setItem('adminUnreadCounts', JSON.stringify(updatedUnread));
+                                            
+                                            const updatedReadTimes = JSON.parse(localStorage.getItem('adminReadTimes') || '{}');
+                                            updatedReadTimes[chat.id] = new Date().toISOString();
+                                            localStorage.setItem('adminReadTimes', JSON.stringify(updatedReadTimes));
+                                            window.dispatchEvent(new Event("adminUnreadUpdated"));
+                                        }
+                                    }} className={`flex items-center gap-3 p-3 rounded-xl transition-colors relative group border-b border-gray-50 last:border-0 ${isUnread ? 'bg-emerald-50/50 hover:bg-emerald-50' : 'hover:bg-gray-50'}`}>
+                                        <div className="w-11 h-11 rounded-full bg-emerald-100 text-primary flex items-center justify-center shrink-0 overflow-hidden border border-emerald-200 shadow-sm">
+                                            {chat.avatar ? <img src={chat.avatar} alt="Avatar" className="w-full h-full object-cover" /> : <span className="font-bold">{chat.name.charAt(0).toUpperCase()}</span>}
                                         </div>
-                                        <p className="text-xs text-gray-500 truncate group-hover:text-primary transition-colors">{chat.lastMessageText}</p>
-                                    </div>
-                                </Link>
-                            )) : <div className="p-6 text-center text-gray-500 text-sm">Chưa có cuộc trò chuyện nào</div>}
+                                        <div className="flex-1 min-w-0 text-left">
+                                            <div className="flex justify-between items-baseline mb-1">
+                                                <h4 className={`font-bold text-[14px] truncate ${isUnread ? 'text-gray-900 font-black' : 'text-gray-800'}`}>{chat.name}</h4>
+                                                {chat.lastMessageTime && <span className="text-[11px] text-gray-400 whitespace-nowrap ml-2">{chat.lastMessageTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>}
+                                            </div>
+                                            <p className={`text-xs truncate transition-colors ${isUnread ? 'text-gray-900 font-bold' : 'text-gray-500 group-hover:text-primary'}`}>{chat.lastMessageText}</p>
+                                        </div>
+                                        {isUnread && <div className="w-2.5 h-2.5 bg-primary rounded-full shrink-0 shadow-sm"></div>}
+                                    </Link>
+                                );
+                            }) : <div className="p-6 text-center text-gray-500 text-sm">Chưa có cuộc trò chuyện nào</div>}
                         </div>
-                        <Link to="/admin/messages" onClick={() => setIsMsgOpen(false)} className="block p-3 text-center text-[14px] text-primary font-bold hover:bg-emerald-50 transition-colors border-t border-gray-50 bg-gray-50/30">Vào trung tâm tin nhắn</Link>
+                        <Link to="/admin/messages" onClick={() => setIsMsgOpen(false)} className="block p-3 text-center text-[14px] text-primary font-bold hover:bg-emerald-50 transition-colors border-t border-gray-50 bg-gray-50/30">Mở tất cả trong Messenger</Link>
                     </div>
                 </div>
             )}

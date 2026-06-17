@@ -7,7 +7,6 @@ import CheckoutShippingPayment from "../../components/user/CheckoutShippingPayme
 import CheckoutSummary from "../../components/user/CheckoutSummary";
 import axios from "axios";
 
-// Theo dõi vị trí con trỏ chuột để hiển thị thông báo
 let cursorX = 0;
 let cursorY = 0;
 if (typeof window !== "undefined") {
@@ -17,10 +16,9 @@ if (typeof window !== "undefined") {
     }, true);
 }
 
-// Cấu hình mặc định cho Toast (Nhỏ gọn, hiển thị tại vị trí click chuột)
 const Toast = Swal.mixin({
     toast: true,
-    position: 'top-start', // Đặt vị trí gốc để kích hoạt container
+    position: 'top-start',
     showConfirmButton: false,
     timer: 2000,
     width: 'auto',
@@ -35,14 +33,12 @@ const Toast = Swal.mixin({
     didOpen: (toast) => {
         const container = Swal.getContainer();
         if (container) {
-            // Tính toán vị trí chuột
             let topPos = cursorY - 50;
             let leftPos = cursorX + 15;
 
             if (topPos < 10) topPos = cursorY + 20;
             if (leftPos + toast.offsetWidth > window.innerWidth) leftPos = window.innerWidth - toast.offsetWidth - 10;
 
-            // Dịch chuyển toàn bộ container đến đúng vị trí chuột
             container.style.transform = `translate(${leftPos}px, ${topPos}px)`;
         }
 
@@ -81,10 +77,9 @@ export default function Checkout() {
                 return;
             }
 
-            // Nếu có dữ liệu "Mua Ngay" truyền từ trang Chi tiết sản phẩm
             if (location.state?.buyNowItem) {
                 setCartItems([location.state.buyNowItem]);
-                return; // Ngừng chạy, không cần gọi API tải giỏ hàng nữa
+                return;
             }
 
             try {
@@ -106,7 +101,7 @@ export default function Checkout() {
                         headers: { Authorization: `Bearer ${token}` }
                     });
                     myDesigns = designsRes.data;
-                } catch (e) {}
+                } catch (e) { }
 
                 const response = await axios.get(`http://localhost:8080/api/cart/${userId}`, {
                     headers: { Authorization: `Bearer ${token}` }
@@ -124,7 +119,7 @@ export default function Checkout() {
                                     return { ...item, image: design.userImage, name: item.product.name };
                                 }
                             }
-                        } catch(e) {}
+                        } catch (e) { }
                     }
                     return item;
                 });
@@ -162,7 +157,6 @@ export default function Checkout() {
                 });
 
                 if (res.data.code === 200 && res.data.data && res.data.data.length > 0) {
-                    // Chỉ lấy 1 phương thức giao hàng duy nhất (Ưu tiên Tiêu chuẩn - service_type_id: 2)
                     const singleService =
                         res.data.data.find((s: any) => s.service_type_id === 2) ||
                         res.data.data[0];
@@ -213,11 +207,10 @@ export default function Checkout() {
 
             setIsCalculatingFee(true);
 
-            // reset UI trước khi gọi API
             setApiShippingFee(null);
             setEstimatedDelivery("Đang tính...");
-        setEstimatedDateFrom(null);
-        setEstimatedDateTo(null);
+            setEstimatedDateFrom(null);
+            setEstimatedDateTo(null);
 
             try {
                 const totalWeight = cartItems.reduce(
@@ -284,24 +277,24 @@ export default function Checkout() {
 
                 if (timeRes.data.code === 200 && timeRes.data.data) {
                     const leadtimeData = timeRes.data.data;
-                    
+
                     // Ưu tiên sử dụng khoảng thời gian từ GHN trả về nếu có
                     if (leadtimeData.leadtime_order?.from_estimate_date && leadtimeData.leadtime_order?.to_estimate_date) {
                         const fromDate = new Date(leadtimeData.leadtime_order.from_estimate_date);
                         let toDate = new Date(leadtimeData.leadtime_order.to_estimate_date);
-                        
+
                         const fromStr = formatDate(fromDate);
                         let toStr = formatDate(toDate);
-                        
+
                         if (fromStr === toStr) {
                             toDate.setDate(toDate.getDate() + 1);
                             toStr = formatDate(toDate);
                         }
-                        
+
                         setEstimatedDelivery(`${fromStr} - ${toStr}`);
                         setEstimatedDateFrom(fromDate);
                         setEstimatedDateTo(toDate);
-                    } 
+                    }
                     // Fallback tính từ leadtime timestamp
                     else if (leadtimeData.leadtime && leadtimeData.leadtime > 0) {
                         const leadtimeDate = new Date(leadtimeData.leadtime * 1000);
@@ -309,20 +302,20 @@ export default function Checkout() {
                             // Tạo ngày bắt đầu giao (thường là sát ngày leadtime)
                             let fromDate = new Date(leadtimeDate);
                             fromDate.setDate(leadtimeDate.getDate() - 1);
-                            
-                            if(fromDate.getTime() < today.getTime()) {
+
+                            if (fromDate.getTime() < today.getTime()) {
                                 fromDate = new Date(today);
                             }
-                            
+
                             let toDate = new Date(leadtimeDate);
                             const fromStr = formatDate(fromDate);
                             let toStr = formatDate(toDate);
-                            
+
                             if (fromStr === toStr) {
                                 toDate.setDate(toDate.getDate() + 1);
                                 toStr = formatDate(toDate);
                             }
-                            
+
                             setEstimatedDelivery(`${fromStr} - ${toStr}`);
                             setEstimatedDateFrom(fromDate);
                             setEstimatedDateTo(toDate);
@@ -396,9 +389,15 @@ export default function Checkout() {
             paymentMethod: paymentMethod.toUpperCase(),
             promotionCode: promotionCodes.length > 0 ? promotionCodes.join(',') : null,
             note: note.trim(),
-            estimatedDeliveryTimeFrom: estimatedDateFrom ? estimatedDateFrom.toISOString() : null,
-            estimatedDeliveryTimeTo: estimatedDateTo ? estimatedDateTo.toISOString() : null
+            estimatedDeliveryTimeFrom: estimatedDateFrom ? new Date(estimatedDateFrom.getTime() - (estimatedDateFrom.getTimezoneOffset() * 60000)).toISOString().slice(0, 19) : null,
+            estimatedDeliveryTimeTo: estimatedDateTo ? new Date(estimatedDateTo.getTime() - (estimatedDateTo.getTimezoneOffset() * 60000)).toISOString().slice(0, 19) : null
         };
+        console.log("ORDER PAYLOAD:", JSON.stringify(orderPayload, null, 2));
+        console.log("ITEMS CHECK:", cartItems.map(item => ({
+            productId: item.productId || item.product?.id,
+            quantity: item.quantity,
+            raw: item
+        })));
 
         try {
             const token = localStorage.getItem("token");
@@ -412,16 +411,23 @@ export default function Checkout() {
                 return;
             }
 
-            // Báo cho Navbar (Header) biết để cập nhật lại số lượng icon giỏ hàng
             window.dispatchEvent(new Event("cartUpdated"));
 
-            // Nếu là COD thì báo thành công và chuyển trang
             showToast('success', 'Đặt hàng thành công!');
             setTimeout(() => navigate('/success', { state: { order: response.data } }), 1500);
         } catch (error: any) {
-            console.error("Lỗi khi đặt hàng:", error);
-            showToast('error', error.response?.data?.message || 'Có lỗi xảy ra khi đặt hàng');
+            const status = error.response?.status;
+            const errorData = error.response?.data;
+
+            if (status === 409) {
+                showToast('error', errorData?.message || 'Sản phẩm đã hết hàng!');
+            } else if (status === 400) {
+                showToast('error', errorData?.message || 'Đơn hàng không hợp lệ!');
+            } else {
+                showToast('error', 'Có lỗi xảy ra khi đặt hàng!');
+            }
         }
+
     };
 
     return (
@@ -439,7 +445,6 @@ export default function Checkout() {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-                        {/* Left Side: Shipping & Payment */}
                         <div className="lg:col-span-7 space-y-8">
 
                             {/* 1. Shipping Address */}
@@ -464,7 +469,7 @@ export default function Checkout() {
                             />
                         </div>
 
-                        {/* Right Side: Order Summary */}
+                        {/*Order Summary */}
                         <div className="lg:col-span-5">
                             <CheckoutSummary
                                 cartItems={cartItems}
