@@ -56,7 +56,6 @@ export default function AdminHeaderMessages({ user }: { user: any }) {
                 usersRes.data.forEach((u: any) => { rolesMap[u.id] = u.role; });
                 userRolesMapRef.current = rolesMap;
 
-                const readTimes = JSON.parse(localStorage.getItem('adminReadTimes') || '{}');
                 const unreadCountsToSave: any = {};
                 let totalUnread = 0;
 
@@ -67,7 +66,8 @@ export default function AdminHeaderMessages({ user }: { user: any }) {
                     const customer = usersRes.data.find((u: any) => u.id === c.customerId);
                     let lastMsg = c.lastMessage;
                     let unreadCountForConv = 0;
-                    const rTime = readTimes[c.id] ? new Date(readTimes[c.id]).getTime() : 0;
+                    const currentReadTimes = JSON.parse(localStorage.getItem('adminReadTimes') || '{}');
+                    const rTime = currentReadTimes[c.id] ? new Date(currentReadTimes[c.id]).getTime() : 0;
 
                     try {
                         const msgRes = await axios.get(`http://localhost:8080/api/messages/conversation/${c.id}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -125,11 +125,9 @@ export default function AdminHeaderMessages({ user }: { user: any }) {
                     onConnect: () => {
                         stompClient!.subscribe('/topic/admin/messages', (message) => {
                             const msg = JSON.parse(message.body);
-                            const currentUserStr = localStorage.getItem("user");
-                            const currentUserId = currentUserStr ? JSON.parse(currentUserStr).id : null;
                             const convId = msg.conversationId || msg.conversation_id;
                             const actualMsgSenderId = msg.senderId || msg.sender_id;
-                            const msgSenderRole = userRolesMapRef.current[actualMsgSenderId] || (String(actualMsgSenderId) === String(currentUserId) ? 'ADMIN' : 'USER');
+                            const msgSenderRole = userRolesMapRef.current[actualMsgSenderId] || (user && String(actualMsgSenderId) === String(user.id) ? 'ADMIN' : 'USER');
                             const isFromAdmin = msgSenderRole === 'ADMIN';
 
                             let newText = msg.content || msg.text;
@@ -225,7 +223,19 @@ export default function AdminHeaderMessages({ user }: { user: any }) {
                             {recentChats.length > 0 ? recentChats.map(chat => {
                                 const isUnread = unreadCounts[chat.id] > 0;
                                 return (
-                                    <Link key={chat.id} to="/admin/messages" onClick={() => setIsMsgOpen(false)} className={`flex items-center gap-3 p-3 rounded-xl transition-colors relative group border-b border-gray-50 last:border-0 ${isUnread ? 'bg-emerald-50/50 hover:bg-emerald-50' : 'hover:bg-gray-50'}`}>
+                                    <Link key={chat.id} to="/admin/messages" onClick={() => {
+                                        setIsMsgOpen(false);
+                                        // Đánh dấu đã đọc đoạn chat này ngay khi nhấn vào
+                                        if (isUnread) {
+                                            const updatedUnread = { ...unreadCounts, [chat.id]: 0 };
+                                            localStorage.setItem('adminUnreadCounts', JSON.stringify(updatedUnread));
+                                            
+                                            const updatedReadTimes = JSON.parse(localStorage.getItem('adminReadTimes') || '{}');
+                                            updatedReadTimes[chat.id] = new Date().toISOString();
+                                            localStorage.setItem('adminReadTimes', JSON.stringify(updatedReadTimes));
+                                            window.dispatchEvent(new Event("adminUnreadUpdated"));
+                                        }
+                                    }} className={`flex items-center gap-3 p-3 rounded-xl transition-colors relative group border-b border-gray-50 last:border-0 ${isUnread ? 'bg-emerald-50/50 hover:bg-emerald-50' : 'hover:bg-gray-50'}`}>
                                         <div className="w-11 h-11 rounded-full bg-emerald-100 text-primary flex items-center justify-center shrink-0 overflow-hidden border border-emerald-200 shadow-sm">
                                             {chat.avatar ? <img src={chat.avatar} alt="Avatar" className="w-full h-full object-cover" /> : <span className="font-bold">{chat.name.charAt(0).toUpperCase()}</span>}
                                         </div>

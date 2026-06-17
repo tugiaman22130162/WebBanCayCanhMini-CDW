@@ -132,6 +132,7 @@ public class MessageService {
         
         return MessageResponse.builder()
                 .id(message.getId())
+                .conversationId(message.getConversationId())
                 .senderId(message.getSenderId())
                 .content(message.getContent())
                 .type(message.getType() != null ? message.getType().name() : "TEXT")

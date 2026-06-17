@@ -63,6 +63,8 @@ export default function Message() {
     };
 
     const handleRevoke = async (id: number) => {
+        // Tạm thời ẩn/đánh dấu thu hồi ở giao diện trước cho mượt
+        setMessages(prev => prev.map(msg => msg.id === id ? { ...msg, deletedAt: new Date().toISOString() } : msg));
         try {
             const token = localStorage.getItem('token');
             await axios.delete(`http://localhost:8080/api/messages/${id}/revoke`, {
@@ -70,6 +72,7 @@ export default function Message() {
             });
         } catch (error) {
             console.error("Lỗi thu hồi tin nhắn", error);
+            // Tùy chọn: Hoàn tác lại state nếu API lỗi
         }
     };
 

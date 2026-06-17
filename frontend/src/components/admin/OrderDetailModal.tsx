@@ -208,26 +208,28 @@ export default function OrderDetailModal({ isOpen, onClose, orderId, onSuccess }
                                             className="px-3 py-1.5 border border-gray-300 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm font-semibold text-gray-700"
                                         >
                                             <option value={order.status}>{getStatusLabel(order.status)}</option>
-                                            {order.paymentMethod?.toUpperCase() === 'VNPAY' ? (
-                                                order.status !== 'DELIVERED' && <option value="DELIVERED">Đã giao</option>
-                                            ) : (
+                                            {order.status === 'PENDING' && (
                                                 <>
-                                                    {order.status !== 'CONFIRMED' && <option value="CONFIRMED">Đã xác nhận</option>}
-                                                    {order.status !== 'DELIVERED' && <option value="DELIVERED">Đã giao</option>}
-                                                    {order.status === 'PENDING' && <option value="CANCELLED">Đã hủy</option>}
+                                                    <option value="CONFIRMED">Đã xác nhận</option>
+                                                    <option value="DELIVERED">Đã giao</option>
+                                                    <option value="CANCELLED">Đã hủy</option>
                                                 </>
                                             )}
+                                            {order.status === 'CONFIRMED' && <option value="DELIVERED">Đã giao</option>}
+                                            {order.status === 'SHIPPING' && <option value="DELIVERED">Đã giao</option>}
                                         </select>
                                     )}
                                 </div>
                                 <div className="flex gap-2">
                                     {!isEditingStatus ? (
-                                        <button 
-                                            onClick={() => { setSelectedStatus(order.status); setIsEditingStatus(true); }} 
-                                            className="px-4 py-2 text-sm font-bold bg-primary text-white rounded-lg hover:bg-[#2f5146] transition-colors shadow-sm"
-                                        >
-                                            Cập nhật trạng thái
-                                        </button>
+                                        order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && (
+                                            <button 
+                                                onClick={() => { setSelectedStatus(order.status); setIsEditingStatus(true); }} 
+                                                className="px-4 py-2 text-sm font-bold bg-primary text-white rounded-lg hover:bg-[#2f5146] transition-colors shadow-sm"
+                                            >
+                                                Cập nhật trạng thái
+                                            </button>
+                                        )
                                     ) : (
                                         <>
                                             <button onClick={() => setIsEditingStatus(false)} disabled={isUpdating} className="px-4 py-2 text-sm font-bold bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors shadow-sm">

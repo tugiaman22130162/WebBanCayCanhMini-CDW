@@ -161,12 +161,15 @@ export default function useChatWebSocket(user: any, isLoggedIn: boolean) {
                         });
 
                         stompClient!.subscribe('/topic/conversation/update', (message) => {
-                            const msg = JSON.parse(message.body);
-                            setMessages(prev => prev.map(m => m.id === msg.id ? {
-                                ...m, text: msg.content, type: msg.type || 'TEXT', isDeleted: msg.deletedAt, isEdited: msg.isEdited, 
-                                updatedAt: msg.updatedAt || msg.updated_at || new Date(),
-                                reaction: msg.reaction, senderName: msg.senderName, senderAvatar: msg.senderAvatar, referenceId: msg.referenceId || msg.reference_id } as any
-                            : m));
+                            const updatedMsgData = JSON.parse(message.body);
+                            // Chỉ cập nhật tin nhắn nếu nó thuộc về cuộc hội thoại hiện tại
+                            if (currentConversationId && updatedMsgData.conversationId === currentConversationId) {
+                                setMessages(prev => prev.map(m => m.id === updatedMsgData.id ? {
+                                    ...m, text: updatedMsgData.content, type: updatedMsgData.type || 'TEXT', isDeleted: updatedMsgData.deletedAt, isEdited: updatedMsgData.isEdited, 
+                                    updatedAt: updatedMsgData.updatedAt || updatedMsgData.updated_at || new Date(),
+                                    reaction: updatedMsgData.reaction, senderName: updatedMsgData.senderName, senderAvatar: updatedMsgData.senderAvatar, referenceId: updatedMsgData.referenceId || updatedMsgData.reference_id 
+                                } as any : m));
+                            }
                         });
 
                         stompClient!.subscribe(`/topic/conversation/${currentConversationId}/typing`, (message) => {

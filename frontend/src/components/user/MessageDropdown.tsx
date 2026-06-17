@@ -54,10 +54,6 @@ export default function MessageDropdown() {
                     }
                 }
 
-                const readTimes = JSON.parse(localStorage.getItem("userReadTimes") || "{}");
-                const readTimeStr = readTimes[convId];
-                const readTimeMs = readTimeStr ? new Date(readTimeStr).getTime() : Date.now();
-
                 const msgRes = await axios.get(`http://localhost:8080/api/messages/conversation/${convId}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
@@ -70,6 +66,11 @@ export default function MessageDropdown() {
                 const allAdminMsgs = msgRes.data.filter((m: any) => String(m.senderId) !== String(currentUserId));
                 
                 allAdminMsgs.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+                // Đọc localStorage SAU khi gọi API để tránh race condition ghi đè trạng thái đã đọc
+                const readTimes = JSON.parse(localStorage.getItem("userReadTimes") || "{}");
+                const readTimeStr = readTimes[convId];
+                const readTimeMs = readTimeStr ? new Date(readTimeStr).getTime() : Date.now();
                 
                 const formattedRecent = allAdminMsgs.slice(0, 10).map((m: any) => {
                     let text = m.content || m.text;
@@ -82,13 +83,18 @@ export default function MessageDropdown() {
                         id: m.id,
                         text: text,
                         time: new Date(m.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-                        senderAvatar: m.senderAvatar
+                        senderAvatar: '/logo.png'
                     };
                 });
                 setRecentMessages(formattedRecent);
 
-                const unreadMsgs = allAdminMsgs.filter((m: any) => new Date(m.createdAt).getTime() > readTimeMs);
-                setUnreadMessageCount(unreadMsgs.length);
+                const unreadCounts = JSON.parse(localStorage.getItem("userUnreadCounts") || "{}");
+                if (unreadCounts[convId] !== undefined) {
+                    setUnreadMessageCount(unreadCounts[convId]);
+                } else {
+                    const unreadMsgs = allAdminMsgs.filter((m: any) => new Date(m.createdAt).getTime() > readTimeMs);
+                    setUnreadMessageCount(unreadMsgs.length);
+                }
 
                 const socket = new SockJS('http://localhost:8080/ws');
                 stompClient = new Client({
@@ -111,7 +117,7 @@ export default function MessageDropdown() {
                                     id: msg.id,
                                     text: newText,
                                     time: new Date(msg.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-                                    senderAvatar: msg.senderAvatar
+                                    senderAvatar: '/logo.png'
                                 };
 
                                 setRecentMessages(prev => {
@@ -154,6 +160,7 @@ export default function MessageDropdown() {
     }, [isLoggedIn]);
 
     const handleMarkAllAsRead = async () => {
+        setUnreadMessageCount(0); // Cập nhật UI ngay lập tức để ẩn chấm đỏ
         const token = localStorage.getItem('token');
         if (!token) return;
         try {
@@ -219,7 +226,18 @@ export default function MessageDropdown() {
                                 <Link 
                                     key={msg.id}
                                     to="/message" 
-                                    onClick={() => setIsMsgOpen(false)}
+                                    onClick={() => {
+                                        setIsMsgOpen(false);
+                                        setUnreadMessageCount(0); // Xóa thông báo ngay khi nhấn xem
+                                        
+                                        const readTimes = JSON.parse(localStorage.getItem("userReadTimes") || "{}");
+                                        const unreadCounts = JSON.parse(localStorage.getItem("userUnreadCounts") || "{}");
+                                        Object.keys(unreadCounts).forEach(k => unreadCounts[k] = 0);
+                                        Object.keys(readTimes).forEach(k => readTimes[k] = new Date().toISOString());
+                                        localStorage.setItem("userUnreadCounts", JSON.stringify(unreadCounts));
+                                        localStorage.setItem("userReadTimes", JSON.stringify(readTimes));
+                                        window.dispatchEvent(new Event("userUnreadUpdated"));
+                                    }}
                                     className={`flex items-center gap-3 p-3 rounded-xl transition-colors relative group border-b border-gray-50 last:border-0 ${idx < unreadMessageCount ? 'bg-emerald-50/50 hover:bg-emerald-50' : 'hover:bg-gray-50'}`}
                                 >
                                     <div className="w-11 h-11 rounded-full bg-emerald-100 text-primary flex items-center justify-center shrink-0 overflow-hidden border border-emerald-200 shadow-sm">

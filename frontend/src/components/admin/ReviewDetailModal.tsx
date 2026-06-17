@@ -143,9 +143,11 @@ export default function ReviewDetailModal({ isOpen, onClose, review, onSuccess }
                                 </div>
                             </div>
                         </div>
-                        <div className="flex text-yellow-400 mb-2">
+                        <div className="flex gap-0.5 mb-2">
                             {[...Array(5)].map((_, i) => (
-                                <span key={i} className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: i < review.rating ? "'FILL' 1" : "'FILL' 0" }}>star</span>
+                                <svg key={i} viewBox="0 0 24 24" fill="currentColor" className={`w-4 h-4 ${i < review.rating ? 'text-yellow-400' : 'text-gray-200'}`}>
+                                    <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                                </svg>
                             ))}
                         </div>
                         <p className="text-sm text-gray-700 italic">"{review.comment || 'Không có bình luận'}"</p>

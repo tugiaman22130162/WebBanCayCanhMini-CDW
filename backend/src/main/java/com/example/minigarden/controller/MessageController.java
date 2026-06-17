@@ -104,7 +104,9 @@ public class MessageController {
      @PutMapping("/{messageId}/react")
     public ResponseEntity<?> reactMessage(@PathVariable Integer messageId, @RequestBody java.util.Map<String, String> body) {
         try {
-            return ResponseEntity.ok(messageService.reactMessage(messageId, body.get("reaction")));
+            MessageResponse response = messageService.reactMessage(messageId, body.get("reaction"));
+            messagingTemplate.convertAndSend("/topic/conversation/update", Objects.requireNonNull(response));
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
         }

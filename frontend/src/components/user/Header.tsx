@@ -134,9 +134,7 @@ export default function Header() {
     // logout
     const handleLogout = () => {
         setIsProfileOpen(false);
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        logout(); // Gọi hàm logout từ Context
+        logout(); 
     };
 
     // Hàm lấy chữ cái đầu của tên
