@@ -474,7 +474,7 @@ const TerrariumBuilder: React.FC = () => {
                             <p className="text-sm font-bold text-gray-800">1. Chọn loại bình</p>
                             <span className="text-xs font-bold text-primary">{selectedContainer.price.toLocaleString('vi-VN')}đ</span>
                         </div>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="flex flex-wrap gap-3">
                             {containers.map(c => (
                                 <button
                                     key={c.id}
@@ -493,7 +493,7 @@ const TerrariumBuilder: React.FC = () => {
                             <p className="text-sm font-bold text-gray-800">2. Chọn đất nền</p>
                             <span className="text-xs font-bold text-primary">{selectedSoil.price.toLocaleString('vi-VN')}đ</span>
                         </div>
-                        <div className="flex gap-4">
+                        <div className="flex flex-wrap gap-4">
                             {soils.map(s => (
                                 <div key={s.id} className="flex flex-col items-center gap-2 cursor-pointer" onClick={() => setSelectedSoil(s)}>
                                     <div

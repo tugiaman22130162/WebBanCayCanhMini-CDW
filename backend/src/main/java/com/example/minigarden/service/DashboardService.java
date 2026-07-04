@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 import com.example.minigarden.entity.OrderStatus;
 import com.example.minigarden.entity.Order;
 import com.example.minigarden.entity.Products;
+import com.example.minigarden.entity.User;
 import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -68,22 +69,25 @@ public class DashboardService {
         long totalOrders;
         Double totalRevenue;
         long pendingOrders;
+        long totalUsers;
 
         if (startDate != null) {
             totalOrders = orderRepository.countByCreatedAtBetween(startDate, endDate);
             Double revenue = orderRepository.getTotalRevenueByCreatedAtBetween(startDate, endDate);
             totalRevenue = revenue != null ? revenue : 0.0;
             pendingOrders = orderRepository.countByStatusAndCreatedAtBetween(OrderStatus.PENDING, startDate, endDate);
+            totalUsers = userRepository.countByCreatedAtBetween(startDate, endDate);
         } else {
             totalOrders = orderRepository.count();
             totalRevenue = orderRepository.getTotalRevenue() != null ? orderRepository.getTotalRevenue() : 0.0;
             pendingOrders = orderRepository.countByStatus(OrderStatus.PENDING);
+            totalUsers = userRepository.count();
         }
 
         Map<String, Object> response = new HashMap<>();
         response.put("totalProducts", (int) productRepository.count());
         response.put("totalOrders", (int) totalOrders);
-        response.put("totalUsers", (int) userRepository.count());
+        response.put("totalUsers", (int) totalUsers);
         response.put("totalRevenue", totalRevenue);
         response.put("pendingOrders", (int) pendingOrders);
 
@@ -153,7 +157,7 @@ public class DashboardService {
         List<Map<String, Object>> userGrowth = new ArrayList<>();
         
         if (startDate == null) {
-            YearMonth currentMonth = YearMonth.now();
+            YearMonth currentMonth = YearMonth.from(endDate);
             for (int i = 5; i >= 0; i--) {
                 YearMonth targetMonth = currentMonth.minusMonths(i);
                 LocalDateTime startOfM = targetMonth.atDay(1).atStartOfDay();
@@ -165,10 +169,17 @@ public class DashboardService {
                 revMap.put("value", rev != null ? rev : 0);
                 revenueGrowth.add(revMap);
                 
-                long newUsersCount = userRepository.countByCreatedAtBetween(startOfM, endOfM);
+                List<User> newUsers = userRepository.findByCreatedAtBetween(startOfM, endOfM);
                 Map<String, Object> usrMap = new HashMap<>();
                 usrMap.put("label", "T" + targetMonth.getMonthValue());
-                usrMap.put("value", (int) newUsersCount); 
+                usrMap.put("value", newUsers.size()); 
+                usrMap.put("users", newUsers.stream().map(u -> {
+                    Map<String, Object> userDetail = new HashMap<>();
+                    userDetail.put("id", u.getId());
+                    userDetail.put("fullName", u.getFullName());
+                    userDetail.put("email", u.getEmail());
+                    return userDetail;
+                }).collect(Collectors.toList()));
                 userGrowth.add(usrMap);
             }
         } else {
@@ -185,36 +196,52 @@ public class DashboardService {
                     revMap.put("value", rev != null ? rev : 0);
                     revenueGrowth.add(revMap);
                     
-                    long newUsersCount = userRepository.countByCreatedAtBetween(startOfDay, endOfDay);
+                    List<User> newUsers = userRepository.findByCreatedAtBetween(startOfDay, endOfDay);
                     Map<String, Object> usrMap = new HashMap<>();
                     usrMap.put("label", startOfDay.format(DateTimeFormatter.ofPattern("dd/MM")));
-                    usrMap.put("value", (int) newUsersCount); 
+                    usrMap.put("value", newUsers.size()); 
+                    usrMap.put("users", newUsers.stream().map(u -> {
+                        Map<String, Object> userDetail = new HashMap<>();
+                        userDetail.put("id", u.getId());
+                        userDetail.put("fullName", u.getFullName());
+                        userDetail.put("email", u.getEmail());
+                        return userDetail;
+                    }).collect(Collectors.toList()));
                     userGrowth.add(usrMap);
                 }
             } else {
                 YearMonth startMonth = YearMonth.from(startDate);
                 YearMonth endMonth = YearMonth.from(endDate);
-                long monthsBetween = java.time.temporal.ChronoUnit.MONTHS.between(startMonth, endMonth);
                 
-                for (int i = 0; i <= monthsBetween; i++) {
-                    YearMonth targetMonth = startMonth.plusMonths(i);
-                    LocalDateTime startOfM = targetMonth.atDay(1).atStartOfDay();
-                    LocalDateTime endOfM = targetMonth.atEndOfMonth().atTime(LocalTime.MAX);
+                YearMonth currentLoopMonth = startMonth;
+                while (!currentLoopMonth.isAfter(endMonth)) {
+                    LocalDateTime startOfM = currentLoopMonth.atDay(1).atStartOfDay();
+                    LocalDateTime endOfM = currentLoopMonth.atEndOfMonth().atTime(LocalTime.MAX);
                     
-                    if (startOfM.isBefore(startDate)) startOfM = startDate;
+                    // Điều chỉnh ngày bắt đầu và kết thúc cho tháng đầu tiên và cuối cùng
+                    if (currentLoopMonth.equals(startMonth)) startOfM = startDate;
+                    // Luôn đảm bảo endOfM không vượt quá endDate tổng thể
                     if (endOfM.isAfter(endDate)) endOfM = endDate;
 
                     Double rev = orderRepository.getTotalRevenueByCreatedAtBetween(startOfM, endOfM);
                     Map<String, Object> revMap = new HashMap<>();
-                    revMap.put("label", "T" + targetMonth.getMonthValue());
+                    revMap.put("label", "T" + currentLoopMonth.getMonthValue());
                     revMap.put("value", rev != null ? rev : 0);
                     revenueGrowth.add(revMap);
                     
-                    long newUsersCount = userRepository.countByCreatedAtBetween(startOfM, endOfM);
+                    List<User> newUsers = userRepository.findByCreatedAtBetween(startOfM, endOfM);
                     Map<String, Object> usrMap = new HashMap<>();
-                    usrMap.put("label", "T" + targetMonth.getMonthValue());
-                    usrMap.put("value", (int) newUsersCount); 
+                    usrMap.put("label", "T" + currentLoopMonth.getMonthValue());
+                    usrMap.put("value", newUsers.size()); 
+                    usrMap.put("users", newUsers.stream().map(u -> {
+                        Map<String, Object> userDetail = new HashMap<>();
+                        userDetail.put("id", u.getId());
+                        userDetail.put("fullName", u.getFullName());
+                        userDetail.put("email", u.getEmail());
+                        return userDetail;
+                    }).collect(Collectors.toList()));
                     userGrowth.add(usrMap);
+                    currentLoopMonth = currentLoopMonth.plusMonths(1);
                 }
             }
         }

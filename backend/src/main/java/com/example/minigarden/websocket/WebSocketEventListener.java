@@ -44,7 +44,10 @@ public class WebSocketEventListener {
                     System.out.println("ONLINE USERS = " + onlineUserTracker.getOnlineUsers());
                     
                     // Broadcast cho tất cả mọi người biết user này vừa online
-                    messagingTemplate.convertAndSend("/topic/online-status", Map.of("userId", userId, "status", "ONLINE"));
+                    Map<String, Object> payload = new ConcurrentHashMap<>();
+                    payload.put("userId", userId);
+                    payload.put("status", "ONLINE");
+                    messagingTemplate.convertAndSend("/topic/online-status", payload);
                 });
             } catch (Exception e) {
                 System.out.println("Invalid JWT in WebSocket Connect");
@@ -64,7 +67,10 @@ public class WebSocketEventListener {
             System.out.println("ONLINE USERS = " + onlineUserTracker.getOnlineUsers());
             
             // Broadcast cho tất cả mọi người biết user này vừa offline
-            messagingTemplate.convertAndSend("/topic/online-status", Map.of("userId", userId, "status", "OFFLINE"));
+            Map<String, Object> payload = new ConcurrentHashMap<>();
+            payload.put("userId", userId);
+            payload.put("status", "OFFLINE");
+            messagingTemplate.convertAndSend("/topic/online-status", payload);
         }
     }
 }
