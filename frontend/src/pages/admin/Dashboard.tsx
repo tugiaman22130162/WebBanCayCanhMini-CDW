@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import Swal from "sweetalert2";
+import Swal from "sweetalert2"; 
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import AdminHeader from "../../components/admin/AdminHeader";
 import AdminSidebar from "../../components/admin/AdminSidebar";
@@ -128,6 +128,31 @@ export default function Dashboard() {
     const txFailedPct = txTotal === 0 ? 0 : Math.round((stats.transactionStats.failed / txTotal) * 100);
     const txRefundedPct = txTotal === 0 ? 0 : Math.round(((stats.transactionStats.refunded || 0) / txTotal) * 100);
     const failedEndPct = txSuccessPct + txFailedPct;
+
+    // Custom Tooltip cho biểu đồ người dùng
+    const CustomUserTooltip = ({ active, payload, label }: any) => {
+        if (active && payload && payload.length) {
+            const data = payload[0].payload; // Lấy toàn bộ data của điểm đó
+            const userCount = data.value;
+            const userList = data.users || [];
+
+            return (
+                <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100 text-sm">
+                    <p className="font-bold text-gray-800 mb-2 border-b pb-1">{`Thời gian: ${label}`}</p>
+                    <p className="font-semibold text-blue-600 mb-2">{`Số người dùng mới: ${userCount}`}</p>
+                    {userList.length > 0 && (
+                        <div className="max-h-40 overflow-y-auto pr-2">
+                            <p className="font-bold text-xs uppercase text-gray-500 mb-1">Danh sách:</p>
+                            <ul className="list-disc list-inside space-y-1 text-gray-700">
+                                {userList.map((user: any, index: number) => <li key={index}>{user.fullName}</li>)}
+                            </ul>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        return null;
+    };
 
     return (
         <div className="h-screen bg-background text-on-surface flex overflow-hidden font-[Plus_Jakarta_Sans]">
@@ -264,9 +289,8 @@ export default function Dashboard() {
                                         <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
                                         <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
                                         <Tooltip 
-                                            cursor={{ fill: '#f3f4f6' }}
-                                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                                            formatter={(value: any) => [value, 'Người dùng']}
+                                            cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
+                                            content={<CustomUserTooltip />}
                                         />
                                         <Bar dataKey="value" fill="#3b82f6" radius={[6, 6, 6, 6]} />
                                     </BarChart>
