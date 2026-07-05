@@ -287,7 +287,7 @@ export default function Dashboard() {
                                     <BarChart data={stats.userGrowthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barSize={32}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                                         <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} allowDecimals={false} />
                                         <Tooltip 
                                             cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
                                             content={<CustomUserTooltip />}

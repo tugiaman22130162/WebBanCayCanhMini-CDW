@@ -9,12 +9,15 @@ import com.example.minigarden.entity.UserStatus;
 import com.example.minigarden.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.concurrent.ThreadLocalRandom;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import com.example.minigarden.entity.AuthProvider;
 import com.example.minigarden.entity.Role;
@@ -22,11 +25,14 @@ import com.example.minigarden.entity.Role;
 @Service
 @RequiredArgsConstructor
 public class UserService {
-
     private final UserRepository userRepository;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+
+    // Cache để lưu trữ tạm thời thông tin đăng ký và OTP
+    private static final Map<String, RegisterRequest> otpCache = new ConcurrentHashMap<>();
+    private static final Map<String, LocalDateTime> otpExpiryCache = new ConcurrentHashMap<>();
 
     public List<UserResponse> getAllUsers() {
         return userRepository.findAll().stream().map(user -> UserResponse.builder()
@@ -61,6 +67,48 @@ public class UserService {
     }
 
     // register
+    @Transactional
+    public void requestRegistrationOtp(String email) {
+        if (userRepository.findByEmail(email).isPresent()) {
+            throw new RuntimeException("Email đã được sử dụng.");
+        }
+
+        String otp = String.valueOf(ThreadLocalRandom.current().nextInt(100000, 999999));
+        // Lưu OTP và thời gian hết hạn vào cache 
+        otpCache.put(email, new RegisterRequest(null, email, null, null, otp));
+        otpExpiryCache.put(email, LocalDateTime.now().plusMinutes(5));
+
+        emailService.sendOtpEmail(email, otp);
+    }
+
+    @Transactional
+    public void completeRegistration(RegisterRequest request) {
+        RegisterRequest cachedRequest = otpCache.get(request.getEmail());
+        LocalDateTime expiryTime = otpExpiryCache.get(request.getEmail());
+
+        if (cachedRequest == null || expiryTime == null || expiryTime.isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Mã OTP đã hết hạn hoặc không hợp lệ. Vui lòng thử lại.");
+        }
+
+        if (!cachedRequest.getOtp().equals(request.getOtp())) {
+            throw new RuntimeException("Mã OTP không chính xác.");
+        }
+
+        User user = new User();
+        user.setFullName(request.getFullName());
+        user.setEmail(request.getEmail());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setRole(Role.USER);
+        user.setStatus(UserStatus.ACTIVE);
+        user.setProvider(AuthProvider.LOCAL);
+
+        userRepository.save(user);
+
+        // Xóa OTP khỏi cache sau khi hoàn tất
+        otpCache.remove(request.getEmail());
+        otpExpiryCache.remove(request.getEmail());
+    }
+
     public void register(RegisterRequest req) {
 
         if (userRepository.existsByEmail(req.getEmail())) {
@@ -192,6 +240,21 @@ public class UserService {
         userRepository.save(Objects.requireNonNull(user));
     }
 
+    @Transactional
+    public void verifyAccount(String email, String otp) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
+
+        if (user.getResetToken() == null || !user.getResetToken().equals(otp) || user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Mã OTP không hợp lệ hoặc đã hết hạn.");
+        }
+
+        // Logic kích hoạt tài khoản nếu cần
+        // user.setEnabled(true);
+        user.setResetToken(null);
+        user.setResetTokenExpiry(null);
+        userRepository.save(user);
+    }
     // Logic khóa / mở khóa User
     public UserResponse toggleUserStatus(Integer id) {
         User user = userRepository.findById(Objects.requireNonNull(id))

@@ -38,6 +38,7 @@ import TerrariumManagement from "./pages/admin/TerrariumManagement"
 import Message from "./pages/user/Message"
 import AdminMessage from "./pages/admin/AdminMessage"
 import FeaturedDesignsPage from "./pages/user/FeaturedDesignsPage"
+import VerifyOtp from "./pages/user/VerifyOtp"
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -81,6 +82,7 @@ export default function App() {
           <Route path="/news" element={<News />} />
           <Route path="/message" element={<Message />} />
           <Route path="/featured-designs" element={<FeaturedDesignsPage />} />
+          <Route path="/verify-otp" element={<VerifyOtp />} />
 
           {/* ADMIN */}
           <Route path="/admin/users" element={<UserManagement />} />

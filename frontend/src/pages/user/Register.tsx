@@ -19,6 +19,7 @@ export default function Register() {
     });
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
     const searchParams = new URLSearchParams(location.search);
@@ -97,17 +98,24 @@ export default function Register() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        // Chỉ submit khi không có lỗi từ việc kiểm tra email và form hợp lệ
         if (validateForm()) {
+            setIsLoading(true);
             try {
-                await axios.post("http://localhost:8080/api/auth/register", formData);
-                showSuccessToast('Đăng ký thành công! Vui lòng đăng nhập.', 2000).then(() => {
-                    navigate(redirectUrl ? `/login?redirect=${encodeURIComponent(redirectUrl)}` : "/login");
+                //  yêu cầu backend gửi mã OTP, không tạo tài khoản
+                await axios.post(`http://localhost:8080/api/auth/request-register-otp?email=${formData.email}`);
+                
+                // Chuyển sang trang xác thực, mang theo toàn bộ thông tin form
+                showSuccessToast('Đã gửi mã xác thực đến email của bạn!', 2000).then(() => {
+                    navigate('/verify-otp', { state: { formData: formData, purpose: 'REGISTER' } });
                 });
             } catch (error: any) {
                 showErrorToast(
                     error.response?.data?.message || 'Đăng ký thất bại, vui lòng thử lại!',
                     2500
                 );
+            } finally {
+                setIsLoading(false);
             }
         }
     };
@@ -124,7 +132,6 @@ export default function Register() {
     return (
         <div className="min-h-screen bg-[#222] flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
 
-            {/* Ảnh nền phủ giới hạn ở size Full HD (1920x1080) */}
             <div className="absolute inset-0 z-0 flex items-center justify-center">
                 <img
                     src="/images/bg_forgot.png"
@@ -249,8 +256,11 @@ export default function Register() {
 
                         <button
                             type="submit"
-                            className="w-full py-4 mt-2 bg-gradient-to-br from-primary to-primary-container text-on-primary font-semibold rounded-full shadow-md hover:shadow-lg hover:scale-[1.02] transition-all"                        >
-                            Tạo tài khoản ngay
+                            disabled={isLoading}
+                            className="w-full py-4 mt-2 bg-gradient-to-br from-primary to-primary-container text-on-primary font-semibold rounded-full shadow-md hover:shadow-lg hover:scale-[1.02] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                        >
+                            {isLoading && <span className="material-symbols-outlined animate-spin text-xl">autorenew</span>}
+                            {isLoading ? "Đang xử lý..." : "Tạo tài khoản ngay"}
                         </button>
                     </form>
 
