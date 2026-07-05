@@ -40,9 +40,9 @@ export default function ForgotPassword() {
             setIsLoading(true);
             try {
                 const response = await axios.post(`http://localhost:8080/api/auth/forgot-password?email=${formData.email}`);
-                showSuccessToast(response.data.message || 'Đã gửi mã OTP khôi phục mật khẩu!', 3000);
-                // Chuyển hướng sang trang nhập OTP, truyền kèm email
-                navigate('/reset-password', { state: { email: formData.email } });
+                showSuccessToast(response.data.message || 'Đã gửi mã OTP khôi phục mật khẩu!', 2000);
+                // Chuyển hướng sang trang nhập OTP
+                navigate('/verify-otp', { state: { email: formData.email, purpose: 'RESET_PASSWORD' } });
             } catch (error: any) {
                 showErrorToast(
                     error.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại sau!',

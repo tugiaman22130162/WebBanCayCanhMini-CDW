@@ -29,4 +29,17 @@ public class EmailService {
                         + "\n\nMiniGarden");
         mailSender.send(message);
     }
+
+    public void sendOtpEmail(String to, String otp) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(to);
+        message.setSubject("Xác thực tài khoản MiniGarden");
+        message.setText(
+                "Xin chào,\n\n"
+                        + "Mã OTP để xác thực tài khoản của bạn là: "
+                        + otp
+                        + "\n\nMã OTP này có hiệu lực trong 5 phút."
+                        + "\n\nChào mừng bạn đến với MiniGarden!");
+        mailSender.send(message);
+    }
 }
