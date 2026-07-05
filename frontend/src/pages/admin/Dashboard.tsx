@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import Swal from "sweetalert2"; 
+import Swal from "sweetalert2";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import AdminHeader from "../../components/admin/AdminHeader";
 import AdminSidebar from "../../components/admin/AdminSidebar";
@@ -32,7 +32,7 @@ const getStatusColor = (status: string) => {
 export default function Dashboard() {
     const navigate = useNavigate();
     const [currentPage, setCurrentPage] = useState(1);
-    
+
     // State quản lý bộ lọc thời gian
     const [timeRange, setTimeRange] = useState<'all' | '7days' | '30days' | '6months' | '1year' | 'quarter' | 'custom'>('all');
     const [customStartDate, setCustomStartDate] = useState<string>("");
@@ -95,7 +95,7 @@ export default function Dashboard() {
             }
 
             const response = await axios.get(url, {
-                responseType: 'blob', 
+                responseType: 'blob',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
@@ -107,7 +107,7 @@ export default function Dashboard() {
             link.click();
             document.body.removeChild(link);
             window.URL.revokeObjectURL(objectUrl);
-            
+
             Swal.close();
 
             Swal.fire({ toast: true, position: 'bottom', icon: 'success', title: 'Xuất báo cáo thành công!', timer: 2000, showConfirmButton: false, customClass: { popup: 'mb-6 rounded-full shadow-lg border border-gray-100', title: 'text-sm font-bold text-gray-700' } });
@@ -176,9 +176,9 @@ export default function Dashboard() {
                 <main className="p-8 flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                         <h2 className="text-4xl font-extrabold text-gray-800">Tổng Quan</h2>
-                        
+
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-end gap-3 w-full md:w-auto">
-                            <select 
+                            <select
                                 value={timeRange}
                                 onChange={(e) => setTimeRange(e.target.value as any)}
                                 className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm font-semibold text-gray-700 shadow-sm min-w-[180px] appearance-none cursor-pointer"
@@ -192,25 +192,25 @@ export default function Dashboard() {
                                 <option value="quarter">Trong quý này</option>
                                 <option value="custom">Tùy chỉnh thời gian</option>
                             </select>
-                            
+
                             {timeRange === 'custom' && (
                                 <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-300 w-full sm:w-auto">
-                                    <input 
-                                        type="date" 
+                                    <input
+                                        type="date"
                                         value={customStartDate}
                                         onChange={(e) => setCustomStartDate(e.target.value)}
                                         className="w-full sm:w-auto px-3 py-2 bg-white border border-gray-200 rounded-xl outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm font-medium text-gray-700 shadow-sm"
                                     />
                                     <span className="text-gray-400 font-bold">-</span>
-                                    <input 
-                                        type="date" 
+                                    <input
+                                        type="date"
                                         value={customEndDate}
                                         onChange={(e) => setCustomEndDate(e.target.value)}
                                         className="w-full sm:w-auto px-3 py-2 bg-white border border-gray-200 rounded-xl outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm font-medium text-gray-700 shadow-sm"
                                     />
                                 </div>
                             )}
-                            
+
                             <button onClick={handleExportReport} className="px-4 py-2.5 flex items-center gap-2 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-[#2f5146] transition-colors shadow-sm whitespace-nowrap">
                                 <span className="material-symbols-outlined text-[18px]">download</span> Xuất báo cáo
                             </button>
@@ -270,14 +270,14 @@ export default function Dashboard() {
                                     <AreaChart data={stats.revenueGrowthData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                                         <defs>
                                             <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                                                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                                             </linearGradient>
                                         </defs>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                                         <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} tickFormatter={formatXAxisLabel} />
                                         <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} tickFormatter={(value) => value >= 1000000 ? `${value / 1000000}Tr` : value >= 1000 ? `${value / 1000}k` : value} />
-                                        <Tooltip 
+                                        <Tooltip
                                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
                                             formatter={(value: any) => [`${Number(value).toLocaleString('vi-VN')}đ`, 'Doanh thu']}
                                         />
@@ -296,12 +296,7 @@ export default function Dashboard() {
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                                         <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} tickFormatter={formatXAxisLabel} />
                                         <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
-<<<<<<< HEAD
-=======
-                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} allowDecimals={false} />
->>>>>>> c9a9b6eac66d41e69c2c3b02d1a3880719f86896
-                                        <Tooltip 
+                                        <Tooltip
                                             cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
                                             content={<CustomUserTooltip />}
                                         />
@@ -317,7 +312,7 @@ export default function Dashboard() {
                         {/* Giao dịch (Biểu đồ tròn) */}
                         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-50 flex flex-col items-center justify-center">
                             <h3 className="text-lg font-bold text-gray-800 mb-6 w-full text-left">Tỷ lệ giao dịch</h3>
-                            <div 
+                            <div
                                 className="w-48 h-48 rounded-full flex items-center justify-center relative shadow-inner"
                                 style={{ background: `conic-gradient(#10b981 0% ${txSuccessPct}%, #ef4444 ${txSuccessPct}% ${failedEndPct}%, #9ca3af ${failedEndPct}% 100%)` }}
                             >
@@ -361,8 +356,8 @@ export default function Dashboard() {
                                                 <span>{category.count} sản phẩm ({category.percentage}%)</span>
                                             </div>
                                             <div className="w-full bg-gray-100 rounded-full h-2.5">
-                                                <div 
-                                                    className={`h-2.5 rounded-full ${category.color}`} 
+                                                <div
+                                                    className={`h-2.5 rounded-full ${category.color}`}
                                                     style={{ width: `${category.percentage}%` }}
                                                 ></div>
                                             </div>
