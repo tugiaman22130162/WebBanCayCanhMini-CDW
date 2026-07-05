@@ -154,6 +154,14 @@ export default function Dashboard() {
         return null;
     };
 
+    // Hàm định dạng label cho trục X, chỉ hiển thị tháng nếu có năm (VD: "T7/26" -> "T7")
+    const formatXAxisLabel = (label: string) => {
+        if (typeof label === 'string' && label.includes('/')) {
+            return label.split('/')[0];
+        }
+        return label;
+    };
+
     return (
         <div className="h-screen bg-background text-on-surface flex overflow-hidden font-[Plus_Jakarta_Sans]">
             {/* SIDEBAR */}
@@ -267,7 +275,7 @@ export default function Dashboard() {
                                             </linearGradient>
                                         </defs>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
+                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} tickFormatter={formatXAxisLabel} />
                                         <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} tickFormatter={(value) => value >= 1000000 ? `${value / 1000000}Tr` : value >= 1000 ? `${value / 1000}k` : value} />
                                         <Tooltip 
                                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
@@ -286,7 +294,7 @@ export default function Dashboard() {
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={stats.userGrowthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barSize={32}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
+                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} tickFormatter={formatXAxisLabel} />
                                         <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
                                         <Tooltip 
                                             cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
