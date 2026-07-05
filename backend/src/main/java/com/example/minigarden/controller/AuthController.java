@@ -21,8 +21,20 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
         try {
-            userService.register(request);
-            return ResponseEntity.ok(Map.of("message", "Đăng ký thành công"));
+            // Endpoint này giờ sẽ yêu cầu cả OTP để hoàn tất đăng ký
+            userService.completeRegistration(request);
+            return ResponseEntity.ok(Map.of("message", "Tài khoản đã được tạo thành công."));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/request-register-otp")
+    public ResponseEntity<?> requestRegisterOtp(@RequestParam String email) {
+        try {
+            // Endpoint mới: chỉ kiểm tra và gửi OTP, không tạo tài khoản
+            userService.requestRegistrationOtp(email);
+            return ResponseEntity.ok(Map.of("message", "OTP đã được gửi đến email của bạn."));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
@@ -70,6 +82,16 @@ public class AuthController {
         try {
             userService.resetPassword(email, otp, newPassword);
             return ResponseEntity.ok(Map.of("message", "Đặt lại mật khẩu thành công"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/verify-account")
+    public ResponseEntity<?> verifyAccount(@RequestParam String email, @RequestParam String otp) {
+        try {
+            userService.verifyAccount(email, otp);
+            return ResponseEntity.ok(Map.of("message", "Xác thực tài khoản thành công"));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
