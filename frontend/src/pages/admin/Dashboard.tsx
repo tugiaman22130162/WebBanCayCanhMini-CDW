@@ -296,6 +296,11 @@ export default function Dashboard() {
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                                         <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} tickFormatter={formatXAxisLabel} />
                                         <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+<<<<<<< HEAD
+=======
+                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} allowDecimals={false} />
+>>>>>>> c9a9b6eac66d41e69c2c3b02d1a3880719f86896
                                         <Tooltip 
                                             cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
                                             content={<CustomUserTooltip />}
