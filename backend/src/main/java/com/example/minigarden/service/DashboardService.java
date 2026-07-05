@@ -223,15 +223,17 @@ public class DashboardService {
                     // Luôn đảm bảo endOfM không vượt quá endDate tổng thể
                     if (endOfM.isAfter(endDate)) endOfM = endDate;
 
+                    String label = "T" + currentLoopMonth.getMonthValue() + "/" + String.valueOf(currentLoopMonth.getYear() % 100);
                     Double rev = orderRepository.getTotalRevenueByCreatedAtBetween(startOfM, endOfM);
                     Map<String, Object> revMap = new HashMap<>();
-                    revMap.put("label", "T" + currentLoopMonth.getMonthValue());
+                    revMap.put("label", label);
                     revMap.put("value", rev != null ? rev : 0);
                     revenueGrowth.add(revMap);
                     
                     List<User> newUsers = userRepository.findByCreatedAtBetween(startOfM, endOfM);
                     Map<String, Object> usrMap = new HashMap<>();
-                    usrMap.put("label", "T" + currentLoopMonth.getMonthValue());
+
+                    usrMap.put("label", label);
                     usrMap.put("value", newUsers.size()); 
                     usrMap.put("users", newUsers.stream().map(u -> {
                         Map<String, Object> userDetail = new HashMap<>();
