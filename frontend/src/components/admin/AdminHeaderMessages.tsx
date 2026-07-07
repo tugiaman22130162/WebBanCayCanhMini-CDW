@@ -146,12 +146,19 @@ export default function AdminHeaderMessages({ user }: { user: any }) {
                             });
 
                             if (!isFromAdmin) {
-                                const unreadCounts = JSON.parse(localStorage.getItem('adminUnreadCounts') || '{}');
-                                unreadCounts[convId] = (Number(unreadCounts[convId]) || 0) + 1;
-                                localStorage.setItem('adminUnreadCounts', JSON.stringify(unreadCounts));
-                                setUnreadMessageCount(Object.values(unreadCounts).reduce((sum: any, val: any) => sum + (Number(val) || 0), 0) as number);
-                                window.dispatchEvent(new Event("adminUnreadUpdated"));
-                                if (!window.location.pathname.includes('/admin/messages')) showSuccessToast('Có tin nhắn mới từ khách hàng!', 3000);
+                                const currentPath = window.location.pathname;
+                                const searchParams = new URLSearchParams(window.location.search);
+                                const activeConvId = searchParams.get('id');
+                                const isAdminInThisChat = currentPath.includes('/admin/messages') && String(activeConvId) === String(convId);
+
+                                if (!isAdminInThisChat) {
+                                    const unreadCounts = JSON.parse(localStorage.getItem('adminUnreadCounts') || '{}');
+                                    unreadCounts[convId] = (Number(unreadCounts[convId]) || 0) + 1;
+                                    localStorage.setItem('adminUnreadCounts', JSON.stringify(unreadCounts));
+                                    setUnreadMessageCount(Object.values(unreadCounts).reduce((sum: any, val: any) => sum + (Number(val) || 0), 0) as number);
+                                    window.dispatchEvent(new Event("adminUnreadUpdated"));
+                                    showSuccessToast('Có tin nhắn mới từ khách hàng!', 3000);
+                                }
                             }
                         });
                     }
