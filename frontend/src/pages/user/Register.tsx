@@ -58,25 +58,43 @@ export default function Register() {
         let isValid = true;
 
         if (!formData.fullName.trim()) {
-            newErrors.fullName = "Vui lòng nhập họ và tên.";
+            newErrors.fullName = "Họ và tên không được để trống.";
             isValid = false;
+        } else {
+            const nameRegex = /^[a-zA-Zàáâãèéêìíòóôõùúăđĩũơưăạảấầẩẫậắằẳẵặẹẻẽềềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ\s]+$/;
+            if (!nameRegex.test(formData.fullName)) {
+                newErrors.fullName = "Họ và tên không được chứa số hoặc ký tự đặc biệt.";
+                isValid = false;
+            }
         }
 
-        // Regex kiểm tra định dạng email
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(formData.email)) {
-            newErrors.email = "Email không đúng định dạng.";
+        // Kiểm tra email
+        if (!formData.email.trim()) {
+            newErrors.email = "Email không được để trống.";
             isValid = false;
-        } else if (errors.email === "Email đã được sử dụng.") {
+        } else {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(formData.email)) {
+                newErrors.email = "Email không đúng định dạng.";
+                isValid = false;
+            }
+        }
+        // Kiểm tra lỗi email đã tồn tại từ state (do useEffect cập nhật)
+        if (errors.email === "Email đã được sử dụng.") {
             newErrors.email = "Email đã được sử dụng.";
             isValid = false;
         }
 
-        // Regex kiểm tra mật khẩu: >= 6 ký tự, có hoa, thường, số và ký tự đặc biệt
-        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/;
-        if (!passwordRegex.test(formData.password)) {
-            newErrors.password = "Mật khẩu phải từ 6 ký tự, gồm chữ hoa, thường, số và ký tự đặc biệt.";
+        // Kiểm tra mật khẩu
+        if (!formData.password) {
+            newErrors.password = "Mật khẩu không được để trống.";
             isValid = false;
+        } else {
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/;
+            if (!passwordRegex.test(formData.password)) {
+                newErrors.password = "Mật khẩu phải từ 6 ký tự, gồm chữ hoa, thường, số và ký tự đặc biệt.";
+                isValid = false;
+            }
         }
 
         if (formData.password !== formData.confirmPassword) {
@@ -147,11 +165,11 @@ export default function Register() {
                     <h1 className="text-4xl font-bold text-primary mb-2 text-center">
                         Đăng Ký
                     </h1>
-                    <p className="text-on-surface-variant mb-8 text-sm text-center">
+                    <p className="text-on-surface-variant mb-5 text-sm text-center">
                         Bắt đầu hành trình xanh của cùng MiniGarden ngay hôm nay 🌿
                     </p>
 
-                    <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+                    <form onSubmit={handleSubmit} className="space-y-2" noValidate>
                         <div>
                             <label className="block text-sm text-[#65645F] font-bold mb-1">Họ và tên</label>
                             <div className="relative">
@@ -168,7 +186,9 @@ export default function Register() {
                                     required
                                 />
                             </div>
-                            {errors.fullName && <p className="text-red-500 text-xs mt-1 ml-1">{errors.fullName}</p>}
+                            <div className="h-4 mt-1 ml-1">
+                                {errors.fullName && <p className="text-red-500 text-xs">{errors.fullName}</p>}
+                            </div>
                         </div>
 
                         <div>
@@ -189,7 +209,9 @@ export default function Register() {
                                     required
                                 />
                             </div>
-                            {errors.email && <p className="text-red-500 text-xs mt-1 ml-1">{errors.email}</p>}
+                            <div className="h-4 mt-1 ml-1">
+                                {errors.email && <p className="text-red-500 text-xs">{errors.email}</p>}
+                            </div>
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-5">
@@ -220,7 +242,9 @@ export default function Register() {
                                         </span>
                                     </button>
                                 </div>
-                                {errors.password && <p className="text-red-500 text-xs mt-1 ml-1">{errors.password}</p>}
+                                <div className="h-4 mt-1 ml-1">
+                                    {errors.password && <p className="text-red-500 text-xs">{errors.password}</p>}
+                                </div>
                             </div>
 
                             <div className="flex-1">
@@ -250,7 +274,9 @@ export default function Register() {
                                         </span>
                                     </button>
                                 </div>
-                                {errors.confirmPassword && <p className="text-red-500 text-xs mt-1 ml-1">{errors.confirmPassword}</p>}
+                                <div className="h-4 mt-1 ml-1 mb-3">
+                                    {errors.confirmPassword && <p className="text-red-500 text-xs">{errors.confirmPassword}</p>}
+                                </div>
                             </div>
                         </div>
 

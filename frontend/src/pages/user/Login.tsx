@@ -25,14 +25,22 @@ export default function Login() {
         let newErrors = { email: "", password: "" };
         let isValid = true;
 
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(formData.email)) {
-            newErrors.email = "Email không đúng định dạng.";
+        if (!formData.email.trim()) {
+            newErrors.email = "Email không được để trống.";
             isValid = false;
+        } else {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(formData.email)) {
+                newErrors.email = "Email không đúng định dạng.";
+                isValid = false;
+            }
         }
 
         const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/;
-        if (!passwordRegex.test(formData.password)) {
+        if (!formData.password) { // Kiểm tra trống trước
+            newErrors.password = "Mật khẩu không được để trống.";
+            isValid = false;
+        } else if (!passwordRegex.test(formData.password)) {
             newErrors.password = "Mật khẩu phải từ 6 ký tự, gồm chữ hoa, thường, số và ký tự đặc biệt.";
             isValid = false;
         }
@@ -72,7 +80,12 @@ export default function Login() {
                 });
             } catch (error: any) {
                 console.error("Lỗi đăng nhập:", error);
-                showErrorToast(error.response?.data?.message || "Đăng nhập thất bại!");
+                // Ưu tiên hiển thị lỗi từ backend (đã được xử lý bởi GlobalExceptionHandler)
+                if (error.response && error.response.data && error.response.data.message) {
+                    showErrorToast(error.response.data.message);
+                } else {
+                    showErrorToast("Đăng nhập thất bại! Vui lòng thử lại.");
+                }
             }
         }
     };
