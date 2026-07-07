@@ -41,8 +41,8 @@ export default function ChatSidebar({ conversations, activeConversationId, onSel
                     // Rút trích text hiện tại
                     const text = (conv as any).lastMessageContent || (conv as any).last_message_content || (conv as any).lastMessageText || (typeof (conv as any).lastMessage === 'string' ? (conv as any).lastMessage : ((conv as any).lastMessage as any)?.content || ((conv as any).lastMessage as any)?.text) || '';
                     
-                    // Nếu text rỗng hoặc hiển thị mặc định là "Chưa có tin nhắn", ta sẽ ngầm gọi API để lấy dữ liệu thật
-                    return !text || text === 'Chưa có tin nhắn';
+                    // Nếu text rỗng, hoặc là object nhưng không có content, hoặc hiển thị mặc định là "Chưa có tin nhắn", ta sẽ ngầm gọi API để lấy dữ liệu thật
+                    return !text || text === 'Chưa có tin nhắn' || (typeof (conv as any).lastMessage === 'object' && (conv as any).lastMessage !== null && !(conv as any).lastMessage.content && !(conv as any).lastMessage.text);
                 })
                 .map(async (conv) => {
                     try {
