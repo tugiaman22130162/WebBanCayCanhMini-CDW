@@ -4,6 +4,7 @@ import com.example.minigarden.dto.AuthResponse;
 import com.example.minigarden.dto.LoginRequest;
 import com.example.minigarden.dto.RegisterRequest;
 import com.example.minigarden.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,7 +20,7 @@ public class AuthController {
     private final UserService userService;
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         try {
             // Endpoint này giờ sẽ yêu cầu cả OTP để hoàn tất đăng ký
             userService.completeRegistration(request);
@@ -41,7 +42,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         try {
             AuthResponse response = userService.login(request);
             return ResponseEntity.ok(response);
