@@ -31,9 +31,12 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/login/**", "/oauth2/**", "/error", "/api/chatbot/**", "/api/shipping/**", "/api/ghn/**", "/api/vnpay/**", "/api/blogs/**", "/ws/**").permitAll()
+                        .requestMatchers("/api/auth/**", "/login/**", "/oauth2/**", "/error", "/api/chatbot/**", 
+                        "/api/shipping/**", "/api/ghn/**", "/api/vnpay/**", "/api/blogs/**", "/ws/**").permitAll()
                         .requestMatchers( "/api/products/**", "/api/categories/**", "/api/terrarium-components/**")
                         .permitAll()
+                        .requestMatchers("/api/dashboard/**", "/api/users/toggle-status/**", 
+                        "/api/promotions/import", "/api/promotions/export").hasRole("ADMIN") 
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))

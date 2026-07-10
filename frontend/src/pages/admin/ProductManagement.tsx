@@ -92,8 +92,8 @@ export default function ProductManagement() {
                     stock: stock,
                     category: item.categoryName || item.category?.name || item.category || "Chưa phân loại",
                     status: status,
-                    statusColor: statusColor,
-                    image: (item.images && item.images.length > 0) ? item.images[0] : "https://images.unsplash.com/photo-1614594975525-e45190c55d40?w=100&h=100&fit=crop"
+                    statusColor: statusColor, 
+                    image: (item.images && item.images.length > 0 && item.images[0]) ? item.images[0] : "https://images.unsplash.com/photo-1614594975525-e45190c55d40?w=100&h=100&fit=crop"
                 };
             });
 
