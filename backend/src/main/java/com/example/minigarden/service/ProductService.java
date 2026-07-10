@@ -2,16 +2,18 @@ package com.example.minigarden.service;
 
 import com.example.minigarden.dto.ProductResponse;
 import com.example.minigarden.dto.ProductDetailResponse;
-import com.example.minigarden.dto.Product;
+import com.example.minigarden.dto.ProductRequest;
+import com.example.minigarden.entity.CareInstructions;
 import com.example.minigarden.entity.ProductDetails;
 import com.example.minigarden.entity.Categories;
 import com.example.minigarden.entity.Products;
+import com.example.minigarden.entity.CustomTerrarium;
 import com.example.minigarden.entity.ProductImages;
-import com.example.minigarden.entity.CareInstructions;
 import com.example.minigarden.entity.OrderItem;
 import com.example.minigarden.entity.OrderStatus;
 import com.example.minigarden.repository.CategoryRepository;
 import com.example.minigarden.repository.ProductRepository;
+import com.example.minigarden.repository.CustomTerrariumRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
@@ -23,6 +25,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,13 +40,30 @@ public class ProductService {
     @Autowired
     private CloudinaryService cloudinaryService;
 
+    @Autowired
+    private CustomTerrariumRepository customTerrariumRepository;
+
     @Transactional(readOnly = true)
     public List<ProductResponse> getAllProducts() {
         return productRepository.findAllForList().stream().map(product -> {
-            List<String> imageUrls = product.getImages() != null
-                    ? product.getImages().stream().map(ProductImages::getImage_url).collect(Collectors.toList())
-                    : new ArrayList<>();
+            List<String> imageUrls = new ArrayList<>();
+            String productName = product.getName();
 
+            // Check if it's a custom terrarium product
+            if (productName != null && productName.startsWith("Terrarium Thiết Kế #")) {
+                try {
+                    // Parse the design ID from the name "Terrarium Thiết Kế #[ID] - ..."
+                    String idString = productName.substring(20).split(" - ")[0];
+                    Integer designId = Integer.parseInt(idString);
+                    Optional<CustomTerrarium> designOpt = customTerrariumRepository.findById(designId);
+                    if (designOpt.isPresent() && designOpt.get().getUserImage() != null) {
+                        imageUrls.add(designOpt.get().getUserImage());
+                    }
+                } catch (Exception ignored) {}
+            } else if (product.getImages() != null) {
+                imageUrls.addAll(product.getImages().stream().map(ProductImages::getImage_url).collect(Collectors.toList()));
+            }
+            
             return ProductResponse.builder()
                     .id(product.getId())
                     .name(product.getName())
@@ -125,7 +145,7 @@ public class ProductService {
     }
 
     @Transactional
-    public Products updateProduct(Integer id, Product dto, List<MultipartFile> images) {
+    public Products updateProduct(Integer id, ProductRequest dto, List<MultipartFile> images) {
         Products product = productRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại với ID: " + id));
 
@@ -221,7 +241,7 @@ public class ProductService {
     }
 
     @Transactional
-    public Products createProduct(Product dto, List<MultipartFile> images) {
+    public Products createProduct(ProductRequest dto, List<MultipartFile> images) {
         // Kiểm tra trùng lặp tên ngay từ đầu để tránh tốn thời gian upload
         if (productRepository.existsByName(dto.getName())) {
             throw new RuntimeException("Tên sản phẩm đã tồn tại. Vui lòng chọn tên khác!");

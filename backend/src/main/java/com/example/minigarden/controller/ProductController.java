@@ -1,6 +1,6 @@
 package com.example.minigarden.controller;
 
-import com.example.minigarden.dto.Product;
+import com.example.minigarden.dto.ProductRequest;
 import com.example.minigarden.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 
@@ -50,8 +51,8 @@ public class ProductController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> createProduct(
-            @RequestPart("product") Product productPayload,
-            @RequestPart("images") List<MultipartFile> images) {
+            @Valid @RequestPart("product") ProductRequest productPayload,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images) {
         try {
             productService.createProduct(productPayload, images);
             return ResponseEntity.ok().body(Map.of("message", "Thêm sản phẩm thành công!"));
@@ -65,7 +66,7 @@ public class ProductController {
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> updateProduct(
             @PathVariable Integer id,
-            @RequestPart("product") Product productPayload,
+            @Valid @RequestPart("product") ProductRequest productPayload,
             @RequestPart(value = "images", required = false) List<MultipartFile> images) {
         try {
             productService.updateProduct(id, productPayload, images);

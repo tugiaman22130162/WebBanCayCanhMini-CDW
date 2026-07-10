@@ -166,8 +166,8 @@ export default function MessageBubble({
                                 
                                 return (
                                     <div className="w-[250px] h-[150px] sm:w-[300px] sm:h-[200px] rounded-xl overflow-hidden relative border border-gray-200 shadow-sm mt-1 z-0">
-                                        {/* React Leaflet Map */}
-                                        <MapContainer center={[lat, lng]} zoom={15} scrollWheelZoom={false} style={{ height: '100%', width: '100%', zIndex: 1 }}>
+                                        {/* React Leaflet Map - Ensure you have @types/leaflet installed */}
+                                        <MapContainer center={[lat, lng]} zoom={15} scrollWheelZoom={false} style={{ height: '100%', width: '100%', zIndex: 1 }} attributionControl={false}>
                                             <TileLayer
                                                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                                                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
